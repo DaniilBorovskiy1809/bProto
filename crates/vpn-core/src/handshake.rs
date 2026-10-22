@@ -147,11 +147,11 @@ pub fn finish(state: &ClientHandshake, reply: &[u8]) -> Result<ClientEstablished
     })
 }
 
+/// The four values every server reply carries, whatever envelope they arrive in.
+pub type ReplyFields = ([u8; 32], [u8; 32], [u8; 4], [u8; MAC_LEN]);
+
 /// Pull the four handshake values out of whichever envelope the server used.
-fn decode_reply(
-    state: &ClientHandshake,
-    reply: &[u8],
-) -> Result<([u8; 32], [u8; 32], [u8; 4], [u8; MAC_LEN])> {
+fn decode_reply(state: &ClientHandshake, reply: &[u8]) -> Result<ReplyFields> {
     if let Ok(sh) = ServerHello::parse(reply) {
         let Some(key_share) = sh.key_share else {
             return Err(Error::Handshake("server hello without a key share"));

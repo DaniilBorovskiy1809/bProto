@@ -62,7 +62,16 @@ fn a_valid_client_is_served_and_a_probe_is_handed_to_the_donor() {
         &pubk,
         vpn_core::auth::time_window(NOW),
     ));
-    assert_eq!(server_decides(&hello(label, cr, pubk)), Verdict::Intercept(USER));
+    // The verdict carries the verified identity, so assert on the user it was
+    // verified as rather than on a whole struct of key material.
+    let intercepted = |v: Verdict| match v {
+        Verdict::Intercept(v) => Some(v.user_id),
+        Verdict::RelayToDonor => None,
+    };
+    assert_eq!(
+        intercepted(server_decides(&hello(label, cr, pubk))),
+        Some(USER)
+    );
 
     // 2. A censor probing with a random session id gets the donor.
     let random_sid = [0xC3u8; 32];
