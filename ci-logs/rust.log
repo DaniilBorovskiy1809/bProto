@@ -1,0 +1,754 @@
+== rustc ==
+rustc 1.99.1 (58cf8f9c3 2026-10-13)
+== cargo ==
+cargo 1.99.1 (5f94df478 2026-08-27)
+
+############ $ cargo fmt --all --check
+-- OK: cargo fmt --all --check
+
+############ $ cargo build --workspace --all-targets
+    Updating crates.io index
+ Downloading crates ...
+  Downloaded anstyle-query v1.1.5
+  Downloaded aead v0.5.2
+  Downloaded anstyle v1.0.14
+  Downloaded indexmap v2.14.2
+  Downloaded anstream v1.0.0
+  Downloaded getrandom v0.2.17
+  Downloaded curve25519-dalek-derive v0.1.1
+  Downloaded cpufeatures v0.2.17
+  Downloaded errno v0.3.14
+  Downloaded anstyle-parse v1.0.0
+  Downloaded anyhow v1.0.104
+  Downloaded curve25519-dalek v4.1.3
+  Downloaded hkdf v0.12.4
+  Downloaded equivalent v1.0.3
+  Downloaded crypto-common v0.1.7
+  Downloaded chacha20poly1305 v0.10.1
+  Downloaded clap_derive v4.6.7
+  Downloaded hmac v0.12.1
+  Downloaded serde_core v1.0.229
+  Downloaded clap_builder v4.6.7
+  Downloaded ppv-lite86 v0.2.21
+  Downloaded tracing-log v0.2.0
+  Downloaded toml v0.8.23
+  Downloaded is_terminal_polyfill v1.70.2
+  Downloaded matchers v0.2.0
+  Downloaded inout v0.1.4
+  Downloaded once_cell v1.21.4
+  Downloaded sharded-slab v0.1.7
+  Downloaded nu-ansi-term v0.50.3
+  Downloaded syn v2.0.119
+  Downloaded toml_edit v0.22.27
+  Downloaded tracing-subscriber v0.3.23
+  Downloaded version_check v0.9.5
+  Downloaded poly1305 v0.8.0
+  Downloaded colorchoice v1.0.5
+  Downloaded syn v3.0.9
+  Downloaded hashbrown v0.17.1
+  Downloaded toml_write v0.1.2
+  Downloaded serde_spanned v0.6.9
+  Downloaded rand v0.8.8
+  Downloaded regex-syntax v0.8.11
+  Downloaded tracing-core v0.1.36
+  Downloaded cfg-if v1.0.5
+  Downloaded unicode-ident v1.0.27
+  Downloaded thiserror-impl v2.0.21
+  Downloaded zmij v1.0.23
+  Downloaded semver v1.0.28
+  Downloaded toml_datetime v0.6.11
+  Downloaded subtle v2.6.1
+  Downloaded clap_lex v1.1.1
+  Downloaded heck v0.5.0
+  Downloaded tokio v1.53.3
+  Downloaded mio v1.2.4
+  Downloaded itoa v1.0.18
+  Downloaded thread_local v1.1.10
+  Downloaded tracing-attributes v0.1.31
+  Downloaded proc-macro2 v1.0.107
+  Downloaded bytes v1.12.1
+  Downloaded memchr v2.8.3
+  Downloaded lazy_static v1.5.1
+  Downloaded cipher v0.4.4
+  Downloaded smallvec v1.16.3
+  Downloaded rand_chacha v0.3.1
+  Downloaded block-buffer v0.10.4
+  Downloaded opaque-debug v0.3.1
+  Downloaded sha2 v0.10.9
+  Downloaded thiserror v2.0.21
+  Downloaded pin-project-lite v0.2.17
+  Downloaded clap v4.6.7
+  Downloaded rustc_version v0.4.1
+  Downloaded serde v1.0.229
+  Downloaded zeroize_derive v1.5.0
+  Downloaded digest v0.10.7
+  Downloaded generic-array v0.14.7
+  Downloaded strsim v0.11.1
+  Downloaded quote v1.0.47
+  Downloaded rand_core v0.6.4
+  Downloaded tokio-macros v2.7.2
+  Downloaded utf8parse v0.2.2
+  Downloaded chacha20 v0.9.1
+  Downloaded socket2 v0.6.5
+  Downloaded universal-hash v0.5.1
+  Downloaded zeroize v1.9.1
+  Downloaded signal-hook-registry v1.4.8
+  Downloaded log v0.4.34
+  Downloaded serde_derive v1.0.229
+  Downloaded aho-corasick v1.1.5
+  Downloaded winnow v0.7.15
+  Downloaded x25519-dalek v2.0.1
+  Downloaded serde_json v1.0.154
+  Downloaded regex-automata v0.4.18
+  Downloaded typenum v1.20.1
+  Downloaded libc v0.2.191
+  Downloaded tracing v0.1.44
+  Downloaded zerocopy v0.8.63
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+   Compiling cfg-if v1.0.5
+   Compiling version_check v0.9.5
+   Compiling typenum v1.20.1
+   Compiling generic-array v0.14.7
+   Compiling subtle v2.6.1
+   Compiling serde_core v1.0.229
+   Compiling syn v2.0.119
+   Compiling getrandom v0.2.17
+   Compiling syn v3.0.9
+   Compiling rand_core v0.6.4
+   Compiling crypto-common v0.1.7
+   Compiling cpufeatures v0.2.17
+   Compiling serde v1.0.229
+   Compiling once_cell v1.21.4
+   Compiling tracing-core v0.1.36
+   Compiling pin-project-lite v0.2.17
+   Compiling zerocopy v0.8.63
+   Compiling semver v1.0.28
+   Compiling block-buffer v0.10.4
+   Compiling rustc_version v0.4.1
+   Compiling digest v0.10.7
+   Compiling curve25519-dalek v4.1.3
+   Compiling inout v0.1.4
+   Compiling zmij v1.0.23
+   Compiling universal-hash v0.5.1
+   Compiling errno v0.3.14
+   Compiling serde_json v1.0.154
+   Compiling thiserror v2.0.21
+   Compiling opaque-debug v0.3.1
+   Compiling poly1305 v0.8.0
+   Compiling signal-hook-registry v1.4.8
+   Compiling serde_derive v1.0.229
+   Compiling tokio-macros v2.7.2
+   Compiling zeroize_derive v1.5.0
+   Compiling tracing-attributes v0.1.31
+   Compiling zeroize v1.9.1
+   Compiling cipher v0.4.4
+   Compiling curve25519-dalek-derive v0.1.1
+   Compiling tracing v0.1.44
+   Compiling ppv-lite86 v0.2.21
+   Compiling chacha20 v0.9.1
+   Compiling thiserror-impl v2.0.21
+   Compiling rand_chacha v0.3.1
+   Compiling hmac v0.12.1
+   Compiling aead v0.5.2
+   Compiling mio v1.2.4
+   Compiling socket2 v0.6.5
+   Compiling bytes v1.12.1
+   Compiling memchr v2.8.3
+   Compiling itoa v1.0.18
+   Compiling chacha20poly1305 v0.10.1
+   Compiling hkdf v0.12.4
+   Compiling x25519-dalek v2.0.1
+   Compiling rand v0.8.8
+   Compiling sha2 v0.10.9
+   Compiling tokio v1.53.3
+   Compiling hashbrown v0.17.1
+   Compiling equivalent v1.0.3
+   Compiling toml_datetime v0.6.11
+   Compiling serde_spanned v0.6.9
+   Compiling indexmap v2.14.2
+   Compiling winnow v0.7.15
+   Compiling toml_write v0.1.2
+   Compiling utf8parse v0.2.2
+   Compiling anstyle-parse v1.0.0
+   Compiling anstyle v1.0.14
+   Compiling regex-syntax v0.8.11
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling colorchoice v1.0.5
+   Compiling anstyle-query v1.1.5
+   Compiling anstream v1.0.0
+   Compiling lazy_static v1.5.1
+   Compiling strsim v0.11.1
+   Compiling toml_edit v0.22.27
+   Compiling clap_lex v1.1.1
+   Compiling anyhow v1.0.104
+   Compiling regex-automata v0.4.18
+   Compiling vpn-core v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-core)
+   Compiling toml v0.8.23
+   Compiling log v0.4.34
+   Compiling heck v0.5.0
+   Compiling tracing-log v0.2.0
+   Compiling clap_derive v4.6.7
+   Compiling matchers v0.2.0
+   Compiling clap_builder v4.6.7
+   Compiling sharded-slab v0.1.7
+   Compiling thread_local v1.1.10
+   Compiling nu-ansi-term v0.50.3
+   Compiling smallvec v1.16.3
+   Compiling tracing-subscriber v0.3.23
+   Compiling vpn-tun v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-tun)
+   Compiling clap v4.6.7
+   Compiling vpn-server v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-server)
+   Compiling bproto v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-ffi)
+   Compiling vpn-cli v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-cli)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 25.87s
+-- OK: cargo build --workspace --all-targets
+
+############ $ cargo clippy --workspace --all-targets -- -D warnings
+    Checking cfg-if v1.0.5
+    Checking libc v0.2.191
+    Checking typenum v1.20.1
+    Checking subtle v2.6.1
+    Checking serde_core v1.0.229
+    Checking once_cell v1.21.4
+    Checking cpufeatures v0.2.17
+    Checking tracing-core v0.1.36
+    Checking zeroize v1.9.1
+    Checking pin-project-lite v0.2.17
+    Checking tracing v0.1.44
+    Checking generic-array v0.14.7
+    Checking zerocopy v0.8.63
+    Checking getrandom v0.2.17
+    Checking rand_core v0.6.4
+    Checking block-buffer v0.10.4
+    Checking crypto-common v0.1.7
+    Checking inout v0.1.4
+    Checking digest v0.10.7
+    Checking cipher v0.4.4
+    Checking universal-hash v0.5.1
+    Checking errno v0.3.14
+    Checking opaque-debug v0.3.1
+    Checking poly1305 v0.8.0
+    Checking signal-hook-registry v1.4.8
+    Checking curve25519-dalek v4.1.3
+    Checking chacha20 v0.9.1
+    Checking hmac v0.12.1
+    Checking zmij v1.0.23
+    Checking serde v1.0.229
+    Checking aead v0.5.2
+    Checking mio v1.2.4
+    Checking socket2 v0.6.5
+    Checking memchr v2.8.3
+    Checking itoa v1.0.18
+    Checking bytes v1.12.1
+    Checking thiserror v2.0.21
+    Checking x25519-dalek v2.0.1
+    Checking chacha20poly1305 v0.10.1
+    Checking hkdf v0.12.4
+    Checking serde_json v1.0.154
+    Checking sha2 v0.10.9
+    Checking tokio v1.53.3
+    Checking hashbrown v0.17.1
+    Checking equivalent v1.0.3
+    Checking toml_datetime v0.6.11
+    Checking indexmap v2.14.2
+    Checking serde_spanned v0.6.9
+    Checking winnow v0.7.15
+    Checking toml_write v0.1.2
+    Checking utf8parse v0.2.2
+    Checking anstyle-parse v1.0.0
+    Checking is_terminal_polyfill v1.70.2
+    Checking colorchoice v1.0.5
+    Checking anstyle-query v1.1.5
+    Checking ppv-lite86 v0.2.21
+    Checking anstyle v1.0.14
+    Checking regex-syntax v0.8.11
+    Checking rand_chacha v0.3.1
+    Checking rand v0.8.8
+    Checking toml_edit v0.22.27
+    Checking regex-automata v0.4.18
+    Checking anstream v1.0.0
+    Checking strsim v0.11.1
+    Checking clap_lex v1.1.1
+    Checking log v0.4.34
+    Checking lazy_static v1.5.1
+    Checking sharded-slab v0.1.7
+    Checking tracing-log v0.2.0
+    Checking vpn-core v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-core)
+    Checking clap_builder v4.6.7
+    Checking toml v0.8.23
+    Checking thread_local v1.1.10
+    Checking smallvec v1.16.3
+    Checking matchers v0.2.0
+    Checking nu-ansi-term v0.50.3
+    Checking anyhow v1.0.104
+    Checking tracing-subscriber v0.3.23
+    Checking vpn-tun v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-tun)
+    Checking bproto v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-ffi)
+    Checking clap v4.6.7
+    Checking vpn-server v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-server)
+    Checking vpn-cli v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-cli)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.49s
+-- OK: cargo clippy --workspace --all-targets -- -D warnings
+
+############ $ cargo test --workspace
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running unittests src/lib.rs (target/debug/deps/bproto-e73a99b6477d4321)
+
+running 5 tests
+test tests::recv_timeout_rejects_a_null_handle ... ok
+test tests::bad_hex_is_reported ... ok
+test tests::connect_rejects_a_bad_config ... ok
+test tests::session_id_helper_writes_32_bytes ... ok
+test tests::version_is_exposed ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/bproto-3a3caee123b4ec2d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/vpn_core-33fc8b5e6dac93de)
+
+running 78 tests
+test ack::tests::decode_rejects_garbage ... ok
+test ack::tests::ranges_handle_u40_limit ... ok
+test ack::tests::ranges_merge_and_encode ... ok
+test ack::tests::in_flight_tracking_and_timeouts ... ok
+test auth::tests::ack_mac_binds_the_address ... ok
+test ack::tests::rtt_converges_and_pto_exceeds_srtt ... ok
+test auth::tests::native_label_mac_matches_session_id_bytes ... ok
+test auth::tests::rejects_wrong_psk_or_random_sid ... ok
+test auth::tests::derive_and_verify_roundtrip ... ok
+test auth::tests::tag_is_deterministic_and_user_specific ... ok
+test config::tests::hex_roundtrip ... ok
+test config::tests::base64url_matches_the_panel_vectors ... ok
+test config::tests::config_toml_roundtrip ... ok
+test config::tests::base64url_rejects_a_mangled_uri ... ok
+test config::tests::import_uri_from_a_hand_written_payload ... ok
+test config::tests::import_uri_rejects_bad_input ... ok
+test congestion::tests::congestion_avoidance_grows_again_toward_wmax ... ok
+test congestion::tests::fast_convergence_reduces_wmax_on_second_loss ... ok
+test config::tests::import_uri_roundtrip ... ok
+test congestion::tests::initial_window_is_ten_segments ... ok
+test congestion::tests::loss_reduces_to_beta_and_sets_threshold ... ok
+test congestion::tests::slow_start_doubles_per_rtt ... ok
+test congestion::tests::timeout_collapses_to_the_floor_and_restarts_slow_start ... ok
+test congestion::tests::zero_ack_is_a_no_op ... ok
+test crypto::tests::nonce_layout ... ok
+test crypto::tests::key_schedule_is_mirrored ... ok
+test crypto::tests::random_32_is_not_constant ... ok
+test frame::tests::hello_ack_roundtrip ... ok
+test crypto::tests::seal_open_roundtrip_and_aad_binding ... ok
+test crypto::tests::session_tag_is_symmetric_and_bound_to_the_randoms ... ok
+test crypto::tests::dh_is_symmetric ... ok
+test frame::tests::hello_roundtrip ... ok
+test frame::tests::simple_frames_and_types ... ok
+test handshake::tests::stale_hello_outside_the_window_is_rejected ... ok
+test handshake::tests::an_ack_for_another_client_random_is_rejected ... ok
+test handshake::tests::happy_path_derives_mirrored_keys_and_one_tag ... ok
+test ip::tests::parses_ipv4_addresses ... ok
+test ip::tests::parses_ipv6_destination ... ok
+test handshake::tests::wrong_psk_is_rejected ... ok
+test ip::tests::rejects_truncated_and_other_families ... ok
+test handshake::tests::unknown_user_is_rejected ... ok
+test packet::tests::header_roundtrip ... ok
+test packet::tests::inner_roundtrip_padded ... ok
+test packet::tests::packet_number_is_40_bits ... ok
+test handshake::tests::tampered_ack_is_rejected ... ok
+test packet::tests::plaintext_control_roundtrip_and_flag_check ... ok
+test packet::tests::rejects_short_and_bad_version ... ok
+test pool::tests::contains_respects_the_prefix ... ok
+test pool::tests::a_thirty_bit_prefix_yields_one_client_host ... ok
+test pool::tests::released_addresses_are_reusable ... ok
+test pool::tests::allocates_sequentially_from_host_two ... ok
+test pool::tests::reserve_rejects_out_of_pool_and_duplicates ... ok
+test pool::tests::slash_zero_does_not_panic ... ok
+test replay::tests::drops_packets_older_than_window ... ok
+test replay::tests::huge_jump_resets_window ... ok
+test replay::tests::tolerates_reordering_within_window ... ok
+test replay::tests::bit_shift_boundaries ... ok
+test server::tests::a_datagram_without_the_control_flag_is_not_a_handshake ... ok
+test replay::tests::accepts_in_order_and_rejects_duplicates ... ok
+test server::tests::a_fresh_session_is_not_expired_by_a_long_uptime ... ok
+test server::tests::ignores_unknown_session_tags ... ok
+test server::tests::seal_outbound_reports_a_missing_route ... ok
+test server::tests::rejects_a_probe_and_counts_it ... ok
+test session::tests::control_frames_roundtrip ... ok
+test session::tests::forged_ciphertext_is_rejected ... ok
+test session::tests::keepalive_roundtrips ... ok
+test server::tests::handshake_admits_a_session_and_leases_an_address ... ok
+test session::tests::oversized_payload_rejected ... ok
+test session::tests::replay_is_rejected_and_counted ... ok
+test session::tests::seal_then_open_across_peers ... ok
+test session::tests::stats_start_empty ... ok
+test tags::tests::build_from_user_list ... ok
+test tags::tests::insert_lookup_and_revoke ... ok
+test tags::tests::ip_lease_is_bidirectional_and_releasable ... ok
+test transport::tests::bucket_snapping ... ok
+test session::tests::tampered_header_fails_auth ... ok
+test transport::udp::tests::bind_for_matches_family ... ok
+test transport::udp::tests::loopback_roundtrip ... ok
+
+test result: ok. 78 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/auth_label.rs (target/debug/deps/auth_label-2b3393007f741aa8)
+
+running 5 tests
+test label_length_matches_a_browser_session_id ... ok
+test correct_label_verifies_inside_window ... ok
+test random_session_id_never_verifies ... ok
+test stale_label_is_rejected ... ok
+test wrong_psk_never_verifies ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/censor_gets_real_site.rs (target/debug/deps/censor_gets_real_site-edc46ba62fe0bba1)
+
+running 2 tests
+test censor_with_wrong_password_receives_real_donor_handshake ... ignored, requires donor + handshake; run with --ignored in CI once masquerade lands
+test classify_valid_vs_probe_without_network ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/packet_roundtrip.rs (target/debug/deps/packet_roundtrip-b6268bf81ab7217f)
+
+running 7 tests
+test mtu_is_reported ... ok
+test header_is_12_bytes_and_first_byte_versioned ... ok
+test forged_ciphertext_is_rejected ... ok
+test traffic_flows_back_too ... ok
+test payload_at_mtu_ok_above_mtu_rejected ... ok
+test replaying_a_datagram_is_rejected ... ok
+test datagrams_roundtrip_both_directions ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/tunnel_e2e.rs (target/debug/deps/tunnel_e2e-3c11fb30ab791348)
+
+running 5 tests
+test server_to_client_ip_traffic_arrives ... ok
+test two_users_get_distinct_addresses ... ok
+test client_to_server_ip_traffic_arrives ... ok
+test a_quiet_link_stays_established ... ok
+test a_wrong_key_never_establishes_a_session ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.00s
+
+     Running unittests src/lib.rs (target/debug/deps/vpn_server-6963c6a6dde0ab5d)
+
+running 12 tests
+test config::tests::rejects_short_tag_key ... ok
+test admin::tests::loopback_with_token_is_accepted ... ok
+test admin::tests::refuses_empty_token ... ok
+test admin::tests::refuses_non_loopback_bind ... ok
+test interceptor::tests::random_probe_is_relayed ... ok
+test config::tests::tag_table_roundtrip_and_revocable ... ok
+test interceptor::tests::sanity_that_intercept_yields_a_sealable_session ... ok
+test interceptor::tests::unknown_user_is_relayed ... ok
+test interceptor::tests::valid_client_is_intercepted ... ok
+test nst::tests::default_policy_forwards_tickets ... ok
+test nst::tests::suppress_is_blocked_in_release ... ok
+test interceptor::tests::wrong_mac_with_known_tag_is_relayed ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/vpn_server-6c3194d371cf2ced)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/vpn_tun-c12e7d229b03308f)
+
+running 9 tests
+test dev::tests::cap_eff_is_parsed_from_proc_status ... ok
+test dev::tests::netmask_mapping ... ok
+test dev::tests::opening_a_bad_name_fails_before_ioctl ... ok
+test dev::tests::read_buf_covers_the_datagram_plus_headroom ... ok
+test nat::tests::ruleset_mentions_both_interfaces_and_the_subnet ... ok
+test route::tests::a_line_without_a_device_is_rejected ... ok
+test route::tests::verb_swap_only_touches_the_verb ... ok
+test route::tests::parses_a_dhcp_default_route ... ok
+test route::tests::parses_a_gatewayless_route ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests vpn_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests vpn_server
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests vpn_tun
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+-- OK: cargo test --workspace
+
+############ $ cargo test --workspace --features vpn-core/quic
+ Downloading crates ...
+  Downloaded chacha20 v0.10.2
+  Downloaded cpufeatures v0.3.1
+  Downloaded cc v1.8.0
+  Downloaded find-msvc-tools v0.1.14
+  Downloaded rustls-pki-types v1.15.1
+  Downloaded rustc-hash v2.1.3
+  Downloaded cfg_aliases v0.2.2
+  Downloaded untrusted v0.9.0
+  Downloaded rand_pcg v0.10.2
+  Downloaded lru-slab v0.1.3
+  Downloaded slab v0.4.12
+  Downloaded getrandom v0.4.3
+  Downloaded shlex v2.0.1
+  Downloaded quinn-udp v0.5.16
+  Downloaded rand_core v0.10.1
+  Downloaded tinyvec v1.13.3
+  Downloaded rustls-webpki v0.103.15
+  Downloaded quinn v0.11.12
+  Downloaded rand v0.10.3
+  Downloaded quinn-proto v0.11.19
+  Downloaded rustls v0.23.46
+  Downloaded ring v0.17.14
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.14
+   Compiling cfg_aliases v0.2.2
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling untrusted v0.9.0
+   Compiling cc v1.8.0
+   Compiling rustls-pki-types v1.15.1
+   Compiling cpufeatures v0.3.1
+   Compiling rustls v0.23.46
+   Compiling chacha20 v0.10.2
+   Compiling quinn-udp v0.5.16
+   Compiling rand v0.10.3
+   Compiling rand_pcg v0.10.2
+   Compiling quinn v0.11.12
+   Compiling slab v0.4.12
+   Compiling tinyvec v1.13.3
+   Compiling lru-slab v0.1.3
+   Compiling rustc-hash v2.1.3
+   Compiling ring v0.17.14
+   Compiling rustls-webpki v0.103.15
+   Compiling quinn-proto v0.11.19
+   Compiling vpn-core v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-core)
+   Compiling vpn-server v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-server)
+   Compiling vpn-cli v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-cli)
+   Compiling bproto v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-ffi)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 14.03s
+     Running unittests src/lib.rs (target/debug/deps/bproto-4441647a991676ae)
+
+running 5 tests
+test tests::bad_hex_is_reported ... ok
+test tests::recv_timeout_rejects_a_null_handle ... ok
+test tests::connect_rejects_a_bad_config ... ok
+test tests::version_is_exposed ... ok
+test tests::session_id_helper_writes_32_bytes ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/bproto-34f69f0a4ae24731)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/vpn_core-530c5508ee0d29bf)
+
+running 78 tests
+test ack::tests::decode_rejects_garbage ... ok
+test ack::tests::ranges_merge_and_encode ... ok
+test ack::tests::ranges_handle_u40_limit ... ok
+test ack::tests::in_flight_tracking_and_timeouts ... ok
+test ack::tests::rtt_converges_and_pto_exceeds_srtt ... ok
+test auth::tests::ack_mac_binds_the_address ... ok
+test auth::tests::native_label_mac_matches_session_id_bytes ... ok
+test auth::tests::derive_and_verify_roundtrip ... ok
+test auth::tests::rejects_wrong_psk_or_random_sid ... ok
+test config::tests::base64url_rejects_a_mangled_uri ... ok
+test config::tests::hex_roundtrip ... ok
+test auth::tests::tag_is_deterministic_and_user_specific ... ok
+test config::tests::base64url_matches_the_panel_vectors ... ok
+test config::tests::config_toml_roundtrip ... ok
+test config::tests::import_uri_from_a_hand_written_payload ... ok
+test config::tests::import_uri_rejects_bad_input ... ok
+test congestion::tests::congestion_avoidance_grows_again_toward_wmax ... ok
+test config::tests::import_uri_roundtrip ... ok
+test congestion::tests::fast_convergence_reduces_wmax_on_second_loss ... ok
+test congestion::tests::initial_window_is_ten_segments ... ok
+test congestion::tests::timeout_collapses_to_the_floor_and_restarts_slow_start ... ok
+test congestion::tests::loss_reduces_to_beta_and_sets_threshold ... ok
+test congestion::tests::zero_ack_is_a_no_op ... ok
+test congestion::tests::slow_start_doubles_per_rtt ... ok
+test crypto::tests::random_32_is_not_constant ... ok
+test crypto::tests::key_schedule_is_mirrored ... ok
+test crypto::tests::nonce_layout ... ok
+test crypto::tests::dh_is_symmetric ... ok
+test frame::tests::hello_ack_roundtrip ... ok
+test frame::tests::simple_frames_and_types ... ok
+test crypto::tests::session_tag_is_symmetric_and_bound_to_the_randoms ... ok
+test frame::tests::hello_roundtrip ... ok
+test crypto::tests::seal_open_roundtrip_and_aad_binding ... ok
+test handshake::tests::stale_hello_outside_the_window_is_rejected ... ok
+test handshake::tests::an_ack_for_another_client_random_is_rejected ... ok
+test handshake::tests::happy_path_derives_mirrored_keys_and_one_tag ... ok
+test handshake::tests::tampered_ack_is_rejected ... ok
+test ip::tests::parses_ipv6_destination ... ok
+test ip::tests::rejects_truncated_and_other_families ... ok
+test packet::tests::header_roundtrip ... ok
+test handshake::tests::unknown_user_is_rejected ... ok
+test ip::tests::parses_ipv4_addresses ... ok
+test handshake::tests::wrong_psk_is_rejected ... ok
+test packet::tests::inner_roundtrip_padded ... ok
+test packet::tests::plaintext_control_roundtrip_and_flag_check ... ok
+test packet::tests::rejects_short_and_bad_version ... ok
+test pool::tests::allocates_sequentially_from_host_two ... ok
+test pool::tests::a_thirty_bit_prefix_yields_one_client_host ... ok
+test packet::tests::packet_number_is_40_bits ... ok
+test pool::tests::contains_respects_the_prefix ... ok
+test pool::tests::released_addresses_are_reusable ... ok
+test pool::tests::slash_zero_does_not_panic ... ok
+test replay::tests::drops_packets_older_than_window ... ok
+test pool::tests::reserve_rejects_out_of_pool_and_duplicates ... ok
+test replay::tests::huge_jump_resets_window ... ok
+test replay::tests::tolerates_reordering_within_window ... ok
+test replay::tests::bit_shift_boundaries ... ok
+test server::tests::a_datagram_without_the_control_flag_is_not_a_handshake ... ok
+test replay::tests::accepts_in_order_and_rejects_duplicates ... ok
+test server::tests::a_fresh_session_is_not_expired_by_a_long_uptime ... ok
+test server::tests::ignores_unknown_session_tags ... ok
+test server::tests::rejects_a_probe_and_counts_it ... ok
+test server::tests::seal_outbound_reports_a_missing_route ... ok
+test session::tests::forged_ciphertext_is_rejected ... ok
+test session::tests::control_frames_roundtrip ... ok
+test session::tests::keepalive_roundtrips ... ok
+test server::tests::handshake_admits_a_session_and_leases_an_address ... ok
+test session::tests::seal_then_open_across_peers ... ok
+test session::tests::replay_is_rejected_and_counted ... ok
+test session::tests::stats_start_empty ... ok
+test tags::tests::insert_lookup_and_revoke ... ok
+test tags::tests::ip_lease_is_bidirectional_and_releasable ... ok
+test transport::tests::bucket_snapping ... ok
+test session::tests::tampered_header_fails_auth ... ok
+test transport::udp::tests::bind_for_matches_family ... ok
+test session::tests::oversized_payload_rejected ... ok
+test tags::tests::build_from_user_list ... ok
+test transport::udp::tests::loopback_roundtrip ... ok
+
+test result: ok. 78 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/auth_label.rs (target/debug/deps/auth_label-542f06c1012e0364)
+
+running 5 tests
+test label_length_matches_a_browser_session_id ... ok
+test correct_label_verifies_inside_window ... ok
+test random_session_id_never_verifies ... ok
+test wrong_psk_never_verifies ... ok
+test stale_label_is_rejected ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/censor_gets_real_site.rs (target/debug/deps/censor_gets_real_site-0b81200a47bd191a)
+
+running 2 tests
+test censor_with_wrong_password_receives_real_donor_handshake ... ignored, requires donor + handshake; run with --ignored in CI once masquerade lands
+test classify_valid_vs_probe_without_network ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/packet_roundtrip.rs (target/debug/deps/packet_roundtrip-349e7c017ebc52b3)
+
+running 7 tests
+test mtu_is_reported ... ok
+test header_is_12_bytes_and_first_byte_versioned ... ok
+test forged_ciphertext_is_rejected ... ok
+test payload_at_mtu_ok_above_mtu_rejected ... ok
+test traffic_flows_back_too ... ok
+test replaying_a_datagram_is_rejected ... ok
+test datagrams_roundtrip_both_directions ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/tunnel_e2e.rs (target/debug/deps/tunnel_e2e-df35dbd1f44344b5)
+
+running 5 tests
+test server_to_client_ip_traffic_arrives ... ok
+test two_users_get_distinct_addresses ... ok
+test client_to_server_ip_traffic_arrives ... ok
+test a_quiet_link_stays_established ... ok
+test a_wrong_key_never_establishes_a_session ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.00s
+
+     Running unittests src/lib.rs (target/debug/deps/vpn_server-a296fe51e8cba848)
+
+running 12 tests
+test admin::tests::loopback_with_token_is_accepted ... ok
+test admin::tests::refuses_empty_token ... ok
+test config::tests::rejects_short_tag_key ... ok
+test admin::tests::refuses_non_loopback_bind ... ok
+test interceptor::tests::random_probe_is_relayed ... ok
+test config::tests::tag_table_roundtrip_and_revocable ... ok
+test interceptor::tests::sanity_that_intercept_yields_a_sealable_session ... ok
+test interceptor::tests::unknown_user_is_relayed ... ok
+test interceptor::tests::valid_client_is_intercepted ... ok
+test interceptor::tests::wrong_mac_with_known_tag_is_relayed ... ok
+test nst::tests::default_policy_forwards_tickets ... ok
+test nst::tests::suppress_is_blocked_in_release ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/vpn_server-b0c537fd8be2dee1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/vpn_tun-c12e7d229b03308f)
+
+running 9 tests
+test dev::tests::cap_eff_is_parsed_from_proc_status ... ok
+test dev::tests::netmask_mapping ... ok
+test dev::tests::opening_a_bad_name_fails_before_ioctl ... ok
+test dev::tests::read_buf_covers_the_datagram_plus_headroom ... ok
+test nat::tests::ruleset_mentions_both_interfaces_and_the_subnet ... ok
+test route::tests::verb_swap_only_touches_the_verb ... ok
+test route::tests::a_line_without_a_device_is_rejected ... ok
+test route::tests::parses_a_dhcp_default_route ... ok
+test route::tests::parses_a_gatewayless_route ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests vpn_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests vpn_server
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests vpn_tun
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+-- OK: cargo test --workspace --features vpn-core/quic
+
