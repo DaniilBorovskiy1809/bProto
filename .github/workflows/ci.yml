@@ -81,6 +81,21 @@ jobs:
             fi
             cd "$GITHUB_WORKSPACE"
 
+            echo "############ SHELL SCRIPTS: syntax"
+            for f in build_app.sh run.sh install.sh; do
+              if bash -n "$f" 2>&1; then echo "-- OK: bash -n $f"; else echo "-- FAILED: bash -n $f"; fi
+            done
+            echo
+
+            echo "############ FUNCTIONAL: build_app.sh --check"
+            # The documented gate. It is a script, so it is only real if it runs.
+            if timeout 900 ./build_app.sh --check --no-panel --no-ffi 2>&1; then
+              echo "-- OK: build_app.sh --check"
+            else
+              echo "-- FAILED: build_app.sh --check"
+            fi
+            echo
+
             echo "############ FUNCTIONAL: run.sh demo"
             if timeout 120 ./run.sh demo 3 2>&1; then echo "-- OK: run.sh demo"; else echo "-- FAILED: run.sh demo"; fi
             echo
