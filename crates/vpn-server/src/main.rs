@@ -281,9 +281,8 @@ async fn serve(ctx: ServeCtx) -> anyhow::Result<()> {
                 if !closed.is_empty()
                     && let Some(panel) = &panel
                 {
-                        let finals = Node::final_deltas(&closed, unix_now_secs() as i64);
-                        push(panel, finals).await;
-                    }
+                    let finals = Node::final_deltas(&closed, unix_now_secs() as i64);
+                    push(panel, finals).await;
                 }
             }
 
