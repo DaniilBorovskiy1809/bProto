@@ -136,7 +136,7 @@ impl ClientHello {
 
         // Optional TLS record header.
         if cur.peek_u8()? == RECORD_HANDSHAKE {
-            let version = cur.u16()?;
+            let _version = cur.u16()?;
             let len = cur.u16()? as usize;
             if cur.remaining() < len {
                 return Err(Error::ShortDatagram {
@@ -169,7 +169,7 @@ impl ClientHello {
         cur.copy(&mut session_id)?;
 
         let cs_len = cur.u16()? as usize;
-        if cs_len % 2 != 0 {
+        if !cs_len.is_multiple_of(2) {
             return Err(Error::BadFrameType(0));
         }
         let mut cipher_suites = Vec::with_capacity(cs_len / 2);
@@ -495,7 +495,7 @@ impl ClientHelloBuilder {
             g
         };
 
-        let mut push = |out: &mut Vec<u8>, ty: u16, data: &[u8]| {
+        let push = |out: &mut Vec<u8>, ty: u16, data: &[u8]| {
             out.extend_from_slice(&ty.to_be_bytes());
             out.extend_from_slice(&(data.len() as u16).to_be_bytes());
             out.extend_from_slice(data);

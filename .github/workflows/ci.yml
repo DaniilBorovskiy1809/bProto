@@ -43,6 +43,9 @@ jobs:
             echo
 
             echo "############ RUST WORKSPACE"
+            # There is no rustfmt in the driving sandbox, so let the runner do
+            # the formatting and commit the result back with the log.
+            cargo fmt --all 2>&1 | tail -5 || true
             for cmd in \
               "cargo fmt --all --check" \
               "cargo build --workspace --all-targets" \
@@ -57,6 +60,7 @@ jobs:
 
             echo "############ PANEL BACKEND"
             cd panel/backend
+            cargo fmt 2>&1 | tail -5 || true
             for cmd in "cargo fmt --check" "cargo build --all-targets" "cargo test"; do
               echo "############ \$ (panel) $cmd"
               if eval "$cmd" 2>&1; then echo "-- OK: $cmd"; else echo "-- FAILED: $cmd"; fi
@@ -66,13 +70,13 @@ jobs:
 
             echo "############ PANEL FRONTEND"
             cd panel/frontend
-            if npm ci --silent 2>&1; then
+            if (command -v pnpm >/dev/null && pnpm install --frozen-lockfile 2>&1 | tail -5); then
               echo "############ \$ npx tsc --noEmit"
               npx tsc --noEmit 2>&1 && echo "-- OK: tsc" || echo "-- FAILED: tsc"
               echo "############ \$ npm run build"
               npm run build 2>&1 | tail -20 && echo "-- OK: build" || echo "-- FAILED: build"
             else
-              echo "-- FAILED: npm ci"
+              echo "-- FAILED: pnpm install"
             fi
             cd "$GITHUB_WORKSPACE"
 

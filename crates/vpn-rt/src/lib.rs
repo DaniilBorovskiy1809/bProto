@@ -31,7 +31,7 @@ use tokio::sync::{Mutex, RwLock};
 use vpn_core::endpoint::{Endpoint, EndpointParams, EndpointStats, Opened, Role};
 use vpn_core::{Error, Result};
 
-pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
+pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats};
 
 /// Housekeeping period. 20 ms keeps ACKs and keepalives timely without burning
 /// a core.
