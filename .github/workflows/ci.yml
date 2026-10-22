@@ -19,7 +19,7 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  rust:
+  gate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,36 +30,74 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: v1
 
       - name: Build and test
-        id: build
         continue-on-error: true
         run: |
+          set -o pipefail
           mkdir -p ci-logs
           {
             echo "== rustc =="; rustc --version
-            echo "== cargo =="; cargo --version
             echo
+
+            echo "############ RUST WORKSPACE"
             for cmd in \
               "cargo fmt --all --check" \
               "cargo build --workspace --all-targets" \
               "cargo clippy --workspace --all-targets -- -D warnings" \
               "cargo test --workspace" \
-              "cargo test --workspace --features vpn-core/quic" \
+              "cargo test -p bproto --features jni" \
               ; do
               echo "############ \$ $cmd"
               if eval "$cmd" 2>&1; then echo "-- OK: $cmd"; else echo "-- FAILED: $cmd"; fi
               echo
             done
-          } 2>&1 | tee ci-logs/rust.log
+
+            echo "############ PANEL BACKEND"
+            cd panel/backend
+            for cmd in "cargo fmt --check" "cargo build --all-targets" "cargo test"; do
+              echo "############ \$ (panel) $cmd"
+              if eval "$cmd" 2>&1; then echo "-- OK: $cmd"; else echo "-- FAILED: $cmd"; fi
+              echo
+            done
+            cd "$GITHUB_WORKSPACE"
+
+            echo "############ PANEL FRONTEND"
+            cd panel/frontend
+            if npm ci --silent 2>&1; then
+              echo "############ \$ npx tsc --noEmit"
+              npx tsc --noEmit 2>&1 && echo "-- OK: tsc" || echo "-- FAILED: tsc"
+              echo "############ \$ npm run build"
+              npm run build 2>&1 | tail -20 && echo "-- OK: build" || echo "-- FAILED: build"
+            else
+              echo "-- FAILED: npm ci"
+            fi
+            cd "$GITHUB_WORKSPACE"
+
+            echo "############ FUNCTIONAL: run.sh demo"
+            if timeout 120 ./run.sh demo 3 2>&1; then echo "-- OK: run.sh demo"; else echo "-- FAILED: run.sh demo"; fi
+            echo
+
+            echo "############ FUNCTIONAL: server --check-config"
+            ./run.sh check-config 2>&1 && echo "-- OK: check-config" || echo "-- FAILED: check-config"
+          } 2>&1 | tee ci-logs/gate.log
 
       - name: Commit the log
         if: always()
         run: |
           git config user.name "ci-bot"
           git config user.email "ci-bot@users.noreply.github.com"
-          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+          for _ in 1 2 3; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && break
+            sleep 3
+          done
+          mkdir -p ci-logs
           git add -f ci-logs
           git diff --cached --quiet && exit 0
-          git commit -q -m "ci: rust log for ${GITHUB_SHA::7} [skip ci]"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          git commit -q -m "ci: gate log for ${GITHUB_SHA::7} [skip ci]"
+          for _ in 1 2 3; do
+            git push origin "HEAD:${GITHUB_REF_NAME}" && break
+            sleep 3
+          done
