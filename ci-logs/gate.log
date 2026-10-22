@@ -68,10 +68,14 @@ rustc 1.99.1 (58cf8f9c3 2026-10-13)
    Compiling vpn-server v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-server)
    Compiling bproto v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-ffi)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.27s
 =======
    Compiling vpn-cli v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-cli)
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.56s
+>>>>>>> Stashed changes
+=======
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 14.21s
 >>>>>>> Stashed changes
 -- OK: cargo build --workspace --all-targets
 
@@ -83,6 +87,7 @@ rustc 1.99.1 (58cf8f9c3 2026-10-13)
     Checking vpn-server v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-server)
     Checking vpn-cli v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-cli)
     Checking bproto v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-ffi)
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.26s
 -- OK: cargo clippy --workspace --all-targets -- -D warnings
@@ -96,14 +101,21 @@ rustc 1.99.1 (58cf8f9c3 2026-10-13)
 ############ $ cargo test --workspace
     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.19s
 >>>>>>> Stashed changes
+=======
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.77s
+-- OK: cargo clippy --workspace --all-targets -- -D warnings
+
+############ $ cargo test --workspace
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+>>>>>>> Stashed changes
      Running unittests src/lib.rs (target/debug/deps/bproto-f944b1fc318f2c86)
 
 running 5 tests
 test tests::bad_hex_is_reported ... ok
-test tests::connect_rejects_a_bad_config ... ok
 test tests::recv_timeout_rejects_a_null_handle ... ok
-test tests::version_is_exposed ... ok
+test tests::connect_rejects_a_bad_config ... ok
 test tests::session_id_helper_writes_32_bytes ... ok
+test tests::version_is_exposed ... ok
 
 test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
@@ -124,20 +136,33 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
      Running unittests src/lib.rs (target/debug/deps/vpn_core-d69315f241ef61fe)
 
 running 91 tests
+<<<<<<< Updated upstream
 test ack::tests::decode_rejects_garbage ... ok
 test ack::tests::ranges_merge_and_encode ... ok
 test ack::tests::in_flight_tracking_and_timeouts ... ok
 test ack::tests::ranges_handle_u40_limit ... ok
+=======
+test ack::tests::ranges_handle_u40_limit ... ok
+test ack::tests::in_flight_tracking_and_timeouts ... ok
+>>>>>>> Stashed changes
 test ack::tests::rtt_converges_and_pto_exceeds_srtt ... ok
+test ack::tests::decode_rejects_garbage ... ok
+test ack::tests::ranges_merge_and_encode ... ok
 test auth::tests::ack_mac_binds_the_address ... ok
+test auth::tests::tag_is_deterministic_and_user_specific ... ok
 test auth::tests::derive_and_verify_roundtrip ... ok
 test auth::tests::rejects_wrong_psk_or_random_sid ... ok
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 test auth::tests::native_label_mac_matches_session_id_bytes ... ok
 test auth::tests::tag_is_deterministic_and_user_specific ... ok
+=======
+>>>>>>> Stashed changes
 test config::tests::base64url_matches_the_panel_vectors ... ok
 test config::tests::base64url_rejects_a_mangled_uri ... ok
+test auth::tests::native_label_mac_matches_session_id_bytes ... ok
 test config::tests::hex_roundtrip ... ok
+<<<<<<< Updated upstream
 test config::tests::import_uri_from_a_hand_written_payload ... ok
 =======
 test auth::tests::tag_is_deterministic_and_user_specific ... ok
@@ -147,26 +172,29 @@ test config::tests::import_uri_from_a_hand_written_payload ... ok
 test config::tests::hex_roundtrip ... ok
 test config::tests::config_toml_roundtrip ... ok
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 test config::tests::import_uri_rejects_bad_input ... ok
+test config::tests::import_uri_from_a_hand_written_payload ... ok
+test config::tests::import_uri_roundtrip ... ok
 test config::tests::config_toml_roundtrip ... ok
 test congestion::tests::congestion_avoidance_grows_again_toward_wmax ... ok
 test config::tests::import_uri_roundtrip ... ok
 test congestion::tests::fast_convergence_reduces_wmax_on_second_loss ... ok
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 test config::tests::import_uri_roundtrip ... ok
+=======
+>>>>>>> Stashed changes
 test congestion::tests::initial_window_is_ten_segments ... ok
 test congestion::tests::loss_reduces_to_beta_and_sets_threshold ... ok
 test congestion::tests::slow_start_doubles_per_rtt ... ok
 test congestion::tests::timeout_collapses_to_the_floor_and_restarts_slow_start ... ok
 test crypto::tests::nonce_layout ... ok
-test crypto::tests::key_schedule_is_mirrored ... ok
 test congestion::tests::zero_ack_is_a_no_op ... ok
-test crypto::tests::session_tag_is_symmetric_and_bound_to_the_randoms ... ok
-test crypto::tests::seal_open_roundtrip_and_aad_binding ... ok
-test endpoint::tests::a_tampered_header_fails_authentication ... ok
-test endpoint::tests::a_session_born_late_is_not_instantly_expired ... ok
-test crypto::tests::dh_is_symmetric ... ok
+test crypto::tests::key_schedule_is_mirrored ... ok
 test crypto::tests::random_32_is_not_constant ... ok
+<<<<<<< Updated upstream
 test endpoint::tests::close_is_queued_once_and_the_peer_sees_it ... ok
 =======
 test congestion::tests::timeout_collapses_to_the_floor_and_restarts_slow_start ... ok
@@ -187,21 +215,35 @@ test endpoint::tests::close_is_queued_once_and_the_peer_sees_it ... ok
 test endpoint::tests::keepalive_fires_after_the_keepalive_interval_and_only_once ... ok
 test endpoint::tests::ping_is_answered_with_pong_without_caller_involvement ... ok
 >>>>>>> Stashed changes
+=======
+test crypto::tests::seal_open_roundtrip_and_aad_binding ... ok
+test crypto::tests::session_tag_is_symmetric_and_bound_to_the_randoms ... ok
+test endpoint::tests::a_session_born_late_is_not_instantly_expired ... ok
+test endpoint::tests::a_tampered_header_fails_authentication ... ok
+test crypto::tests::dh_is_symmetric ... ok
+>>>>>>> Stashed changes
 test endpoint::tests::acks_are_flushed_every_eight_packets_and_feed_the_rtt ... ok
+test endpoint::tests::close_is_queued_once_and_the_peer_sees_it ... ok
 test endpoint::tests::keepalive_fires_after_the_keepalive_interval_and_only_once ... ok
 test endpoint::tests::ip_traffic_roundtrips_and_is_counted ... ok
 test endpoint::tests::ping_is_answered_with_pong_without_caller_involvement ... ok
+test frame::tests::hello_ack_roundtrip ... ok
 test endpoint::tests::oversized_payload_is_refused_before_encryption ... ok
+test frame::tests::simple_frames_and_types ... ok
 test frame::tests::hello_roundtrip ... ok
 test endpoint::tests::replay_and_forgery_are_rejected_and_counted ... ok
+<<<<<<< Updated upstream
 test endpoint::tests::oversized_payload_is_refused_before_encryption ... ok
 test frame::tests::hello_ack_roundtrip ... ok
 <<<<<<< Updated upstream
 test frame::tests::simple_frames_and_types ... ok
 test handshake::tests::stale_hello_outside_the_window_is_rejected ... ok
+=======
+>>>>>>> Stashed changes
 test handshake::tests::an_ack_for_another_client_random_is_rejected ... ok
-test endpoint::tests::congestion_window_gates_sending ... ok
+test handshake::tests::stale_hello_outside_the_window_is_rejected ... ok
 test handshake::tests::tampered_ack_is_rejected ... ok
+<<<<<<< Updated upstream
 test handshake::tests::happy_path_derives_mirrored_keys_and_one_tag ... ok
 =======
 test frame::tests::hello_roundtrip ... ok
@@ -218,29 +260,40 @@ test hello::tests::a_realistic_foreign_client_hello_parses ... ok
 test hello::tests::a_server_hello_survives_a_round_trip ... ok
 <<<<<<< Updated upstream
 test handshake::tests::wrong_psk_is_rejected ... ok
+=======
+>>>>>>> Stashed changes
 test handshake::tests::unknown_user_is_rejected ... ok
+test handshake::tests::happy_path_derives_mirrored_keys_and_one_tag ... ok
+test handshake::tests::wrong_psk_is_rejected ... ok
+test endpoint::tests::congestion_window_gates_sending ... ok
+test hello::tests::a_client_hello_is_not_a_server_hello ... ok
 test hello::tests::a_bare_handshake_message_parses_too ... ok
+test hello::tests::a_realistic_foreign_client_hello_parses ... ok
 test hello::tests::a_server_hello_without_the_optional_parts_parses ... ok
-test hello::tests::malformed_input_is_rejected_not_guessed_at ... ok
+test hello::tests::a_server_hello_survives_a_round_trip ... ok
 test hello::tests::every_profile_roundtrips_through_parse ... ok
 test hello::tests::each_profile_has_a_distinct_fingerprint ... ok
-test hello::tests::the_record_header_is_well_formed ... ok
+test hello::tests::malformed_input_is_rejected_not_guessed_at ... ok
 test hello::tests::the_label_does_not_change_the_length_of_the_client_hello ... ok
-test ip::tests::parses_ipv4_addresses ... ok
 test ip::tests::parses_ipv6_destination ... ok
-test masquerade::tests::a_probe_gets_the_donor ... ok
-test masquerade::tests::a_label_bound_to_another_key_share_does_not_verify ... ok
-test masquerade::tests::a_valid_label_is_intercepted_for_its_user ... ok
-test masquerade::tests::garbage_and_oversized_input_relays_rather_than_errors ... ok
-test masquerade::tests::an_unknown_user_is_relayed ... ok
-test masquerade::tests::psk_parsing_rejects_anything_but_32_bytes ... ok
-test masquerade::tests::one_window_of_skew_is_tolerated ... ok
-test masquerade::tests::the_right_tag_with_the_wrong_mac_is_also_relayed ... ok
+test hello::tests::the_record_header_is_well_formed ... ok
+test ip::tests::parses_ipv4_addresses ... ok
 test ip::tests::rejects_truncated_and_other_families ... ok
+test masquerade::tests::a_hello_without_a_key_share_is_relayed ... ok
+test masquerade::tests::a_label_bound_to_another_key_share_does_not_verify ... ok
+test masquerade::tests::a_probe_gets_the_donor ... ok
+test masquerade::tests::a_valid_label_is_intercepted_for_its_user ... ok
+test masquerade::tests::an_unknown_user_is_relayed ... ok
+test masquerade::tests::garbage_and_oversized_input_relays_rather_than_errors ... ok
+test masquerade::tests::one_window_of_skew_is_tolerated ... ok
+test masquerade::tests::psk_parsing_rejects_anything_but_32_bytes ... ok
+test masquerade::tests::the_right_tag_with_the_wrong_mac_is_also_relayed ... ok
 test packet::tests::header_roundtrip ... ok
-test packet::tests::inner_roundtrip_padded ... ok
 test masquerade::tests::what_we_build_we_recognise ... ok
+test packet::tests::inner_roundtrip_padded ... ok
+test packet::tests::rejects_short_and_bad_version ... ok
 test packet::tests::packet_number_is_40_bits ... ok
+<<<<<<< Updated upstream
 =======
 test hello::tests::a_server_hello_without_the_optional_parts_parses ... ok
 test handshake::tests::an_ack_for_another_client_random_is_rejected ... ok
@@ -269,13 +322,17 @@ test packet::tests::inner_roundtrip_padded ... ok
 test packet::tests::packet_number_is_40_bits ... ok
 test packet::tests::rejects_short_and_bad_version ... ok
 >>>>>>> Stashed changes
+=======
+test packet::tests::plaintext_control_roundtrip_and_flag_check ... ok
+>>>>>>> Stashed changes
 test pool::tests::a_thirty_bit_prefix_yields_one_client_host ... ok
+test pool::tests::released_addresses_are_reusable ... ok
 test pool::tests::allocates_sequentially_from_host_two ... ok
 test pool::tests::contains_respects_the_prefix ... ok
-test pool::tests::released_addresses_are_reusable ... ok
 test pool::tests::reserve_rejects_out_of_pool_and_duplicates ... ok
 <<<<<<< Updated upstream
 test pool::tests::slash_zero_does_not_panic ... ok
+<<<<<<< Updated upstream
 test packet::tests::plaintext_control_roundtrip_and_flag_check ... ok
 test packet::tests::rejects_short_and_bad_version ... ok
 test replay::tests::bit_shift_boundaries ... ok
@@ -283,17 +340,23 @@ test masquerade::tests::a_hello_without_a_key_share_is_relayed ... ok
 =======
 test replay::tests::bit_shift_boundaries ... ok
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 test replay::tests::drops_packets_older_than_window ... ok
+test replay::tests::bit_shift_boundaries ... ok
+test replay::tests::accepts_in_order_and_rejects_duplicates ... ok
 test replay::tests::huge_jump_resets_window ... ok
 test replay::tests::tolerates_reordering_within_window ... ok
-test tags::tests::build_from_user_list ... ok
-test replay::tests::accepts_in_order_and_rejects_duplicates ... ok
-test tags::tests::insert_lookup_and_revoke ... ok
 test tags::tests::ip_lease_is_bidirectional_and_releasable ... ok
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 =======
 test replay::tests::accepts_in_order_and_rejects_duplicates ... ok
 test pool::tests::slash_zero_does_not_panic ... ok
+>>>>>>> Stashed changes
+=======
+test tags::tests::build_from_user_list ... ok
+test tags::tests::insert_lookup_and_revoke ... ok
 >>>>>>> Stashed changes
 
 test result: ok. 91 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
@@ -302,9 +365,9 @@ test result: ok. 91 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 
 running 5 tests
 test label_length_matches_a_browser_session_id ... ok
-test correct_label_verifies_inside_window ... ok
 test random_session_id_never_verifies ... ok
 test stale_label_is_rejected ... ok
+test correct_label_verifies_inside_window ... ok
 test wrong_psk_never_verifies ... ok
 
 test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
@@ -313,16 +376,16 @@ test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 
 running 3 tests
 test censor_with_wrong_password_receives_real_donor_handshake ... ok
-test the_label_is_exactly_as_long_as_a_browser_session_id ... ok
 test a_valid_client_is_served_and_a_probe_is_handed_to_the_donor ... ok
+test the_label_is_exactly_as_long_as_a_browser_session_id ... ok
 
 test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
      Running tests/packet_roundtrip.rs (target/debug/deps/packet_roundtrip-1faffa9f993a98ed)
 
 running 7 tests
-test forged_ciphertext_is_rejected ... ok
 test header_is_12_bytes_and_first_byte_versioned ... ok
+test forged_ciphertext_is_rejected ... ok
 test mtu_is_reported ... ok
 test replaying_a_datagram_is_rejected ... ok
 test payload_at_mtu_ok_above_mtu_rejected ... ok
@@ -348,23 +411,25 @@ test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 
 running 20 tests
 test config::tests::a_panel_url_requires_a_token ... ok
-test config::tests::masquerade_requires_a_pinned_donor ... ok
 test config::tests::rejects_short_tag_key ... ok
 test config::tests::defaults_leave_the_control_plane_and_masquerade_off ... ok
 test config::tests::the_pool_subnet_is_derived_from_the_tun_address ... ok
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+test control::tests::a_closed_delta_carries_ended_at ... ok
+test config::tests::masquerade_requires_a_pinned_donor ... ok
+>>>>>>> Stashed changes
 test config::tests::tag_table_roundtrip_and_revocable ... ok
 test control::tests::a_live_delta_omits_ended_at ... ok
-test control::tests::a_closed_delta_carries_ended_at ... ok
 test control::tests::peer_ips_are_normalised ... ok
-test relay::tests::an_oversized_datagram_is_refused_without_opening_a_flow ... ok
-test server::tests::a_client_key_that_is_not_32_bytes_is_refused_by_the_table ... ok
-test relay::tests::two_peers_get_two_flows ... ok
 test relay::tests::one_peer_keeps_one_upstream_socket ... ok
 test relay::tests::a_probe_reaches_the_donor_and_the_donors_answer_reaches_the_probe ... ok
+test server::tests::a_client_key_that_is_not_32_bytes_is_refused_by_the_table ... ok
+test relay::tests::an_oversized_datagram_is_refused_without_opening_a_flow ... ok
+test relay::tests::two_peers_get_two_flows ... ok
 test server::tests::a_probe_is_rejected_and_counted ... ok
 test server::tests::a_handshake_leases_an_address_and_a_second_replaces_it ... ok
-test server::tests::a_session_born_late_is_not_reaped_immediately ... ok
 test server::tests::an_outbound_packet_without_a_route_is_dropped_not_errored ... ok
 =======
 test control::tests::a_live_delta_omits_ended_at ... ok
@@ -381,10 +446,14 @@ test server::tests::an_outbound_packet_without_a_route_is_dropped_not_errored ..
 test server::tests::a_session_born_late_is_not_reaped_immediately ... ok
 >>>>>>> Stashed changes
 test server::tests::unknown_tags_are_counted_and_do_not_create_sessions ... ok
+<<<<<<< Updated upstream
 test server::tests::a_handshake_leases_an_address_and_a_second_replaces_it ... ok
+=======
+test server::tests::a_session_born_late_is_not_reaped_immediately ... ok
+>>>>>>> Stashed changes
 test server::tests::reaping_hands_back_the_address_and_a_final_delta ... ok
 
-test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
      Running unittests src/main.rs (target/debug/deps/vpn_server-ac9645964d061004)
 
@@ -404,18 +473,21 @@ test client_to_server_ip_traffic_arrives ... ok
 test a_quiet_link_stays_established ... ok
 test a_wrong_key_never_establishes_a_session ... ok
 
-test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.00s
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.01s
 
      Running unittests src/lib.rs (target/debug/deps/vpn_tun-c9bf5d15a9499ace)
 
 running 9 tests
-test dev::tests::cap_eff_is_parsed_from_proc_status ... ok
-test dev::tests::opening_a_bad_name_fails_before_ioctl ... ok
+test dev::tests::netmask_mapping ... ok
 test dev::tests::read_buf_covers_the_datagram_plus_headroom ... ok
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+test dev::tests::opening_a_bad_name_fails_before_ioctl ... ok
+test dev::tests::cap_eff_is_parsed_from_proc_status ... ok
+>>>>>>> Stashed changes
 test nat::tests::ruleset_mentions_both_interfaces_and_the_subnet ... ok
 test route::tests::a_line_without_a_device_is_rejected ... ok
-test dev::tests::netmask_mapping ... ok
 test route::tests::parses_a_dhcp_default_route ... ok
 test route::tests::parses_a_gatewayless_route ... ok
 =======
@@ -472,15 +544,19 @@ warning: unused import: `tokio::net::UdpSocket`
 
 warning: `bproto` (lib test) generated 1 warning (run `cargo fix --lib -p bproto --tests` to apply 1 suggestion)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     Finished `test` profile [unoptimized + debuginfo] target(s) in 1.38s
 =======
     Finished `test` profile [unoptimized + debuginfo] target(s) in 1.05s
 >>>>>>> Stashed changes
+=======
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.64s
+>>>>>>> Stashed changes
      Running unittests src/lib.rs (target/debug/deps/bproto-2bbf268fc8988e9f)
 
 running 6 tests
-test tests::bad_hex_is_reported ... ok
 test tests::connect_rejects_a_bad_config ... ok
+test tests::bad_hex_is_reported ... ok
 test tests::recv_timeout_rejects_a_null_handle ... ok
 test tests::session_id_helper_writes_32_bytes ... ok
 test tests::version_is_exposed ... ok
@@ -499,95 +575,95 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
  Downloading crates ...
 <<<<<<< Updated upstream
   Downloaded atoi v2.0.0
-  Downloaded argon2 v0.5.3
-  Downloaded axum-core v0.5.6
-  Downloaded allocator-api2 v0.2.21
-  Downloaded foldhash v0.1.5
-  Downloaded pkg-config v0.3.34
   Downloaded autocfg v1.5.1
-  Downloaded parking_lot_core v0.9.12
-  Downloaded axum v0.8.9
-  Downloaded sqlx-mysql v0.8.6
-  Downloaded httpdate v1.0.3
-  Downloaded spki v0.7.3
-  Downloaded sqlx-sqlite v0.8.6
-  Downloaded spin v0.9.9
-  Downloaded sqlx-macros-core v0.8.6
-  Downloaded futures-intrusive v0.5.0
-  Downloaded serde_path_to_error v0.1.20
-  Downloaded bytemuck v1.25.2
-  Downloaded qrcode v0.14.1
-  Downloaded icu_normalizer_data v2.3.0
-  Downloaded sqlx-core v0.8.6
-  Downloaded unicode-bidi v0.3.18
-  Downloaded futures-sink v0.3.34
-  Downloaded password-hash v0.5.0
-  Downloaded signature v2.2.0
-  Downloaded icu_properties_data v2.3.0
-  Downloaded sqlx-macros v0.8.6
-  Downloaded const-oid v0.9.6
-  Downloaded futures-io v0.3.34
-  Downloaded zerovec v0.11.8
-  Downloaded crossbeam-queue v0.3.14
-  Downloaded event-listener v5.4.2
-  Downloaded crc v3.4.0
-  Downloaded dotenvy v0.15.7
-  Downloaded scopeguard v1.2.0
-  Downloaded sqlx-postgres v0.8.6
-  Downloaded pkcs1 v0.7.5
-  Downloaded pem-rfc7468 v0.7.0
-  Downloaded matchit v0.8.4
-  Downloaded num-traits v0.2.19
-  Downloaded rand_chacha v0.3.1
-  Downloaded tinystr v0.8.4
-  Downloaded sha1 v0.10.7
-  Downloaded parking v2.2.1
-  Downloaded num-bigint-dig v0.8.6
-  Downloaded hex v0.4.3
-  Downloaded tokio-stream v0.1.19
-  Downloaded zerovec-derive v0.11.6
-  Downloaded icu_provider v2.3.1
-  Downloaded lock_api v0.4.14
-  Downloaded ppv-lite86 v0.2.21
-  Downloaded flume v0.11.1
-  Downloaded parking_lot v0.12.5
-  Downloaded byteorder v1.5.0
-  Downloaded der v0.7.10
-  Downloaded hashbrown v0.15.5
-  Downloaded pkcs8 v0.10.2
-  Downloaded moxcms v0.8.1
-  Downloaded icu_locale_core v2.3.0
-  Downloaded libm v0.2.16
-  Downloaded vcpkg v0.2.15
-  Downloaded byteorder-lite v0.1.0
-  Downloaded either v1.19.0
-  Downloaded yoke v0.8.3
-  Downloaded webpki-roots v1.0.9
-  Downloaded futures-executor v0.3.34
-  Downloaded image v0.25.10
-  Downloaded unicode-properties v0.1.4
-  Downloaded whoami v1.6.1
-  Downloaded hashlink v0.10.0
-  Downloaded icu_properties v2.3.0
-  Downloaded rand v0.8.8
-  Downloaded icu_normalizer v2.3.0
-  Downloaded num-integer v0.1.47
-  Downloaded crossbeam-utils v0.8.23
-  Downloaded stringprep v0.1.5
-  Downloaded blake2 v0.10.6
-  Downloaded num-iter v0.1.46
-  Downloaded sqlx v0.8.6
-  Downloaded libsqlite3-sys v0.30.1
-  Downloaded base64ct v1.8.3
-  Downloaded icu_collections v2.3.0
-  Downloaded md-5 v0.10.6
-  Downloaded zerocopy v0.8.63
-  Downloaded rsa v0.9.10
-  Downloaded unicode-normalization v0.1.26
-  Downloaded mime v0.3.17
-  Downloaded crc-catalog v2.5.0
+  Downloaded argon2 v0.5.3
   Downloaded home v0.5.12
+  Downloaded allocator-api2 v0.2.21
+  Downloaded crc v3.4.0
+  Downloaded axum v0.8.9
+  Downloaded futures-io v0.3.34
+  Downloaded hex v0.4.3
+  Downloaded either v1.19.0
+  Downloaded futures-executor v0.3.34
+  Downloaded base64ct v1.8.3
+  Downloaded foldhash v0.1.5
+  Downloaded hashlink v0.10.0
+  Downloaded futures-sink v0.3.34
+  Downloaded httpdate v1.0.3
+  Downloaded byteorder-lite v0.1.0
+  Downloaded crossbeam-queue v0.3.14
+  Downloaded dotenvy v0.15.7
+  Downloaded zerovec-derive v0.11.6
+  Downloaded crossbeam-utils v0.8.23
+  Downloaded num-iter v0.1.46
+  Downloaded event-listener v5.4.2
+  Downloaded tinystr v0.8.4
+  Downloaded rand_chacha v0.3.1
+  Downloaded signature v2.2.0
+  Downloaded sha1 v0.10.7
+  Downloaded lock_api v0.4.14
+  Downloaded pkcs8 v0.10.2
+  Downloaded mime v0.3.17
+  Downloaded sqlx-macros v0.8.6
+  Downloaded axum-core v0.5.6
+  Downloaded md-5 v0.10.6
+  Downloaded spin v0.9.9
+  Downloaded pem-rfc7468 v0.7.0
+  Downloaded crc-catalog v2.5.0
+  Downloaded num-integer v0.1.47
+  Downloaded parking v2.2.1
+  Downloaded scopeguard v1.2.0
+  Downloaded serde_path_to_error v0.1.20
+  Downloaded spki v0.7.3
+  Downloaded der v0.7.10
+  Downloaded password-hash v0.5.0
+  Downloaded sqlx-macros-core v0.8.6
+  Downloaded ppv-lite86 v0.2.21
+  Downloaded matchit v0.8.4
+  Downloaded flume v0.11.1
+  Downloaded stringprep v0.1.5
+  Downloaded futures-intrusive v0.5.0
+  Downloaded byteorder v1.5.0
+  Downloaded pkg-config v0.3.34
+  Downloaded unicode-properties v0.1.4
+  Downloaded blake2 v0.10.6
+  Downloaded whoami v1.6.1
+  Downloaded parking_lot_core v0.9.12
+  Downloaded pkcs1 v0.7.5
+  Downloaded const-oid v0.9.6
+  Downloaded unicode-bidi v0.3.18
+  Downloaded yoke v0.8.3
+  Downloaded parking_lot v0.12.5
+  Downloaded tokio-stream v0.1.19
+  Downloaded bytemuck v1.25.2
+  Downloaded icu_provider v2.3.1
+  Downloaded num-traits v0.2.19
+  Downloaded qrcode v0.14.1
+  Downloaded sqlx-mysql v0.8.6
+  Downloaded icu_collections v2.3.0
+  Downloaded rsa v0.9.10
+  Downloaded sqlx-sqlite v0.8.6
+  Downloaded icu_locale_core v2.3.0
+  Downloaded hashbrown v0.15.5
+  Downloaded icu_properties v2.3.0
+  Downloaded icu_normalizer_data v2.3.0
+  Downloaded rand v0.8.8
+  Downloaded sqlx-core v0.8.6
+  Downloaded unicode-normalization v0.1.26
+  Downloaded zerovec v0.11.8
+  Downloaded num-bigint-dig v0.8.6
+  Downloaded sqlx-postgres v0.8.6
+  Downloaded libm v0.2.16
+  Downloaded icu_properties_data v2.3.0
+  Downloaded moxcms v0.8.1
+  Downloaded sqlx v0.8.6
+  Downloaded webpki-roots v1.0.9
+  Downloaded vcpkg v0.2.15
+  Downloaded zerocopy v0.8.63
+  Downloaded image v0.25.10
+  Downloaded icu_normalizer v2.3.0
   Downloaded pxfm v0.1.30
+<<<<<<< Updated upstream
 =======
   Downloaded event-listener v5.4.2
   Downloaded futures-io v0.3.34
@@ -680,6 +756,9 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
   Downloaded pxfm v0.1.30
   Downloaded libsqlite3-sys v0.30.1
 >>>>>>> Stashed changes
+=======
+  Downloaded libsqlite3-sys v0.30.1
+>>>>>>> Stashed changes
    Compiling proc-macro2 v1.0.107
    Compiling quote v1.0.47
    Compiling unicode-ident v1.0.27
@@ -692,7 +771,9 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling once_cell v1.21.4
    Compiling writeable v0.6.4
    Compiling litemap v0.8.3
+   Compiling itoa v1.0.18
    Compiling icu_normalizer_data v2.3.0
+<<<<<<< Updated upstream
    Compiling syn v3.0.9
 <<<<<<< Updated upstream
 =======
@@ -700,15 +781,20 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling icu_normalizer_data v2.3.0
 >>>>>>> Stashed changes
    Compiling version_check v0.9.5
+=======
+>>>>>>> Stashed changes
    Compiling utf8_iter v1.0.4
-   Compiling syn v2.0.119
-   Compiling generic-array v0.14.7
+   Compiling version_check v0.9.5
    Compiling icu_properties_data v2.3.0
+   Compiling generic-array v0.14.7
    Compiling find-msvc-tools v0.1.14
-   Compiling mio v1.2.4
+   Compiling syn v3.0.9
+   Compiling syn v2.0.119
    Compiling socket2 v0.6.5
+   Compiling mio v1.2.4
    Compiling futures-sink v0.3.34
    Compiling shlex v2.0.1
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
    Compiling memchr v2.8.3
    Compiling cc v1.8.0
@@ -727,14 +813,24 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling serde v1.0.229
 >>>>>>> Stashed changes
    Compiling synstructure v0.14.0
+=======
+   Compiling cc v1.8.0
+   Compiling percent-encoding v2.3.2
+   Compiling typenum v1.20.1
+   Compiling memchr v2.8.3
+   Compiling smallvec v1.16.3
+   Compiling serde v1.0.229
+   Compiling autocfg v1.5.1
+   Compiling slab v0.4.12
+>>>>>>> Stashed changes
    Compiling futures-io v0.3.34
    Compiling futures-task v0.3.34
-   Compiling slab v0.4.12
-   Compiling futures-util v0.3.34
    Compiling block-buffer v0.10.4
+   Compiling futures-util v0.3.34
    Compiling crypto-common v0.1.7
    Compiling form_urlencoded v1.2.2
    Compiling errno v0.3.14
+   Compiling synstructure v0.14.0
    Compiling scopeguard v1.2.0
    Compiling parking_lot_core v0.9.12
    Compiling lock_api v0.4.14
@@ -746,18 +842,23 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling zerovec-derive v0.11.6
    Compiling displaydoc v0.2.7
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
    Compiling zerofrom v0.1.8
    Compiling serde_derive v1.0.229
 >>>>>>> Stashed changes
    Compiling yoke v0.8.3
+=======
+>>>>>>> Stashed changes
    Compiling serde_derive v1.0.229
+   Compiling zerofrom v0.1.8
+   Compiling yoke v0.8.3
    Compiling tokio-macros v2.7.2
    Compiling zerotrie v0.2.5
    Compiling subtle v2.6.1
    Compiling log v0.4.34
-   Compiling zerovec v0.11.8
    Compiling tokio v1.53.3
+   Compiling zerovec v0.11.8
    Compiling serde_core v1.0.229
    Compiling tracing v0.1.44
    Compiling tinystr v0.8.4
@@ -772,9 +873,15 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling getrandom v0.2.17
    Compiling icu_provider v2.3.1
    Compiling icu_properties v2.3.0
+<<<<<<< Updated upstream
    Compiling equivalent v1.0.3
    Compiling cpufeatures v0.2.17
    Compiling crossbeam-utils v0.8.23
+=======
+   Compiling crossbeam-utils v0.8.23
+   Compiling cpufeatures v0.2.17
+   Compiling equivalent v1.0.3
+>>>>>>> Stashed changes
    Compiling http v1.5.0
    Compiling allocator-api2 v0.2.21
    Compiling thiserror v2.0.21
@@ -794,19 +901,28 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling zmij v1.0.23
    Compiling indexmap v2.14.2
    Compiling crc v3.4.0
-   Compiling event-listener v5.4.2
    Compiling libsqlite3-sys v0.30.1
+   Compiling event-listener v5.4.2
+<<<<<<< Updated upstream
+   Compiling libsqlite3-sys v0.30.1
+=======
+>>>>>>> Stashed changes
    Compiling idna_adapter v1.2.2
    Compiling hashlink v0.10.0
    Compiling crossbeam-queue v0.3.14
    Compiling digest v0.10.7
+<<<<<<< Updated upstream
    Compiling zeroize v1.9.1
    Compiling tower-service v0.3.3
 <<<<<<< Updated upstream
 =======
    Compiling zeroize v1.9.1
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
    Compiling httparse v1.10.1
+   Compiling tower-service v0.3.3
+   Compiling zeroize v1.9.1
    Compiling rustls-pki-types v1.15.1
    Compiling parking_lot v0.12.5
    Compiling idna v1.1.0
@@ -821,9 +937,9 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling futures-intrusive v0.5.0
    Compiling tokio-stream v0.1.19
    Compiling either v1.19.0
-   Compiling tokio-stream v0.1.19
    Compiling futures-executor v0.3.34
    Compiling sync_wrapper v1.0.2
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
    Compiling rustls v0.23.46
    Compiling httpdate v1.0.3
@@ -833,12 +949,21 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling rustls v0.23.46
 >>>>>>> Stashed changes
    Compiling zerocopy v0.8.63
+=======
+   Compiling tokio-stream v0.1.19
+>>>>>>> Stashed changes
    Compiling tower-layer v0.3.3
    Compiling atomic-waker v1.1.2
+   Compiling zerocopy v0.8.63
    Compiling base64 v0.22.1
 <<<<<<< Updated upstream
    Compiling serde_json v1.0.154
+<<<<<<< Updated upstream
 =======
+>>>>>>> Stashed changes
+=======
+   Compiling httpdate v1.0.3
+   Compiling rustls v0.23.46
 >>>>>>> Stashed changes
    Compiling hyper v1.12.0
    Compiling sqlx-core v0.8.6
@@ -853,21 +978,29 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling sqlx-sqlite v0.8.6
    Compiling tower v0.5.3
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
    Compiling hex v0.4.3
 >>>>>>> Stashed changes
    Compiling dotenvy v0.15.7
+=======
+>>>>>>> Stashed changes
    Compiling regex-syntax v0.8.11
    Compiling pxfm v0.1.30
    Compiling heck v0.5.0
 <<<<<<< Updated upstream
    Compiling hex v0.4.3
+<<<<<<< Updated upstream
    Compiling moxcms v0.8.1
 =======
 >>>>>>> Stashed changes
+=======
+   Compiling dotenvy v0.15.7
+>>>>>>> Stashed changes
    Compiling sqlx-macros-core v0.8.6
-   Compiling ppv-lite86 v0.2.21
    Compiling regex-automata v0.4.18
+   Compiling moxcms v0.8.1
+   Compiling ppv-lite86 v0.2.21
    Compiling tokio-rustls v0.26.6
    Compiling webpki-roots v1.0.9
    Compiling byteorder-lite v0.1.0
@@ -879,21 +1012,26 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling base64ct v1.8.3
 >>>>>>> Stashed changes
    Compiling mime v0.3.17
-   Compiling base64ct v1.8.3
    Compiling lazy_static v1.5.1
+   Compiling base64ct v1.8.3
    Compiling anyhow v1.0.104
 <<<<<<< Updated upstream
    Compiling byteorder-lite v0.1.0
+<<<<<<< Updated upstream
 =======
 >>>>>>> Stashed changes
    Compiling sharded-slab v0.1.7
    Compiling matchers v0.2.0
+=======
+>>>>>>> Stashed changes
    Compiling password-hash v0.5.0
-   Compiling image v0.25.10
+   Compiling sharded-slab v0.1.7
    Compiling axum-core v0.5.6
+   Compiling image v0.25.10
    Compiling tower-http v0.6.11
 <<<<<<< Updated upstream
    Compiling hyper-rustls v0.27.10
+<<<<<<< Updated upstream
    Compiling sqlx-macros v0.8.6
 =======
    Compiling matchers v0.2.0
@@ -901,16 +1039,23 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling sqlx-macros v0.8.6
    Compiling image v0.25.10
 >>>>>>> Stashed changes
+=======
+   Compiling matchers v0.2.0
+>>>>>>> Stashed changes
    Compiling rand_chacha v0.3.1
+   Compiling sqlx-macros v0.8.6
    Compiling blake2 v0.10.6
    Compiling serde_path_to_error v0.1.20
    Compiling tracing-log v0.2.0
    Compiling thread_local v1.1.10
    Compiling matchit v0.8.4
    Compiling nu-ansi-term v0.50.3
+   Compiling sqlx v0.8.6
    Compiling argon2 v0.5.3
+   Compiling rand v0.8.8
    Compiling tracing-subscriber v0.3.23
    Compiling axum v0.8.9
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 =======
    Compiling qrcode v0.14.1
@@ -918,18 +1063,24 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 >>>>>>> Stashed changes
    Compiling rand v0.8.8
    Compiling sqlx v0.8.6
+=======
+>>>>>>> Stashed changes
    Compiling reqwest v0.12.28
    Compiling hmac v0.12.1
    Compiling bproto-panel v0.1.0 (/home/runner/work/bProto/bProto/panel/backend)
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 42.30s
 =======
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 48.00s
 >>>>>>> Stashed changes
+=======
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 41.72s
+>>>>>>> Stashed changes
 -- OK: cargo build --all-targets
 
 ############ $ (panel) cargo test
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
      Running unittests src/main.rs (target/debug/deps/panel-456d2137952bf23a)
 
 running 37 tests
@@ -972,9 +1123,13 @@ test tests::password_hash_roundtrip ... ok
 test api_tests::password_change_rotates_the_credential ... ok
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.21s
 =======
 test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.43s
+>>>>>>> Stashed changes
+=======
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.77s
 >>>>>>> Stashed changes
 
 -- OK: cargo test
@@ -986,7 +1141,7 @@ test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 + typescript 5.9.3
 + vite 6.4.4
 
-Done in 1.1s using pnpm v9.15.9
+Done in 1.2s using pnpm v9.15.9
 ############ $ npx tsc --noEmit
 -- OK: tsc
 ############ $ npm run build
@@ -1003,12 +1158,308 @@ computing gzip size...
 [2mdist/[22m[2massets/[22m[35mindex-CcnqClAN.css  [39m[1m[2m 19.79 kB[22m[1m[22m[2m │ gzip:  4.64 kB[22m
 [2mdist/[22m[2massets/[22m[36mindex-CvmeSaZv.js   [39m[1m[2m286.35 kB[22m[1m[22m[2m │ gzip: 84.47 kB[22m
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 [32m✓ built in 999ms[39m
+=======
+[32m✓ built in 935ms[39m
+>>>>>>> Stashed changes
 -- OK: build
+############ SHELL SCRIPTS: syntax
+-- OK: bash -n build_app.sh
+-- OK: bash -n run.sh
+-- OK: bash -n install.sh
+
+############ FUNCTIONAL: build_app.sh --check
+==> bProto build  (profile=release, rustc=1.99.1)
+==> quality gate
+  ok cargo fmt
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.09s
+  ok cargo clippy
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running unittests src/lib.rs (target/debug/deps/bproto-f944b1fc318f2c86)
+
+running 5 tests
+test tests::recv_timeout_rejects_a_null_handle ... ok
+test tests::bad_hex_is_reported ... ok
+test tests::connect_rejects_a_bad_config ... ok
+test tests::session_id_helper_writes_32_bytes ... ok
+test tests::version_is_exposed ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/bproto-21d8eabd7336d8d6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/vpn_client-c119ee13d5c1da25)
+
+running 2 tests
+test tests::an_invalid_config_is_refused_before_any_io ... ok
+test tests::a_config_with_no_server_times_out_instead_of_hanging ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.50s
+
+     Running unittests src/lib.rs (target/debug/deps/vpn_core-d69315f241ef61fe)
+
+running 91 tests
+test ack::tests::decode_rejects_garbage ... ok
+test ack::tests::in_flight_tracking_and_timeouts ... ok
+test ack::tests::ranges_handle_u40_limit ... ok
+test ack::tests::ranges_merge_and_encode ... ok
+test ack::tests::rtt_converges_and_pto_exceeds_srtt ... ok
+test auth::tests::ack_mac_binds_the_address ... ok
+test auth::tests::native_label_mac_matches_session_id_bytes ... ok
+test auth::tests::derive_and_verify_roundtrip ... ok
+test auth::tests::tag_is_deterministic_and_user_specific ... ok
+test auth::tests::rejects_wrong_psk_or_random_sid ... ok
+test config::tests::base64url_matches_the_panel_vectors ... ok
+test config::tests::base64url_rejects_a_mangled_uri ... ok
+test config::tests::config_toml_roundtrip ... ok
+test config::tests::hex_roundtrip ... ok
+test config::tests::import_uri_rejects_bad_input ... ok
+test config::tests::import_uri_from_a_hand_written_payload ... ok
+test config::tests::import_uri_roundtrip ... ok
+test congestion::tests::fast_convergence_reduces_wmax_on_second_loss ... ok
+test congestion::tests::congestion_avoidance_grows_again_toward_wmax ... ok
+test congestion::tests::initial_window_is_ten_segments ... ok
+test congestion::tests::loss_reduces_to_beta_and_sets_threshold ... ok
+test congestion::tests::timeout_collapses_to_the_floor_and_restarts_slow_start ... ok
+test congestion::tests::zero_ack_is_a_no_op ... ok
+test congestion::tests::slow_start_doubles_per_rtt ... ok
+test crypto::tests::nonce_layout ... ok
+test crypto::tests::random_32_is_not_constant ... ok
+test crypto::tests::key_schedule_is_mirrored ... ok
+test crypto::tests::session_tag_is_symmetric_and_bound_to_the_randoms ... ok
+test crypto::tests::seal_open_roundtrip_and_aad_binding ... ok
+test endpoint::tests::a_session_born_late_is_not_instantly_expired ... ok
+test endpoint::tests::a_tampered_header_fails_authentication ... ok
+test crypto::tests::dh_is_symmetric ... ok
+test endpoint::tests::ip_traffic_roundtrips_and_is_counted ... ok
+test endpoint::tests::keepalive_fires_after_the_keepalive_interval_and_only_once ... ok
+test endpoint::tests::acks_are_flushed_every_eight_packets_and_feed_the_rtt ... ok
+test endpoint::tests::oversized_payload_is_refused_before_encryption ... ok
+test endpoint::tests::close_is_queued_once_and_the_peer_sees_it ... ok
+test endpoint::tests::ping_is_answered_with_pong_without_caller_involvement ... ok
+test endpoint::tests::replay_and_forgery_are_rejected_and_counted ... ok
+test frame::tests::hello_roundtrip ... ok
+test frame::tests::hello_ack_roundtrip ... ok
+test frame::tests::simple_frames_and_types ... ok
+test handshake::tests::an_ack_for_another_client_random_is_rejected ... ok
+test handshake::tests::happy_path_derives_mirrored_keys_and_one_tag ... ok
+test endpoint::tests::congestion_window_gates_sending ... ok
+test handshake::tests::stale_hello_outside_the_window_is_rejected ... ok
+test handshake::tests::tampered_ack_is_rejected ... ok
+test handshake::tests::unknown_user_is_rejected ... ok
+test handshake::tests::wrong_psk_is_rejected ... ok
+test hello::tests::a_realistic_foreign_client_hello_parses ... ok
+test hello::tests::a_client_hello_is_not_a_server_hello ... ok
+test hello::tests::a_bare_handshake_message_parses_too ... ok
+test hello::tests::a_server_hello_survives_a_round_trip ... ok
+test hello::tests::a_server_hello_without_the_optional_parts_parses ... ok
+test hello::tests::each_profile_has_a_distinct_fingerprint ... ok
+test hello::tests::every_profile_roundtrips_through_parse ... ok
+test hello::tests::malformed_input_is_rejected_not_guessed_at ... ok
+test hello::tests::the_record_header_is_well_formed ... ok
+test ip::tests::parses_ipv6_destination ... ok
+test ip::tests::rejects_truncated_and_other_families ... ok
+test hello::tests::the_label_does_not_change_the_length_of_the_client_hello ... ok
+test masquerade::tests::a_hello_without_a_key_share_is_relayed ... ok
+test ip::tests::parses_ipv4_addresses ... ok
+test masquerade::tests::a_label_bound_to_another_key_share_does_not_verify ... ok
+test masquerade::tests::a_probe_gets_the_donor ... ok
+test masquerade::tests::garbage_and_oversized_input_relays_rather_than_errors ... ok
+test masquerade::tests::a_valid_label_is_intercepted_for_its_user ... ok
+test masquerade::tests::one_window_of_skew_is_tolerated ... ok
+test masquerade::tests::an_unknown_user_is_relayed ... ok
+test masquerade::tests::psk_parsing_rejects_anything_but_32_bytes ... ok
+test packet::tests::header_roundtrip ... ok
+test packet::tests::inner_roundtrip_padded ... ok
+test masquerade::tests::the_right_tag_with_the_wrong_mac_is_also_relayed ... ok
+test packet::tests::packet_number_is_40_bits ... ok
+test packet::tests::plaintext_control_roundtrip_and_flag_check ... ok
+test packet::tests::rejects_short_and_bad_version ... ok
+test pool::tests::allocates_sequentially_from_host_two ... ok
+test pool::tests::a_thirty_bit_prefix_yields_one_client_host ... ok
+test pool::tests::contains_respects_the_prefix ... ok
+test masquerade::tests::what_we_build_we_recognise ... ok
+test pool::tests::released_addresses_are_reusable ... ok
+test pool::tests::reserve_rejects_out_of_pool_and_duplicates ... ok
+test pool::tests::slash_zero_does_not_panic ... ok
+test replay::tests::bit_shift_boundaries ... ok
+test replay::tests::drops_packets_older_than_window ... ok
+test replay::tests::huge_jump_resets_window ... ok
+test replay::tests::tolerates_reordering_within_window ... ok
+test tags::tests::build_from_user_list ... ok
+test tags::tests::insert_lookup_and_revoke ... ok
+test replay::tests::accepts_in_order_and_rejects_duplicates ... ok
+test tags::tests::ip_lease_is_bidirectional_and_releasable ... ok
+
+test result: ok. 91 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/auth_label.rs (target/debug/deps/auth_label-4618acc7c164d328)
+
+running 5 tests
+test correct_label_verifies_inside_window ... ok
+test label_length_matches_a_browser_session_id ... ok
+test random_session_id_never_verifies ... ok
+test stale_label_is_rejected ... ok
+test wrong_psk_never_verifies ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/censor_gets_real_site.rs (target/debug/deps/censor_gets_real_site-aced34aa56fae010)
+
+running 3 tests
+test censor_with_wrong_password_receives_real_donor_handshake ... ok
+test the_label_is_exactly_as_long_as_a_browser_session_id ... ok
+test a_valid_client_is_served_and_a_probe_is_handed_to_the_donor ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/packet_roundtrip.rs (target/debug/deps/packet_roundtrip-1faffa9f993a98ed)
+
+running 7 tests
+test mtu_is_reported ... ok
+test header_is_12_bytes_and_first_byte_versioned ... ok
+test forged_ciphertext_is_rejected ... ok
+test replaying_a_datagram_is_rejected ... ok
+test payload_at_mtu_ok_above_mtu_rejected ... ok
+test traffic_flows_back_too ... ok
+test datagrams_roundtrip_both_directions ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/vpn_rt-3316feeb97f74945)
+
+running 7 tests
+test tests::a_set_routes_by_tag_and_by_address ... ok
+test tests::an_idle_session_is_reported_by_flush ... ok
+test tests::replacing_a_tag_returns_the_old_session ... ok
+test udp::tests::bind_for_matches_family ... ok
+test udp::tests::loopback_roundtrip ... ok
+test tests::traffic_moves_through_the_runtime_in_both_directions ... ok
+test tests::the_clock_is_monotonic_and_relative ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/vpn_server-dd45fa90c240f57f)
+
+running 20 tests
+test config::tests::defaults_leave_the_control_plane_and_masquerade_off ... ok
+test config::tests::a_panel_url_requires_a_token ... ok
+test config::tests::masquerade_requires_a_pinned_donor ... ok
+test config::tests::rejects_short_tag_key ... ok
+test config::tests::tag_table_roundtrip_and_revocable ... ok
+test config::tests::the_pool_subnet_is_derived_from_the_tun_address ... ok
+test control::tests::a_closed_delta_carries_ended_at ... ok
+test control::tests::a_live_delta_omits_ended_at ... ok
+test control::tests::peer_ips_are_normalised ... ok
+test relay::tests::two_peers_get_two_flows ... ok
+test relay::tests::a_probe_reaches_the_donor_and_the_donors_answer_reaches_the_probe ... ok
+test relay::tests::one_peer_keeps_one_upstream_socket ... ok
+test relay::tests::an_oversized_datagram_is_refused_without_opening_a_flow ... ok
+test server::tests::a_client_key_that_is_not_32_bytes_is_refused_by_the_table ... ok
+test server::tests::an_outbound_packet_without_a_route_is_dropped_not_errored ... ok
+test server::tests::a_probe_is_rejected_and_counted ... ok
+test server::tests::a_session_born_late_is_not_reaped_immediately ... ok
+test server::tests::a_handshake_leases_an_address_and_a_second_replaces_it ... ok
+test server::tests::unknown_tags_are_counted_and_do_not_create_sessions ... ok
+test server::tests::reaping_hands_back_the_address_and_a_final_delta ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/vpn_server-ac9645964d061004)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/e2e.rs (target/debug/deps/e2e-74885019afb983ee)
+
+running 8 tests
+test a_stranger_is_relayed_to_the_donor_and_gets_the_donors_answer ... ok
+test a_stale_masquerade_client_is_relayed ... ok
+test a_masquerade_client_completes_a_handshake_and_moves_packets ... ok
+test server_to_client_ip_traffic_arrives ... ok
+test two_users_get_distinct_addresses ... ok
+test client_to_server_ip_traffic_arrives ... ok
+test a_quiet_link_stays_established ... ok
+test a_wrong_key_never_establishes_a_session ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.01s
+
+     Running unittests src/lib.rs (target/debug/deps/vpn_tun-c9bf5d15a9499ace)
+
+running 9 tests
+test dev::tests::netmask_mapping ... ok
+test dev::tests::opening_a_bad_name_fails_before_ioctl ... ok
+test dev::tests::cap_eff_is_parsed_from_proc_status ... ok
+test dev::tests::read_buf_covers_the_datagram_plus_headroom ... ok
+test nat::tests::ruleset_mentions_both_interfaces_and_the_subnet ... ok
+test route::tests::a_line_without_a_device_is_rejected ... ok
+test route::tests::parses_a_dhcp_default_route ... ok
+test route::tests::parses_a_gatewayless_route ... ok
+test route::tests::verb_swap_only_touches_the_verb ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests vpn_client
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests vpn_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests vpn_rt
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests vpn_server
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests vpn_tun
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+  ok cargo test
+    Checking jni-sys v0.4.1
+    Checking thiserror v1.0.69
+    Checking combine v4.6.9
+    Checking cesu8 v1.1.0
+    Checking jni-sys v0.3.1
+    Checking jni v0.21.1
+    Checking bproto v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-ffi)
+error: unused import: `tokio::net::UdpSocket`
+  --> crates/vpn-ffi/src/jni/tests.rs:15:5
+   |
+15 | use tokio::net::UdpSocket;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D unused-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: could not compile `bproto` (lib test) due to 1 previous error
+-- FAILED: build_app.sh --check
+
 ############ FUNCTIONAL: run.sh demo
-==> starting a local server on 127.0.0.1:51543 (no --datapath, no root)
+==> starting a local server on 127.0.0.1:56297 (no --datapath, no root)
   ok server is up
 
+<<<<<<< Updated upstream
 configuration OK: server=127.0.0.1:51543 donor=www.cloudflare.com mtu=1251 user_id=1
 =======
 [32m✓ built in 1.20s[39m
@@ -1019,10 +1470,14 @@ configuration OK: server=127.0.0.1:51543 donor=www.cloudflare.com mtu=1251 user_
 
 configuration OK: server=127.0.0.1:45549 donor=www.cloudflare.com mtu=1251 user_id=1
 >>>>>>> Stashed changes
+=======
+configuration OK: server=127.0.0.1:56297 donor=www.cloudflare.com mtu=1251 user_id=1
+>>>>>>> Stashed changes
 
 tunnel up:
   assigned address : 10.66.0.2
   MTU              : 1251
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 [2m2026-10-22T16:10:17.048496Z[0m [32m INFO[0m [2mbproto[0m[2m:[0m stats [3mrtt_ms[0m[2m=[0m333.0 [3mcwnd[0m[2m=[0m12510 [3mrx[0m[2m=[0m0 [3mtx[0m[2m=[0m0 [3mdropped[0m[2m=[0m0 [3muptime_s[0m[2m=[0m0
 [2m2026-10-22T16:10:18.049651Z[0m [32m INFO[0m [2mbproto[0m[2m:[0m stats [3mrtt_ms[0m[2m=[0m333.0 [3mcwnd[0m[2m=[0m12510 [3mrx[0m[2m=[0m0 [3mtx[0m[2m=[0m0 [3mdropped[0m[2m=[0m0 [3muptime_s[0m[2m=[0m1
@@ -1050,15 +1505,33 @@ server side of the exchange
   [2m2026-10-22T16:11:42.887035Z[0m [32m INFO[0m [2mvpn_server[0m[2m:[0m stats [3msessions[0m[2m=[0m0 [3mhandshakes[0m[2m=[0m0 [3mrejected[0m[2m=[0m0 [3munknown_tags[0m[2m=[0m0
   [2m2026-10-22T16:11:42.893557Z[0m [32m INFO[0m [2mvpn_server::server[0m[2m:[0m session established [3muser[0m[2m=[0m1 [3mip[0m[2m=[0m10.66.0.2 [3mfrom[0m[2m=[0m127.0.0.1:45929
 >>>>>>> Stashed changes
+=======
+[2m2026-10-22T16:12:48.389174Z[0m [32m INFO[0m [2mbproto[0m[2m:[0m stats [3mrtt_ms[0m[2m=[0m333.0 [3mcwnd[0m[2m=[0m12510 [3mrx[0m[2m=[0m0 [3mtx[0m[2m=[0m0 [3mdropped[0m[2m=[0m0 [3muptime_s[0m[2m=[0m0
+[2m2026-10-22T16:12:49.390925Z[0m [32m INFO[0m [2mbproto[0m[2m:[0m stats [3mrtt_ms[0m[2m=[0m333.0 [3mcwnd[0m[2m=[0m12510 [3mrx[0m[2m=[0m0 [3mtx[0m[2m=[0m0 [3mdropped[0m[2m=[0m0 [3muptime_s[0m[2m=[0m1
+[2m2026-10-22T16:12:50.391326Z[0m [32m INFO[0m [2mbproto[0m[2m:[0m stats [3mrtt_ms[0m[2m=[0m333.0 [3mcwnd[0m[2m=[0m12510 [3mrx[0m[2m=[0m0 [3mtx[0m[2m=[0m0 [3mdropped[0m[2m=[0m0 [3muptime_s[0m[2m=[0m2
+[2m2026-10-22T16:12:51.392603Z[0m [32m INFO[0m [2mbproto[0m[2m:[0m stats [3mrtt_ms[0m[2m=[0m333.0 [3mcwnd[0m[2m=[0m12510 [3mrx[0m[2m=[0m0 [3mtx[0m[2m=[0m0 [3mdropped[0m[2m=[0m0 [3muptime_s[0m[2m=[0m3
+
+server side of the exchange
+  [2m2026-10-22T16:12:48.280232Z[0m [32m INFO[0m [2mvpn_server[0m[2m:[0m configuration loaded [3mlisten[0m[2m=[0m127.0.0.1:56297 [3mdonor[0m[2m=[0mwww.cloudflare.com [3musers[0m[2m=[0m1 [3mtunnel[0m[2m=[0m10.66.0.0/24 [3mpanel[0m[2m=[0m"disabled"
+  [2m2026-10-22T16:12:48.280337Z[0m [33m WARN[0m [2mvpn_server[0m[2m:[0m no panel configured: keys are static, traffic is reported nowhere
+  [2m2026-10-22T16:12:48.280390Z[0m [32m INFO[0m [2mvpn_server[0m[2m:[0m listener up [3maddr[0m[2m=[0m127.0.0.1:56297 [3mmasquerade[0m[2m=[0mfalse
+  [2m2026-10-22T16:12:48.280411Z[0m [33m WARN[0m [2mvpn_server[0m[2m:[0m running without --datapath: handshakes are answered, IP packets are dropped
+  [2m2026-10-22T16:12:48.281614Z[0m [32m INFO[0m [2mvpn_server[0m[2m:[0m stats [3msessions[0m[2m=[0m0 [3mhandshakes[0m[2m=[0m0 [3mrejected[0m[2m=[0m0 [3munknown_tags[0m[2m=[0m0
+  [2m2026-10-22T16:12:48.388805Z[0m [32m INFO[0m [2mvpn_server::server[0m[2m:[0m session established [3muser[0m[2m=[0m1 [3mip[0m[2m=[0m10.66.0.2 [3mfrom[0m[2m=[0m127.0.0.1:52732
+>>>>>>> Stashed changes
   ok handshake and session worked end to end
 -- OK: run.sh demo
 
 ############ FUNCTIONAL: server --check-config
 ==> /home/runner/work/bProto/bProto/target/debug/vpn-server --check-config
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 [2m2026-10-22T16:10:20.065249Z[0m [32m INFO[0m [2mvpn_server[0m[2m:[0m configuration loaded [3mlisten[0m[2m=[0m0.0.0.0:443 [3mdonor[0m[2m=[0mwww.cloudflare.com [3musers[0m[2m=[0m2 [3mtunnel[0m[2m=[0m10.66.0.0/24 [3mpanel[0m[2m=[0m"disabled"
 =======
 [2m2026-10-22T16:11:45.912265Z[0m [32m INFO[0m [2mvpn_server[0m[2m:[0m configuration loaded [3mlisten[0m[2m=[0m0.0.0.0:443 [3mdonor[0m[2m=[0mwww.cloudflare.com [3musers[0m[2m=[0m2 [3mtunnel[0m[2m=[0m10.66.0.0/24 [3mpanel[0m[2m=[0m"disabled"
+>>>>>>> Stashed changes
+=======
+[2m2026-10-22T16:12:51.404547Z[0m [32m INFO[0m [2mvpn_server[0m[2m:[0m configuration loaded [3mlisten[0m[2m=[0m0.0.0.0:443 [3mdonor[0m[2m=[0mwww.cloudflare.com [3musers[0m[2m=[0m2 [3mtunnel[0m[2m=[0m10.66.0.0/24 [3mpanel[0m[2m=[0m"disabled"
 >>>>>>> Stashed changes
 configuration OK
 -- OK: check-config
