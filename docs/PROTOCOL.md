@@ -1,25 +1,33 @@
 # bProto wire protocol (v1)
 
 Status: implemented. This document describes what `crates/vpn-core` actually
-does today, not an aspiration. Anything marked **stage 2** is specified but not
-yet coded, and the corresponding API returns `Error::Unimplemented`.
+does today, not an aspiration. Anything marked **not implemented** is specified
+but not yet coded; `FEC`, rekey and post-quantum are in that class. The
+masquerade layer (formerly "mode B") is implemented and tested.
 
 Everything is carried over UDP in a single flow to `server` (conventionally
 `:443`, `:udp`).
 
 ## 0. Two deployment modes
 
-| | mode A (implemented) | mode B (stage 2) |
-|---|---|---|
-| on the wire | bProto's own 12-byte header | QUIC/HTTP-3 to a real donor |
-| handshake | native `HELLO`/`HELLO_ACK` (§4) | ClientHello with a bProto `session_id` (§6) |
-| anti-DPI | none beyond the header being opaque | borrowed donor certificate + `NewSessionTicket` |
-| config | `stealth = "off"` | `stealth = "shape"` and a reachable donor |
+Both are implemented. They differ only in the envelope the handshake travels in;
+the authentication construction (§6) and everything after the handshake are
+identical, so a client is switched by configuration alone.
 
-Mode A is what ships now and what the tests exercise end to end. Mode B reuses
-the *same* authentication construction (§6) so a client can be switched without a
-protocol break. Do not run mode A against a censor that fingerprints UDP
-payloads: it is an honest protocol, not a disguise.
+| | plain | masquerade |
+|---|---|---|
+| handshake | native `HELLO`/`HELLO_ACK` (§4) | TLS `ClientHello`/`ServerHello` with the label in `session_id` (§6) |
+| data path | the 12-byte header (§1) | the same 12-byte header (§1) |
+| strangers | counted and dropped | forwarded to the donor, answered by the donor |
+| config | default | `masquerade.enabled = true` and a pinned `donor.addr` |
+
+In masquerade mode the server listens on the donor's port and looks like the
+donor to anyone who does not know a key. A prober completes a real handshake
+with the donor and gets the donor's real certificate, because we forward its
+bytes upstream untouched and relay the response back.
+
+Plain mode is honest but not disguised: it is an opaque UDP flow, and a censor
+that fingerprints unknown UDP flows can still see it.
 
 ## 1. Datagram header
 
@@ -125,7 +133,8 @@ Three datagrams, all plaintext control frames (there is no key yet):
 Rules:
 
 1. The server looks the tag up in its table. An unknown tag or a bad MAC is
-   `BadLabel`; in mode B it means "relay to the donor" instead.
+   `BadLabel`; on the masquerade listener the same failure means "relay to the
+   donor" instead of "refuse", because a refusal is itself a signal.
 2. `window` is accepted for `T−1 … T+1` (a ±5-minute clock-skew tolerance,
    `auth::WINDOW_SECS = 300`). Comparison is constant-time.
 3. `client_random` is echoed in `HELLO_ACK` and checked, so a captured ACK from
@@ -151,10 +160,11 @@ released on idle teardown (`session::IDLE_TIMEOUT = 45 s`). Tunnel routing is by
 inner destination IPv4, so the server does not need to know the client's address
 until it has one.
 
-## 6. The `session_id` label (mode B bridge)
+## 6. The `session_id` label (masquerade)
 
-The 32-byte TLS `session_id` that mode B puts in the ClientHello is *the same
-construction* as the `HELLO` field above, packed into a fixed 32 bytes:
+The 32-byte TLS `session_id` that the masquerade client puts in its ClientHello
+is *the same construction* as the `HELLO` field above, packed into a fixed
+32 bytes:
 
 ```
 session_id[0..8]  = HMAC-SHA256(K_tag, user_id)[0..8]        (the routing tag)
@@ -162,15 +172,31 @@ session_id[8..32] = HMAC-SHA256(psk, tag ‖ client_random
                                      ‖ x25519_pub ‖ T)[0..24]  (the label MAC)
 ```
 
-Using `session_id` as the carrier is the point: it does not change the length of
-any handshake frame, so `ServerFinished` keeps its real size and the Aparecium
-"length changed versus the donor" vector stays closed. `crates/craftls/PATCH.md`
-is the exact two-file patch to `craftls` that lets the client supply this value.
+Using `session_id` as the carrier is the point: a browser in middlebox
+compatibility mode sends 32 random bytes there, so substituting our label
+changes no length anywhere in the handshake and the Aparecium "length changed
+versus the donor" vector stays closed. `hello.rs` builds the `ClientHello`
+directly; there is no patched TLS library involved.
 
-Mode B additionally preserves the donor's `NewSessionTicket` (forwarding or
-synthesizing it to match the donor's observed count and timing) rather than
-dropping it — the second Aparecium vector. The `nst` module in `vpn-server` is
-the policy guard that forbids shipping a build that suppresses it.
+### 6.1 The `ServerHello` reply
+
+A verified client gets a TLS `ServerHello` carrying the same four values as
+`HELLO_ACK` (§4): `random` is the server random, `key_share` is the server's
+X25519 public key, and the assigned address and the ACK MAC ride together in an
+extension of the form `0x?a?a`, which [RFC 8701](https://www.rfc-editor.org/rfc/rfc8701)
+reserves for GREASE and requires peers to ignore.
+
+The reply is built from one `ServerReply` value with two encodings
+(`encode_native` / `encode_masquerade`), so the two paths carry the same
+material and cannot drift apart. The `session_id_echo` must equal the label the
+client sent, which binds the reply to that handshake.
+
+### 6.2 `NewSessionTicket`
+
+The second Aparecium vector is whether the server emits tickets the way the
+donor does. We do not synthesise them: a prober's bytes are relayed to the
+donor, so the donor itself emits them and we relay them back unchanged. Our own
+clients never complete a TLS handshake, so there is nothing for us to suppress.
 
 ## 7. Reliability and congestion control
 
@@ -182,10 +208,8 @@ machinery exists for telemetry and backpressure only:
   8 packets or every 20 ms, whichever comes first;
 * RTT estimation, loss detection and the PTO follow RFC 9002;
 * NACK is an additional fast-loss hint so recovery does not wait for a timer;
-* congestion control is CUBIC (`congestion.rs`, RFC 8312 shaped, bytes-based),
-  replacing the placeholder with `quinn`'s implementation in stage 2; BBR is
-  opt-in later; BBRv3 is never used (reproducible underflow in the `quinn`
-  implementation);
+* congestion control is CUBIC (`congestion.rs`, RFC 8312 shaped, bytes-based);
+  BBR is opt-in later;
 * the handshake is the only thing that is retransmitted, on the 500 ms timer
   above.
 
@@ -213,6 +237,14 @@ switch within one RTT and the receiver keeps the previous key for a grace period
 `packet.rs` (header + framing), `crypto.rs` (AEAD + HKDF), `auth.rs`
 (`compute_tag` has a pinned vector), `handshake.rs` (mutual key agreement, wrong
 PSK, stale window, replayed ACK), `replay.rs` (window boundaries) and
-`tests/tunnel_e2e.rs` (a real client against a real server over loopback UDP).
-`crates/vpn-ffi` re-exports the same `session_id` computation as `bproto_compute_session_id`
-for the mobile clients. `cargo test -p vpn-core` is the reference.
+`hello.rs` (the `ClientHello`/`ServerHello` codec, including that a
+`ClientHello` is not a `ServerHello`).
+
+`crates/vpn-server/tests/e2e.rs` runs a real client against a real server over
+loopback UDP in both modes, including the relay: a stranger reaches the donor
+and gets the donor's answer, our own client does not, and a stale label gets the
+stranger's fate.
+
+`crates/vpn-ffi` re-exports the same label computation as
+`bproto_compute_session_id` for the mobile clients. `cargo test -p vpn-core` is
+the reference for the core; `cargo test --workspace` is the whole thing.
