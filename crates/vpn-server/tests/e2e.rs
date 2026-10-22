@@ -143,7 +143,7 @@ async fn server_to_client_ip_traffic_arrives() {
         .unwrap();
     assert_eq!(got, down);
 
-    let stats = tunnel.stats();
+    let stats = tunnel.stats().await;
     assert_eq!(stats.rx_bytes, 40);
 }
 
@@ -211,5 +211,5 @@ async fn a_quiet_link_stays_established() {
         .unwrap();
     tokio::time::sleep(Duration::from_millis(300)).await;
     assert_eq!(h.node.stats().await.sessions, 1);
-    assert!(tunnel.stats().tx_bytes > 0);
+    assert!(tunnel.stats().await.tx_bytes > 0);
 }
