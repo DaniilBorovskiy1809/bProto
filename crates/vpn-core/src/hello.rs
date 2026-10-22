@@ -815,10 +815,12 @@ mod tests {
         ext.extend_from_slice(&(host.len() as u16).to_be_bytes());
         ext.extend_from_slice(host);
         // ALPN = h2, http/1.1
-        let alpn_body: Vec<u8> = [&b"\x02h2"[..], &b"\x08http/1.1"[..]].concat();
+        // extension_data = 2 (list length) + one length-prefixed name each.
+        let alpn_entries: Vec<u8> = [&b"\x02h2"[..], &b"\x08http/1.1"[..]].concat();
         ext.extend_from_slice(&EXT_ALPN.to_be_bytes());
-        ext.extend_from_slice(&(alpn_body.len() as u16).to_be_bytes());
-        ext.extend_from_slice(&alpn_body);
+        ext.extend_from_slice(&((alpn_entries.len() + 2) as u16).to_be_bytes());
+        ext.extend_from_slice(&(alpn_entries.len() as u16).to_be_bytes());
+        ext.extend_from_slice(&alpn_entries);
 
         body.extend_from_slice(&(ext.len() as u16).to_be_bytes());
         body.extend_from_slice(&ext);
