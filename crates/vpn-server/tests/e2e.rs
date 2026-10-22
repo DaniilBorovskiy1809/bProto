@@ -1,18 +1,21 @@
-//! End-to-end: a real client [`Tunnel`] against a real [`ServerNode`] over
-//! loopback UDP.
+//! End-to-end: a real client [`Tunnel`] against a real [`Node`] over loopback
+//! UDP.
 //!
 //! This is the test that proves the product moves packets: handshake, address
 //! lease, bidirectional IP traffic, ACK-driven RTT/CUBIC, and rejection of an
 //! active prober with the wrong key.
 
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
+use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
-use vpn_core::server::{ServerNode, ServerParams};
+use vpn_client::Tunnel;
+use vpn_core::packet::{self, MAX_DATAGRAM};
 use vpn_core::tags::TagTable;
-use vpn_core::{DonorSpec, Fingerprint, IpPool, MAX_DATAGRAM, StealthLevel, Tunnel, TunnelConfig};
+use vpn_core::{DonorSpec, HelloProfile, IpPool, TunnelConfig};
+use vpn_server::server::{Node, Outcome};
 
 const TAG_KEY: [u8; 32] = [0x22; 32];
 const PSK: [u8; 32] = [0x11; 32];
@@ -26,50 +29,54 @@ fn config(server: SocketAddr, psk: [u8; 32], timeout: Duration) -> TunnelConfig 
         user_id: USER,
         tag_key: TAG_KEY,
         mtu: 1280,
-        fingerprint: Fingerprint::Chrome112,
-        stealth: StealthLevel::Off,
+        fingerprint: HelloProfile::default(),
+        masquerade: false,
         handshake_timeout: timeout,
     }
 }
 
-/// A running server: socket, node, and the channel of packets headed for its TUN.
+/// A running server: address, node, and the channel of packets headed for its TUN.
 struct Harness {
-    node: Arc<ServerNode>,
+    node: Arc<Node>,
     addr: SocketAddr,
     to_tun: mpsc::Receiver<Vec<u8>>,
 }
 
-async fn start_server() -> Harness {
-    let mut table = TagTable::new();
-    table.insert(&TAG_KEY, USER, PSK);
-    let tags = Arc::new(RwLock::new(table));
-    let pool = IpPool::new("10.66.0.0".parse().unwrap(), 24);
-
-    let sock = Arc::new(tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap());
+/// Run a node exactly as the binary does: one receive loop, one housekeeping
+/// tick, packets for the TUN pushed down a channel.
+async fn start_node(node: Arc<Node>) -> (SocketAddr, mpsc::Receiver<Vec<u8>>) {
+    let sock = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
     let addr = sock.local_addr().unwrap();
-    let node = Arc::new(ServerNode::new(
-        Arc::clone(&sock),
-        tags,
-        pool,
-        ServerParams::default(),
-    ));
-
     let (to_tun_tx, to_tun) = mpsc::channel::<Vec<u8>>(1024);
+
     {
         let node = Arc::clone(&node);
-        let sock = node.socket();
+        let sock = Arc::clone(&sock);
         tokio::spawn(async move {
             let mut buf = vec![0u8; MAX_DATAGRAM + 32];
             loop {
                 let Ok((n, from)) = sock.recv_from(&mut buf).await else {
                     break;
                 };
-                if let Ok(Some(pkt)) = node.handle(&buf[..n], from, 0).await {
+                if let Ok(Outcome::Packet(pkt)) = node.route(&sock, &buf[..n], from, 0).await {
                     let _ = to_tun_tx.send(pkt).await;
                 }
             }
         });
     }
+    (addr, to_tun)
+}
+
+async fn start_server() -> Harness {
+    let mut table = TagTable::new();
+    table.insert(&TAG_KEY, USER, PSK);
+    let tags = Arc::new(RwLock::new(table));
+    let node = Arc::new(Node::new(
+        tags,
+        IpPool::new(Ipv4Addr::new(10, 66, 0, 0), 24),
+        vpn_core::packet::TUNNEL_MTU,
+    ));
+    let (addr, to_tun) = start_node(Arc::clone(&node)).await;
     Harness { node, addr, to_tun }
 }
 
@@ -122,7 +129,12 @@ async fn server_to_client_ip_traffic_arrives() {
     down[12..16].copy_from_slice(&[1, 1, 1, 1]);
     down[16..20].copy_from_slice(&client_ip.octets());
 
-    let sent = h.node.seal_outbound(client_ip, &down, 0).await.unwrap();
+    let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    let sent = h
+        .node
+        .send_to_client(&sock, client_ip, &down, 0)
+        .await
+        .unwrap();
     assert!(sent, "the client's address must be routable");
 
     let got = tokio::time::timeout(Duration::from_secs(2), tunnel.recv_ip_packet())
@@ -161,20 +173,12 @@ async fn two_users_get_distinct_addresses() {
     table.insert(&TAG_KEY, 1, [0x01; 32]);
     table.insert(&TAG_KEY, 2, [0x02; 32]);
     let tags = Arc::new(RwLock::new(table));
-    let pool = IpPool::new("10.66.0.0".parse().unwrap(), 24);
-    let sock = Arc::new(tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap());
-    let addr = sock.local_addr().unwrap();
-    let node = Arc::new(ServerNode::new(sock, tags, pool, ServerParams::default()));
-    {
-        let node = Arc::clone(&node);
-        let sock = node.socket();
-        tokio::spawn(async move {
-            let mut buf = vec![0u8; MAX_DATAGRAM + 32];
-            while let Ok((n, from)) = sock.recv_from(&mut buf).await {
-                let _ = node.handle(&buf[..n], from, 0).await;
-            }
-        });
-    }
+    let node = Arc::new(Node::new(
+        tags,
+        IpPool::new(Ipv4Addr::new(10, 66, 0, 0), 24),
+        vpn_core::packet::TUNNEL_MTU,
+    ));
+    let (addr, _to_tun) = start_node(Arc::clone(&node)).await;
 
     let mut c1 = config(addr, [0x01; 32], Duration::from_secs(2));
     c1.user_id = 1;

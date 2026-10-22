@@ -1,4 +1,4 @@
-//! Configuration handed by the embedder to [`crate::Tunnel::connect`].
+//! Configuration handed by the embedder to the client (see `vpn-client`).
 
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -7,37 +7,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::crypto::KEY_LEN;
 use crate::error::{Error, Result};
+use crate::hello::HelloProfile;
 use crate::packet::MAX_DATAGRAM;
-
-/// TLS ClientHello fingerprint to imitate. Must match a real browser profile so
-/// the ClientHello is indistinguishable from the donor site's real visitors.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Fingerprint {
-    /// Chrome 112 (uTLS-equivalent from craftls)
-    #[default]
-    Chrome112,
-    /// Chrome 108
-    Chrome108,
-    /// Safari 17.1
-    Safari171,
-    /// Firefox 105
-    Firefox105,
-}
-
-/// Stealth features. Everything except `Off` is stage 2; the enum exists in MVP
-/// as the extension point requested for the mobile clients.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum StealthLevel {
-    /// Protocol only: correct masking, no extra evasion.
-    #[default]
-    Off,
-    /// Size buckets + timing shaping (stage 2).
-    Shape,
-    /// Shape + per-app bypass hooks on mobile (stage 2).
-    ShapeAndBypass,
-}
 
 /// The donor site whose certificate and QUIC/TLS behaviour we borrow.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,12 +56,14 @@ pub struct TunnelConfig {
     /// Tunnel MTU. Capped at [`MAX_DATAGRAM`] minus framing overhead.
     #[serde(default = "default_mtu")]
     pub mtu: u16,
-    /// ClientHello fingerprint.
+    /// `ClientHello` fingerprint to imitate on the masquerade port.
     #[serde(default)]
-    pub fingerprint: Fingerprint,
-    /// Stealth level.
+    pub fingerprint: HelloProfile,
+    /// Run the masquerade layer: browser-shaped `ClientHello` on the donor's
+    /// port, with unknown handshakes relayed to the donor. Off means the plain
+    /// bProto datapath only, which is honest but not disguised.
     #[serde(default)]
-    pub stealth: StealthLevel,
+    pub masquerade: bool,
     /// Handshake timeout.
     #[serde(default = "default_handshake_timeout", with = "humantime_serde_compat")]
     pub handshake_timeout: Duration,
@@ -232,7 +205,7 @@ struct ImportBody {
     uid: u64,
     psk: String,
     tag_key: String,
-    /// Fingerprint name, e.g. `chrome112`.
+    /// Fingerprint name, e.g. `chrome120`.
     #[serde(default)]
     fp: Option<String>,
     #[serde(default)]
@@ -273,7 +246,7 @@ pub fn from_import_uri_with_label(uri: &str) -> Result<(TunnelConfig, Option<Str
         parse_key(&parsed.tag_key).map_err(|e| Error::Config(format!("import tag_key: {e}")))?;
 
     let fingerprint = match parsed.fp.as_deref() {
-        None => Fingerprint::default(),
+        None => HelloProfile::default(),
         Some(name) => serde_json::from_value(serde_json::Value::String(name.to_string()))
             .map_err(|_| Error::Config(format!("import fp {name:?} is not a known fingerprint")))?,
     };
@@ -293,7 +266,7 @@ pub fn from_import_uri_with_label(uri: &str) -> Result<(TunnelConfig, Option<Str
         tag_key,
         mtu: parsed.mtu.unwrap_or_else(default_mtu),
         fingerprint,
-        stealth: StealthLevel::default(),
+        masquerade: false,
         handshake_timeout: default_handshake_timeout(),
     };
     cfg.validate()?;
@@ -310,24 +283,13 @@ pub fn to_import_uri(cfg: &TunnelConfig, label: &str) -> String {
         "uid": cfg.user_id,
         "psk": to_hex(&cfg.psk),
         "tag_key": to_hex(&cfg.tag_key),
-        "fp": fingerprint_name(cfg.fingerprint),
+        "fp": cfg.fingerprint.as_str(),
         "label": label,
     });
     format!(
         "{IMPORT_SCHEME}{}",
         base64url_encode(json.to_string().as_bytes())
     )
-}
-
-/// Wire name of a fingerprint, matching the panel's stored value.
-#[must_use]
-pub fn fingerprint_name(fp: Fingerprint) -> &'static str {
-    match fp {
-        Fingerprint::Chrome112 => "chrome112",
-        Fingerprint::Chrome108 => "chrome108",
-        Fingerprint::Safari171 => "safari171",
-        Fingerprint::Firefox105 => "firefox105",
-    }
 }
 
 fn parse_key(hex: &str) -> core::result::Result<[u8; KEY_LEN], String> {
@@ -454,8 +416,8 @@ mod tests {
             user_id: 7,
             tag_key: [0x22; 32],
             mtu: 1280,
-            fingerprint: Fingerprint::Safari171,
-            stealth: StealthLevel::Off,
+            fingerprint: HelloProfile::Safari17,
+            masquerade: false,
             handshake_timeout: Duration::from_secs(10),
         };
         let uri = to_import_uri(&cfg, "Pixel");
@@ -467,7 +429,7 @@ mod tests {
         assert_eq!(back.user_id, 7);
         assert_eq!(back.psk, [0x11; 32]);
         assert_eq!(back.tag_key, [0x22; 32]);
-        assert_eq!(back.fingerprint, Fingerprint::Safari171);
+        assert_eq!(back.fingerprint, HelloProfile::Safari17);
 
         // The panel's tag derivation must agree with the core's.
         assert_eq!(
@@ -485,7 +447,7 @@ mod tests {
         let cfg = from_import_uri(&uri).unwrap();
         assert_eq!(cfg.user_id, 9);
         assert_eq!(cfg.donor.sni, "example.org");
-        assert_eq!(cfg.fingerprint, Fingerprint::Chrome112);
+        assert_eq!(cfg.fingerprint, HelloProfile::Chrome120);
         assert_eq!(cfg.mtu, 1280);
     }
 

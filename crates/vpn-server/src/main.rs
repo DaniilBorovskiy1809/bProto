@@ -1,44 +1,49 @@
 //! bProto server binary.
 //!
-//! Lifecycle (`docs/PLAN.md` section 4):
+//! Lifecycle:
 //!
-//! 1. load + validate `server.toml` (`--check-config` stops here),
-//! 2. guard the post-handshake mask policy,
-//! 3. build the in-memory tag table,
-//! 4. bind the UDP listener and open the TUN device, install NAT,
-//! 5. loop: TUN → encrypt → UDP; UDP → verify/decrypt → TUN.
+//! 1. load and validate `server.toml` (`--check-config` stops here),
+//! 2. build the tag table from the static users, then keep it refreshed from the
+//!    panel if one is configured,
+//! 3. bind the UDP listener and (with `--datapath`) open the TUN device and
+//!    install NAT,
+//! 4. loop: TUN → encrypt → UDP; UDP → verify/decrypt → TUN.
 //!
-//! The protocol half is [`vpn_core::ServerNode`]; this file is only I/O and
-//! lifecycle.
+//! There is no protocol logic in this file. It is I/O, lifecycle and reporting;
+//! the node itself is [`vpn_server::server::Node`].
 
-use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
-use std::time::{Duration, Instant};
+use std::net::{Ipv4Addr, SocketAddr};
+use std::sync::Arc;
+use std::sync::RwLock;
+use std::time::Duration;
 
 use anyhow::Context;
 use clap::Parser;
+use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
 use tracing_subscriber::EnvFilter;
-use vpn_core::server::{ServerNode, ServerParams};
-use vpn_core::tags::TagTable;
-use vpn_core::{IpPool, packet};
-use vpn_server::config::ServerConfig;
-use vpn_server::{admin, nst};
+use vpn_core::{IpPool, MAX_DATAGRAM, TagTable, packet, unix_now_secs};
+use vpn_rt::{Clock, udp};
 use vpn_tun::{dev, nat};
+
+use vpn_server::config::ServerConfig;
+use vpn_server::control::{PanelClient, SessionReport, apply_keys};
+use vpn_server::server::{Node, Outcome};
 
 #[derive(Debug, Parser)]
 #[command(name = "vpn-server", version, about = "bProto server")]
 struct Cli {
     /// Path to the TOML configuration.
     #[arg(short, long, default_value = "server.toml")]
-    config: PathBuf,
+    config: std::path::PathBuf,
 
     /// Validate the configuration and exit.
     #[arg(long)]
     check_config: bool,
 
     /// Bring up the TUN device and NAT, then serve. Without this the server
-    /// still answers handshakes and logs traffic, but packets have nowhere to go.
+    /// still answers handshakes and accounts traffic, but packets have nowhere
+    /// to go.
     #[arg(long)]
     datapath: bool,
 }
@@ -56,11 +61,18 @@ async fn main() -> anyhow::Result<()> {
     let cfg = ServerConfig::load(&cli.config)?;
     let (tun_addr, prefix) = cfg.tun.ipv4()?;
     let (network, pool_prefix) = cfg.tun.network()?;
+    let tag_key = cfg.tag_key_bytes()?;
+
     tracing::info!(
         listen = %cfg.listen_addr,
         donor = %cfg.donor.sni,
         users = cfg.users.len(),
         tunnel = %format!("{network}/{pool_prefix}"),
+        panel = if cfg.panel.url.is_empty() {
+            "disabled".to_string()
+        } else {
+            cfg.panel.url.clone()
+        },
         "configuration loaded"
     );
 
@@ -69,61 +81,42 @@ async fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let policy = nst::PostHandshakePolicy::default();
-    nst::assert_safe_policy(policy, !cfg!(debug_assertions)).map_err(|e| anyhow::anyhow!(e))?;
-    if cfg!(debug_assertions) {
-        assert!(
-            nst::assert_safe_policy(nst::PostHandshakePolicy::Suppress, true).is_err(),
-            "the Suppress policy must be rejected in release builds"
-        );
-        assert!(
-            nst::must_forward(nst::PostHandshakePolicy::Relay, false),
-            "the Relay policy must forward donor post-handshake messages"
-        );
-    }
-
     let tags: Arc<RwLock<TagTable>> = Arc::new(RwLock::new(cfg.tag_table()?));
-    if tags.read().map(|t| t.is_empty()).unwrap_or(true) {
-        tracing::warn!("tag table is empty: every handshake will be rejected");
+    if cfg.panel.url.is_empty() && tags.read().map(|t| t.is_empty()).unwrap_or(true) {
+        tracing::warn!(
+            "tag table is empty and no panel is configured: every handshake will be rejected"
+        );
     }
 
-    {
-        let admin_cfg = cfg.admin.clone();
-        let tags = Arc::clone(&tags);
-        tokio::spawn(async move {
-            if let Err(e) = admin::serve(admin_cfg, tags).await {
-                tracing::warn!(error = %e, "admin API not started");
-            }
-        });
+    let panel = PanelClient::new(&cfg.panel);
+    match &panel {
+        Some(p) => {
+            tracing::info!(
+                url = %cfg.panel.url,
+                server_id = %p.server_id(),
+                every = format!("{}s", cfg.panel.interval_secs),
+                "control plane enabled: pulling keys, reporting traffic"
+            );
+            spawn_key_puller(p.clone(), Arc::clone(&tags), tag_key, cfg.panel.interval_secs);
+        }
+        None => tracing::warn!("no panel configured: keys are static, traffic is reported nowhere"),
     }
 
     let sock = Arc::new(
-        tokio::net::UdpSocket::bind(cfg.listen_addr)
+        udp::bind(cfg.listen_addr)
             .await
             .with_context(|| format!("bind UDP {}", cfg.listen_addr))?,
     );
     tracing::info!(addr = %sock.local_addr()?, "listener up");
 
-    let params = ServerParams {
-        mtu: cfg.tun.mtu.min(packet::MAX_DATAGRAM as u16) as usize,
-        ..ServerParams::default()
-    };
-    let pool = IpPool::new(network, pool_prefix);
-    let node = Arc::new(ServerNode::new(
-        Arc::clone(&sock),
+    let node = Arc::new(Node::new(
         Arc::clone(&tags),
-        pool,
-        params,
+        IpPool::new(network, pool_prefix),
+        (cfg.tun.mtu as usize).min(packet::TUNNEL_MTU),
     ));
 
     let device = if cli.datapath {
-        match bring_up_tun(&cfg, tun_addr, prefix) {
-            Ok(d) => Some(Arc::new(d)),
-            Err(e) => {
-                tracing::error!(error = %e, "datapath requested but TUN setup failed");
-                return Err(e);
-            }
-        }
+        Some(Arc::new(bring_up_tun(&cfg, tun_addr, prefix)?))
     } else {
         tracing::warn!(
             "running without --datapath: handshakes are answered, IP packets are dropped"
@@ -131,12 +124,45 @@ async fn main() -> anyhow::Result<()> {
         None
     };
 
-    serve(node, device).await
+    serve(ServeCtx {
+        sock,
+        node,
+        device,
+        panel,
+        clock: Clock::new(),
+        report_every: Duration::from_secs(cfg.panel.interval_secs.max(1)),
+    })
+    .await
+}
+
+/// Keep the in-memory tag table in step with the panel.
+fn spawn_key_puller(
+    panel: PanelClient,
+    tags: Arc<RwLock<TagTable>>,
+    tag_key: [u8; 32],
+    interval_secs: u64,
+) {
+    tokio::spawn(async move {
+        let mut tick = tokio::time::interval(Duration::from_secs(interval_secs.max(1)));
+        tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        loop {
+            tick.tick().await;
+            match panel.pull_keys().await {
+                Ok(keys) => match apply_keys(&tags, &tag_key, &keys) {
+                    Ok(n) => tracing::debug!(users = n, "tag table refreshed from the panel"),
+                    Err(e) => tracing::warn!(error = %e, "the panel sent a key list we cannot use"),
+                },
+                // Losing the panel must never disconnect existing clients: we
+                // keep serving with the table we already have.
+                Err(e) => tracing::warn!(error = %e, "could not pull keys from the panel"),
+            }
+        }
+    });
 }
 
 fn bring_up_tun(
     cfg: &ServerConfig,
-    tun_addr: std::net::Ipv4Addr,
+    tun_addr: Ipv4Addr,
     prefix: u8,
 ) -> anyhow::Result<dev::TunDevice> {
     if !dev::can_configure_network() {
@@ -150,7 +176,7 @@ fn bring_up_tun(
 
     if let Some(iface) = cfg.tun.nat_interface.as_deref() {
         // IPv4 forwarding is a prerequisite, normally set by
-        // /etc/sysctl.d/99-bproto.conf. Try anyway, but a read-only /proc/sys
+        // /etc/sysctl.d/99-bproto.conf. Try anyway; a read-only /proc/sys
         // (ProtectKernelTunables) is a warning, not a fatal error.
         if let Err(e) = nat::enable_ip_forwarding() {
             tracing::warn!(
@@ -169,13 +195,27 @@ fn bring_up_tun(
     Ok(tun)
 }
 
-async fn serve(node: Arc<ServerNode>, device: Option<Arc<dev::TunDevice>>) -> anyhow::Result<()> {
-    let sock = node.socket();
-    let start = Instant::now();
-    let now_us = move || start.elapsed().as_micros() as u64;
+struct ServeCtx {
+    sock: Arc<UdpSocket>,
+    node: Arc<Node>,
+    device: Option<Arc<dev::TunDevice>>,
+    panel: Option<PanelClient>,
+    clock: Clock,
+    report_every: Duration,
+}
 
-    // TUN reads are blocking, so they happen on a dedicated thread that hands
-    // packets back over a channel.
+async fn serve(ctx: ServeCtx) -> anyhow::Result<()> {
+    let ServeCtx {
+        sock,
+        node,
+        device,
+        panel,
+        clock,
+        report_every,
+    } = ctx;
+
+    // TUN reads block, so they happen on a dedicated thread that hands packets
+    // back over a channel.
     let (tun_tx, mut tun_rx) = mpsc::channel::<Vec<u8>>(4096);
     if let Some(device) = &device {
         let device = Arc::clone(device);
@@ -198,57 +238,99 @@ async fn serve(node: Arc<ServerNode>, device: Option<Arc<dev::TunDevice>>) -> an
         });
     }
 
-    let mut tick = tokio::time::interval(Duration::from_millis(20));
-    let mut datagram = vec![0u8; packet::MAX_DATAGRAM + 32];
-    let mut last_report = Instant::now();
+    let mut tick = tokio::time::interval(vpn_server::server::TICK);
+    tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    let mut report_tick = tokio::time::interval(report_every);
+    report_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    let mut stats_tick = tokio::time::interval(Duration::from_secs(60));
+    stats_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
+    let mut datagram = vec![0u8; MAX_DATAGRAM + 32];
 
     loop {
         tokio::select! {
             received = sock.recv_from(&mut datagram) => {
                 let Ok((n, from)) = received else { continue };
-                match node.handle(&datagram[..n], from, now_us()).await {
-                    Ok(Some(pkt)) => {
+                match node.route(&sock, &datagram[..n], from, clock.now_us()).await {
+                    Ok(Outcome::Packet(pkt)) => {
                         if let Some(device) = &device
                             && let Err(e) = device.write_packet(&pkt)
                         {
                             tracing::warn!(error = %e, "TUN write failed");
                         }
                     }
-                    Ok(None) => {}
+                    Ok(Outcome::Handshaked { user_id, ip }) => {
+                        tracing::debug!(user_id, %ip, "accepted a client");
+                    }
+                    Ok(Outcome::Nothing) => {}
                     Err(e) => tracing::debug!(error = %e, %from, "datagram rejected"),
                 }
             }
 
             Some(pkt) = tun_rx.recv() => {
-                match node.seal_packet(&pkt, now_us()).await {
+                let Some(dst) = vpn_core::ip::dst_ipv4(&pkt) else { continue };
+                match node.send_to_client(&sock, dst, &pkt, clock.now_us()).await {
                     Ok(true) => {}
-                    Ok(false) => tracing::trace!(len = pkt.len(), "no route for outbound packet"),
+                    Ok(false) => tracing::trace!(%dst, "no route, or congestion window full"),
                     Err(e) => tracing::debug!(error = %e, "outbound packet dropped"),
                 }
             }
 
             _ = tick.tick() => {
-                if let Err(e) = node.tick(now_us()).await {
-                    tracing::warn!(error = %e, "tick failed");
+                let closed = node.reap(&sock, clock.now_us()).await;
+                if !closed.is_empty() {
+                    if let Some(panel) = &panel {
+                        let finals = Node::final_deltas(&closed, unix_now_secs() as i64);
+                        push(panel, finals).await;
+                    }
                 }
-                if last_report.elapsed() >= Duration::from_secs(60) {
-                    last_report = Instant::now();
-                    let s = node.stats().await;
-                    tracing::info!(
-                        sessions = s.sessions,
-                        handshakes = s.handshakes,
-                        rejected = s.rejected_handshakes,
-                        unknown = s.unknown_tags,
-                        congestion_drops = s.congestion_drops,
-                        "stats"
-                    );
+            }
+
+            _ = report_tick.tick() => {
+                if let Some(panel) = &panel {
+                    let deltas = node.take_deltas(unix_now_secs() as i64).await;
+                    push(panel, deltas).await;
                 }
+            }
+
+            _ = stats_tick.tick() => {
+                let s = node.stats().await;
+                tracing::info!(
+                    sessions = s.sessions,
+                    handshakes = s.handshakes,
+                    rejected = s.rejected_handshakes,
+                    unknown_tags = s.unknown_tags,
+                    "stats"
+                );
             }
 
             _ = tokio::signal::ctrl_c() => {
                 tracing::info!("shutting down");
+                if let Some(panel) = &panel {
+                    // Close out live sessions so the panel does not show them
+                    // as online for another five minutes.
+                    let now = unix_now_secs() as i64;
+                    let mut deltas = node.take_deltas(now).await;
+                    for d in &mut deltas {
+                        d.ended_at = Some(now);
+                    }
+                    push(panel, deltas).await;
+                }
                 return Ok(());
             }
         }
+    }
+}
+
+async fn push(panel: &PanelClient, sessions: Vec<vpn_server::control::SessionDelta>) {
+    if sessions.is_empty() {
+        return;
+    }
+    let batch = SessionReport {
+        server_id: panel.server_id().to_string(),
+        sessions,
+    };
+    if let Err(e) = panel.report(&batch).await {
+        tracing::warn!(error = %e, "could not report sessions to the panel");
     }
 }

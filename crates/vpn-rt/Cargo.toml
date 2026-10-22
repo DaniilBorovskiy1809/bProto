@@ -1,0 +1,14 @@
+[package]
+name = "vpn-rt"
+description = "bProto async runtime: the one datapath shared by the client and the server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+vpn-core = { path = "../vpn-core" }
+tokio = { workspace = true, features = ["rt-multi-thread", "net", "time", "sync", "macros"] }
+tracing.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt", "time"] }

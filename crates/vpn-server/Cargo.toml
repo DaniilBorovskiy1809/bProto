@@ -1,6 +1,6 @@
 [package]
 name = "vpn-server"
-description = "bProto server: QUIC listener, ClientHello interceptor, TUN + NAT"
+description = "bProto server: datapath, address pool, panel control plane, donor relay"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -11,18 +11,18 @@ path = "src/main.rs"
 
 [dependencies]
 vpn-core = { path = "../vpn-core" }
+vpn-rt = { path = "../vpn-rt" }
 vpn-tun = { path = "../vpn-tun" }
-tokio.workspace = true
-serde.workspace = true
+tokio = { workspace = true, features = ["signal"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 toml.workspace = true
 clap.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 anyhow.workspace = true
-thiserror.workspace = true
-
-[target.'cfg(unix)'.dependencies]
-libc = "0.2"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-webpki-roots"] }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt"] }
+vpn-client = { path = "../vpn-client" }
+tokio = { workspace = true, features = ["macros", "rt", "time"] }

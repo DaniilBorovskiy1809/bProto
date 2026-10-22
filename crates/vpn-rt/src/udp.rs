@@ -1,15 +1,12 @@
-//! Minimal UDP transport for the native (non-QUIC) datapath.
+//! UDP socket helpers.
 //!
-//! The wire format is still bProto's own short-header datagram; this module only
-//! wraps the tokio socket so the rest of the crate never touches `Result` types
-//! from two crates. When the `quic` feature lands, `transport::quic` takes over
-//! and this becomes the fallback used by tests.
+//! The whole transport is one datagram socket. This module exists so the rest of
+//! the runtime never has to name `tokio`'s error types.
 
 use std::net::SocketAddr;
 
 use tokio::net::UdpSocket;
-
-use crate::error::{Error, Result};
+use vpn_core::{Error, Result};
 
 /// Bind a socket appropriate for talking to `peer`: any local port, matching
 /// address family.
@@ -19,10 +16,16 @@ pub async fn bind_for(peer: SocketAddr) -> Result<UdpSocket> {
     } else {
         "[::]:0".parse().expect("valid literal")
     };
-    let sock = UdpSocket::bind(local)
+    UdpSocket::bind(local)
         .await
-        .map_err(|e| Error::Transport(format!("bind {local}: {e}")))?;
-    Ok(sock)
+        .map_err(|e| Error::Transport(format!("bind {local}: {e}")))
+}
+
+/// Bind a socket to a specific address (the server's listening port).
+pub async fn bind(addr: SocketAddr) -> Result<UdpSocket> {
+    UdpSocket::bind(addr)
+        .await
+        .map_err(|e| Error::Transport(format!("bind {addr}: {e}")))
 }
 
 /// Send one datagram.
@@ -40,7 +43,7 @@ pub async fn send(sock: &UdpSocket, datagram: &[u8], peer: SocketAddr) -> Result
     Ok(())
 }
 
-/// Receive one datagram, returning bytes read and the source address.
+/// Receive one datagram, returning the number of bytes read and the source.
 pub async fn recv(sock: &UdpSocket, buf: &mut [u8]) -> Result<(usize, SocketAddr)> {
     sock.recv_from(buf)
         .await

@@ -1,0 +1,15 @@
+[package]
+name = "vpn-client"
+description = "bProto client library: handshake, datapath, and the tunnel handle"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+vpn-core = { path = "../vpn-core" }
+vpn-rt = { path = "../vpn-rt" }
+tokio = { workspace = true, features = ["rt-multi-thread", "net", "time", "sync", "macros"] }
+tracing.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt", "time"] }

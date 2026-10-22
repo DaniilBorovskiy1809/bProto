@@ -17,7 +17,8 @@ use anyhow::Context;
 use clap::{Parser, Subcommand};
 use tokio::sync::mpsc;
 use tracing_subscriber::EnvFilter;
-use vpn_core::{Tunnel, TunnelConfig};
+use vpn_client::Tunnel;
+use vpn_core::{HelloProfile, TunnelConfig};
 use vpn_tun::{dev, route};
 
 #[derive(Debug, Parser)]
@@ -182,9 +183,10 @@ fn render_client_toml(cfg: &TunnelConfig) -> String {
         psk = vpn_core::config::to_hex(&cfg.psk),
         tag_key = vpn_core::config::to_hex(&cfg.tag_key),
         mtu = cfg.mtu,
-        fp = vpn_core::config::fingerprint_name(cfg.fingerprint),
+        fp = cfg.fingerprint.as_str(),
         timeout = cfg.handshake_timeout.as_millis(),
         sni = cfg.donor.sni,
+        masq = cfg.masquerade,
     )
 }
 

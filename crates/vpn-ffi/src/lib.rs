@@ -19,10 +19,11 @@ use std::cell::RefCell;
 use std::ffi::{CStr, CString, c_char, c_int};
 use std::ptr;
 
-use vpn_core::auth::{TAG_LEN, compute_tag, derive_session_id};
+use vpn_client::Tunnel;
+use vpn_core::auth::{TAG_LEN, compute_tag};
 use vpn_core::config::from_hex;
 use vpn_core::crypto::KEY_LEN;
-use vpn_core::{Tunnel, TunnelConfig};
+use vpn_core::TunnelConfig;
 
 /// The JNI tier is Unix-only: it does descriptor I/O with `poll(2)`/`fcntl(2)`,
 /// which Android and iOS both have and Windows does not. The feature is a no-op
@@ -441,10 +442,31 @@ pub unsafe extern "C" fn bproto_compute_session_id(
     };
 
     let tag: [u8; TAG_LEN] = compute_tag(&tag_key, user_id);
-    let sid = derive_session_id(&psk, &tag, &client_random, &x25519_pub, unix_secs);
+    let sid = client_label_raw(&psk, &tag, &client_random, &x25519_pub, unix_secs);
     // SAFETY: caller promised 32 writable bytes.
     unsafe { ptr::copy_nonoverlapping(sid.as_ptr(), out, sid.len()) };
     0
+}
+
+/// The 32-byte masquerade label: `tag ‖ MAC`, exactly as long as the random
+/// session id a browser sends.
+fn client_label_raw(
+    psk: &[u8; KEY_LEN],
+    tag: &[u8; TAG_LEN],
+    client_random: &[u8; 32],
+    x25519_pub: &[u8; 32],
+    unix_secs: u64,
+) -> [u8; vpn_core::auth::SESSION_ID_LEN] {
+    let mut out = [0u8; vpn_core::auth::SESSION_ID_LEN];
+    out[..TAG_LEN].copy_from_slice(tag);
+    out[TAG_LEN..].copy_from_slice(&vpn_core::auth::label_mac(
+        psk,
+        tag,
+        client_random,
+        x25519_pub,
+        vpn_core::auth::time_window(unix_secs),
+    ));
+    out
 }
 
 fn cstr_to_key(p: *const c_char) -> Result<[u8; KEY_LEN], &'static str> {

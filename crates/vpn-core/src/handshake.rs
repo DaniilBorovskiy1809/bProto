@@ -215,8 +215,8 @@ mod tests {
             user_id: 42,
             tag_key: [0x22; 32],
             mtu: 1280,
-            fingerprint: crate::Fingerprint::Chrome112,
-            stealth: crate::StealthLevel::Off,
+            fingerprint: crate::HelloProfile::Chrome120,
+            masquerade: false,
             handshake_timeout: std::time::Duration::from_secs(10),
         }
     }

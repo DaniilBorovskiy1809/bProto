@@ -14,12 +14,10 @@ use std::process::Command;
 use std::os::fd::AsFd;
 
 /// Size of the read buffer a caller should provide.
-pub const READ_BUF: usize = vpn_core_max_datagram() + 4;
-
-const fn vpn_core_max_datagram() -> usize {
-    // Duplicated as a const to avoid a `vpn-core` dependency in this crate.
-    1280
-}
+///
+/// Derived from the protocol constant rather than restated: a TUN reader that
+/// could not hold a full datagram would silently truncate tunnels.
+pub const READ_BUF: usize = vpn_core::MAX_DATAGRAM + 4;
 
 /// An open TUN interface.
 #[derive(Debug)]

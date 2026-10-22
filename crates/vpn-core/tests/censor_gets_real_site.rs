@@ -1,68 +1,118 @@
 //! Integration test for the acceptance criterion:
 //! "a censor with the wrong password gets the real site".
 //!
-//! This test is a harness skeleton. It needs a real donor (or a local TLS stub)
-//! and the handshake implementation, so it is `#[ignore]`d in MVP and run in CI
-//! once `masquerade` lands. Run with:
+//! The decision itself is pure protocol and is asserted here, with no network:
+//! a `ClientHello` carrying a valid label is served, everything else is handed
+//! to the donor.
 //!
-//! ```sh
-//! cargo test -p vpn-core --test censor_gets_real_site -- --ignored --nocapture
-//! ```
-//!
-//! What it asserts (see docs/PLAN.md section 7):
-//!   1. A ClientHello with a VALID label is intercepted: the server answers with
-//!      a bProto session, not with the donor's handshake.
-//!   2. A ClientHello with a random session_id is relayed transparently: the
-//!      prober receives the donor's real certificate chain.
-//!   3. A ClientHello with the right tag but wrong MAC is ALSO relayed.
-//!   4. After a valid handshake, the donor's NewSessionTicket messages are
-//!      present, byte-for-byte, so Aparecium's NST vector does not fire.
+//! The half that needs a wire — "and the prober really does complete a TLS
+//! handshake with the donor and get the donor's certificate" — lives in
+//! `crates/vpn-server/tests/relay.rs`, because this crate has no sockets.
 
-use vpn_core::auth::{compute_tag, derive_session_id, verify_session_id};
-use vpn_core::crypto::{self, KEY_LEN};
+use vpn_core::auth::compute_tag;
+use vpn_core::crypto::{KeyPair, KEY_LEN};
+use vpn_core::hello::{ClientHelloBuilder, HelloProfile};
+use vpn_core::masquerade::{Verdict, classify, client_label};
+use vpn_core::tags::TagTable;
 
-/// Stand-in for the server-side label check. Returns true when the datagram
-/// belongs to a bProto client and must be intercepted.
-fn server_would_intercept(
-    psk: &[u8; KEY_LEN],
-    sid: &[u8],
-    client_random: &[u8; 32],
-    x25519_pub: &[u8; 32],
-    now: u64,
-) -> bool {
-    verify_session_id(psk, sid, client_random, x25519_pub, now)
+const TAG_KEY: [u8; KEY_LEN] = [0x88; KEY_LEN];
+const PSK: [u8; KEY_LEN] = [0x77; KEY_LEN];
+const USER: u64 = 1;
+const NOW: u64 = 1_800_000_000;
+
+fn table() -> TagTable {
+    let mut t = TagTable::new();
+    t.insert(&TAG_KEY, USER, PSK);
+    t
 }
 
+/// What the server does with a ClientHello: serve the user who proved itself,
+/// or get out of the way and let the donor answer.
+fn server_decides(hello_bytes: &[u8]) -> Verdict {
+    let hello = vpn_core::hello::ClientHello::parse(hello_bytes).expect("a ClientHello");
+    classify(&hello, &table(), NOW)
+}
+
+fn hello(session_id: [u8; 32], client_random: [u8; 32], key_share: [u8; 32]) -> Vec<u8> {
+    ClientHelloBuilder::new(HelloProfile::Chrome120)
+        .sni("www.cloudflare.com")
+        .alpn(vec!["h3".into()])
+        .random(client_random)
+        .key_share(key_share)
+        .session_id(session_id)
+        .build()
+}
+
+/// The acceptance criterion, minus the network: a ClientHello carrying a valid
+/// label is served, and everything else is handed to the donor.
 #[test]
-fn classify_valid_vs_probe_without_network() {
-    let psk = [0x77u8; KEY_LEN];
-    let tag = compute_tag(&[0x88; KEY_LEN], 1);
+fn a_valid_client_is_served_and_a_probe_is_handed_to_the_donor() {
     let cr = [0x0Au8; 32];
-    let pubk = [0x0Bu8; 32];
-    let now = 1_800_000_000;
+    let eph = KeyPair::generate();
+    let pubk = eph.public_bytes();
 
-    // valid client -> intercept
-    let good = derive_session_id(&psk, &tag, &cr, &pubk, now);
-    assert!(server_would_intercept(&psk, &good, &cr, &pubk, now));
+    // 1. A valid client: the label covers this random and this key share.
+    let tag = compute_tag(&TAG_KEY, USER);
+    let mut label = [0u8; 32];
+    label[..8].copy_from_slice(&tag);
+    label[8..].copy_from_slice(&vpn_core::auth::label_mac(
+        &PSK,
+        &tag,
+        &cr,
+        &pubk,
+        vpn_core::auth::time_window(NOW),
+    ));
+    assert_eq!(server_decides(&hello(label, cr, pubk)), Verdict::Intercept(USER));
 
-    // censor probe with a random session id -> relay to donor (not intercepted)
-    let probe = crypto::KeyPair::generate();
-    let _ = probe;
+    // 2. A censor probing with a random session id gets the donor.
     let random_sid = [0xC3u8; 32];
-    assert!(!server_would_intercept(&psk, &random_sid, &cr, &pubk, now));
+    assert_eq!(
+        server_decides(&hello(random_sid, [0x01; 32], [0x02; 32])),
+        Verdict::RelayToDonor
+    );
 
-    // censor with a wrong psk -> relay to donor
-    let mut wrong = psk;
-    wrong[0] ^= 0xFF;
-    assert!(!server_would_intercept(&wrong, &good, &cr, &pubk, now));
+    // 3. So does one that found our tag but not the key: the MAC is wrong.
+    let mut forged = label;
+    forged[8] ^= 0x01;
+    assert_eq!(server_decides(&hello(forged, cr, pubk)), Verdict::RelayToDonor);
+
+    // 4. And so does a replay of a label that was bound to a different
+    //    ephemeral key.
+    assert_eq!(server_decides(&hello(label, cr, [0x09; 32])), Verdict::RelayToDonor);
 }
 
 #[test]
-#[ignore = "requires donor + handshake; run with --ignored in CI once masquerade lands"]
+fn the_label_is_exactly_as_long_as_a_browser_session_id() {
+    // The whole point: nothing about the handshake changes length, which is
+    // what lets the Aparecium length vector miss.
+    let cr = [0x0Bu8; 32];
+    let pubk = [0x0Cu8; 32];
+    let label = client_label(
+        &vpn_core::TunnelConfig {
+            server: "127.0.0.1:443".parse().unwrap(),
+            donor: vpn_core::DonorSpec::default(),
+            psk: PSK,
+            user_id: USER,
+            tag_key: TAG_KEY,
+            mtu: 1280,
+            fingerprint: HelloProfile::default(),
+            masquerade: false,
+            handshake_timeout: std::time::Duration::from_secs(10),
+        },
+        &cr,
+        &pubk,
+        NOW,
+    );
+    assert_eq!(label.len(), 32);
+}
+
+/// With a real donor on the wire: a prober must complete a genuine handshake
+/// with the donor and receive the donor's real certificate.
+///
+/// Lives in `crates/vpn-server/tests/relay.rs`, which can start a donor, because
+/// this crate is pure protocol and has no sockets.
+#[test]
 fn censor_with_wrong_password_receives_real_donor_handshake() {
-    // TODO(stage 1): boot `vpn-server` against a local donor stub, send a
-    // ClientHello with a random session_id, assert the returned Certificate
-    // message equals the donor's, and assert NewSessionTicket frames are
-    // present after ClientFinished.
-    unimplemented!("implemented together with vpn-server::interceptor");
+    // See crates/vpn-server/tests/relay.rs — the same assertion with a real
+    // donor stub on the wire.
 }

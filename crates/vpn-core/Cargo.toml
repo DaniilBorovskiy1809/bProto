@@ -7,19 +7,8 @@ license.workspace = true
 
 [lib]
 name = "vpn_core"
-# rlib for Rust embedders (server, desktop). The C-ABI / JNI surface lives in
-# the `bproto` crate, which links this one.
+# A plain rlib: this crate is pure protocol and is linked by everything else.
 crate-type = ["rlib"]
-
-[features]
-default = ["std"]
-std = []
-# quinn-backed UDP transport (CUBIC congestion control, QUIC-shaped wire format)
-quic = ["dep:quinn"]
-# donor relay / certificate borrowing (needs a rustls-compatible client)
-masquerade = []
-# userspace TCP stack for the relay side (stage 2)
-user-stack = ["dep:smoltcp"]
 
 [dependencies]
 chacha20poly1305.workspace = true
@@ -29,17 +18,11 @@ sha2.workspace = true
 hmac.workspace = true
 subtle.workspace = true
 zeroize.workspace = true
-rand.workspace = true
 getrandom.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
 tracing.workspace = true
 
-quinn = { workspace = true, optional = true }
-smoltcp = { version = "0.11", optional = true, default-features = false }
-
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt", "time"] }
 toml.workspace = true
