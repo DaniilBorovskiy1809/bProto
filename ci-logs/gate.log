@@ -66,10 +66,18 @@ rustc 1.99.1 (58cf8f9c3 2026-10-13)
    Compiling vpn-tun v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-tun)
    Compiling vpn-client v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-client)
    Compiling vpn-server v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-server)
-   Compiling vpn-cli v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-cli)
-   Compiling bproto v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-ffi)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.50s
--- OK: cargo build --workspace --all-targets
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+   --> crates/vpn-server/src/server.rs:288:23
+    |
+288 |         let session = self.sessions.remove(old_tag).await?;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `()`
+    |
+    = help: the nightly-only, unstable trait `Try` is not implemented for `()`
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `vpn-server` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+-- FAILED: cargo build --workspace --all-targets
 
 ############ $ cargo clippy --workspace --all-targets -- -D warnings
     Checking vpn-core v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-core)
@@ -78,293 +86,52 @@ rustc 1.99.1 (58cf8f9c3 2026-10-13)
     Checking vpn-client v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-client)
     Checking vpn-server v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-server)
     Checking vpn-cli v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-cli)
+error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+   --> crates/vpn-server/src/server.rs:288:23
+    |
+288 |         let session = self.sessions.remove(old_tag).await?;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `()`
+    |
+    = help: the nightly-only, unstable trait `std::ops::Try` is not implemented for `()`
+
+For more information about this error, try `rustc --explain E0277`.
     Checking bproto v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-ffi)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.88s
--- OK: cargo clippy --workspace --all-targets -- -D warnings
+error: could not compile `vpn-server` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `vpn-server` (lib test) due to 1 previous error
+-- FAILED: cargo clippy --workspace --all-targets -- -D warnings
 
 ############ $ cargo test --workspace
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.12s
-     Running unittests src/lib.rs (target/debug/deps/bproto-f944b1fc318f2c86)
+   Compiling vpn-cli v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-cli)
+   Compiling vpn-server v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-server)
+   Compiling vpn-core v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-core)
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+   --> crates/vpn-server/src/server.rs:288:23
+    |
+288 |         let session = self.sessions.remove(old_tag).await?;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `()`
+    |
+    = help: the nightly-only, unstable trait `Try` is not implemented for `()`
 
-running 5 tests
-test tests::bad_hex_is_reported ... ok
-test tests::recv_timeout_rejects_a_null_handle ... ok
-test tests::connect_rejects_a_bad_config ... ok
-test tests::session_id_helper_writes_32_bytes ... ok
-test tests::version_is_exposed ... ok
-
-test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running unittests src/main.rs (target/debug/deps/bproto-21d8eabd7336d8d6)
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running unittests src/lib.rs (target/debug/deps/vpn_client-c119ee13d5c1da25)
-
-running 2 tests
-test tests::an_invalid_config_is_refused_before_any_io ... ok
-test tests::a_config_with_no_server_times_out_instead_of_hanging ... ok
-
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.50s
-
-     Running unittests src/lib.rs (target/debug/deps/vpn_core-d69315f241ef61fe)
-
-running 88 tests
-test ack::tests::decode_rejects_garbage ... ok
-test ack::tests::ranges_handle_u40_limit ... ok
-test ack::tests::ranges_merge_and_encode ... ok
-test ack::tests::in_flight_tracking_and_timeouts ... ok
-test ack::tests::rtt_converges_and_pto_exceeds_srtt ... ok
-test auth::tests::ack_mac_binds_the_address ... ok
-test auth::tests::derive_and_verify_roundtrip ... ok
-test auth::tests::native_label_mac_matches_session_id_bytes ... ok
-test auth::tests::rejects_wrong_psk_or_random_sid ... ok
-test config::tests::base64url_rejects_a_mangled_uri ... ok
-test auth::tests::tag_is_deterministic_and_user_specific ... ok
-test config::tests::hex_roundtrip ... ok
-test config::tests::import_uri_from_a_hand_written_payload ... ok
-test config::tests::base64url_matches_the_panel_vectors ... ok
-test config::tests::import_uri_rejects_bad_input ... ok
-test congestion::tests::congestion_avoidance_grows_again_toward_wmax ... ok
-test congestion::tests::fast_convergence_reduces_wmax_on_second_loss ... ok
-test config::tests::import_uri_roundtrip ... ok
-test config::tests::config_toml_roundtrip ... ok
-test congestion::tests::initial_window_is_ten_segments ... ok
-test congestion::tests::loss_reduces_to_beta_and_sets_threshold ... ok
-test congestion::tests::zero_ack_is_a_no_op ... ok
-test congestion::tests::slow_start_doubles_per_rtt ... ok
-test congestion::tests::timeout_collapses_to_the_floor_and_restarts_slow_start ... ok
-test crypto::tests::key_schedule_is_mirrored ... ok
-test crypto::tests::nonce_layout ... ok
-test crypto::tests::random_32_is_not_constant ... ok
-test crypto::tests::session_tag_is_symmetric_and_bound_to_the_randoms ... ok
-test crypto::tests::seal_open_roundtrip_and_aad_binding ... ok
-test endpoint::tests::a_session_born_late_is_not_instantly_expired ... ok
-test crypto::tests::dh_is_symmetric ... ok
-test endpoint::tests::a_tampered_header_fails_authentication ... ok
-test endpoint::tests::close_is_queued_once_and_the_peer_sees_it ... ok
-test endpoint::tests::keepalive_fires_after_the_keepalive_interval_and_only_once ... ok
-test endpoint::tests::acks_are_flushed_every_eight_packets_and_feed_the_rtt ... ok
-test endpoint::tests::oversized_payload_is_refused_before_encryption ... ok
-test endpoint::tests::ping_is_answered_with_pong_without_caller_involvement ... ok
-test frame::tests::hello_ack_roundtrip ... ok
-test frame::tests::hello_roundtrip ... ok
-test endpoint::tests::ip_traffic_roundtrips_and_is_counted ... ok
-test frame::tests::simple_frames_and_types ... ok
-test endpoint::tests::replay_and_forgery_are_rejected_and_counted ... ok
-test handshake::tests::an_ack_for_another_client_random_is_rejected ... ok
-test handshake::tests::stale_hello_outside_the_window_is_rejected ... ok
-test handshake::tests::unknown_user_is_rejected ... ok
-test handshake::tests::wrong_psk_is_rejected ... ok
-test endpoint::tests::congestion_window_gates_sending ... ok
-test hello::tests::a_bare_handshake_message_parses_too ... ok
-test hello::tests::a_realistic_foreign_client_hello_parses ... ok
-test hello::tests::each_profile_has_a_distinct_fingerprint ... ok
-test handshake::tests::tampered_ack_is_rejected ... ok
-test hello::tests::every_profile_roundtrips_through_parse ... ok
-test hello::tests::malformed_input_is_rejected_not_guessed_at ... ok
-test hello::tests::the_label_does_not_change_the_length_of_the_client_hello ... ok
-test hello::tests::the_record_header_is_well_formed ... ok
-test handshake::tests::happy_path_derives_mirrored_keys_and_one_tag ... ok
-test ip::tests::parses_ipv4_addresses ... ok
-test masquerade::tests::a_hello_without_a_key_share_is_relayed ... ok
-test ip::tests::parses_ipv6_destination ... ok
-test ip::tests::rejects_truncated_and_other_families ... ok
-test masquerade::tests::a_label_bound_to_another_key_share_does_not_verify ... ok
-test masquerade::tests::a_probe_gets_the_donor ... ok
-test masquerade::tests::garbage_and_oversized_input_relays_rather_than_errors ... ok
-test masquerade::tests::an_unknown_user_is_relayed ... ok
-test masquerade::tests::a_valid_label_is_intercepted_for_its_user ... ok
-test masquerade::tests::psk_parsing_rejects_anything_but_32_bytes ... ok
-test packet::tests::header_roundtrip ... ok
-test masquerade::tests::one_window_of_skew_is_tolerated ... ok
-test masquerade::tests::the_right_tag_with_the_wrong_mac_is_also_relayed ... ok
-test packet::tests::inner_roundtrip_padded ... ok
-test packet::tests::plaintext_control_roundtrip_and_flag_check ... ok
-test packet::tests::rejects_short_and_bad_version ... ok
-test pool::tests::a_thirty_bit_prefix_yields_one_client_host ... ok
-test pool::tests::allocates_sequentially_from_host_two ... ok
-test pool::tests::contains_respects_the_prefix ... ok
-test masquerade::tests::what_we_build_we_recognise ... ok
-test pool::tests::reserve_rejects_out_of_pool_and_duplicates ... ok
-test pool::tests::slash_zero_does_not_panic ... ok
-test pool::tests::released_addresses_are_reusable ... ok
-test replay::tests::bit_shift_boundaries ... ok
-test replay::tests::drops_packets_older_than_window ... ok
-test packet::tests::packet_number_is_40_bits ... ok
-test replay::tests::huge_jump_resets_window ... ok
-test replay::tests::tolerates_reordering_within_window ... ok
-test tags::tests::build_from_user_list ... ok
-test replay::tests::accepts_in_order_and_rejects_duplicates ... ok
-test tags::tests::insert_lookup_and_revoke ... ok
-test tags::tests::ip_lease_is_bidirectional_and_releasable ... ok
-
-test result: ok. 88 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
-
-     Running tests/auth_label.rs (target/debug/deps/auth_label-4618acc7c164d328)
-
-running 5 tests
-test label_length_matches_a_browser_session_id ... ok
-test correct_label_verifies_inside_window ... ok
-test random_session_id_never_verifies ... ok
-test stale_label_is_rejected ... ok
-test wrong_psk_never_verifies ... ok
-
-test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running tests/censor_gets_real_site.rs (target/debug/deps/censor_gets_real_site-aced34aa56fae010)
-
-running 3 tests
-test censor_with_wrong_password_receives_real_donor_handshake ... ok
-test the_label_is_exactly_as_long_as_a_browser_session_id ... ok
-test a_valid_client_is_served_and_a_probe_is_handed_to_the_donor ... ok
-
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running tests/packet_roundtrip.rs (target/debug/deps/packet_roundtrip-1faffa9f993a98ed)
-
-running 7 tests
-test mtu_is_reported ... ok
-test forged_ciphertext_is_rejected ... ok
-test header_is_12_bytes_and_first_byte_versioned ... ok
-test replaying_a_datagram_is_rejected ... ok
-test payload_at_mtu_ok_above_mtu_rejected ... ok
-test traffic_flows_back_too ... ok
-test datagrams_roundtrip_both_directions ... ok
-
-test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
-
-     Running unittests src/lib.rs (target/debug/deps/vpn_rt-3316feeb97f74945)
-
-running 7 tests
-test tests::an_idle_session_is_reported_by_flush ... ok
-test tests::a_set_routes_by_tag_and_by_address ... ok
-test tests::replacing_a_tag_returns_the_old_session ... ok
-test udp::tests::bind_for_matches_family ... ok
-test udp::tests::loopback_roundtrip ... ok
-test tests::traffic_moves_through_the_runtime_in_both_directions ... ok
-test tests::the_clock_is_monotonic_and_relative ... ok
-
-test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
-
-     Running unittests src/lib.rs (target/debug/deps/vpn_server-dd45fa90c240f57f)
-
-running 16 tests
-test config::tests::defaults_leave_the_control_plane_and_masquerade_off ... ok
-test config::tests::a_panel_url_requires_a_token ... ok
-test config::tests::masquerade_requires_a_pinned_donor ... ok
-test config::tests::rejects_short_tag_key ... ok
-test config::tests::the_pool_subnet_is_derived_from_the_tun_address ... ok
-test config::tests::tag_table_roundtrip_and_revocable ... ok
-test control::tests::a_closed_delta_carries_ended_at ... ok
-test control::tests::peer_ips_are_normalised ... ok
-test server::tests::a_client_key_that_is_not_32_bytes_is_refused_by_the_table ... ok
-test control::tests::a_live_delta_omits_ended_at ... ok
-test server::tests::an_outbound_packet_without_a_route_is_dropped_not_errored ... ok
-test server::tests::a_probe_is_rejected_and_counted ... ok
-test server::tests::unknown_tags_are_counted_and_do_not_create_sessions ... ok
-test server::tests::a_session_born_late_is_not_reaped_immediately ... ok
-test server::tests::reaping_hands_back_the_address_and_a_final_delta ... ok
-test server::tests::a_handshake_leases_an_address_and_a_second_replaces_it ... FAILED
-
-failures:
-
----- server::tests::a_handshake_leases_an_address_and_a_second_replaces_it stdout ----
-
-thread 'server::tests::a_handshake_leases_an_address_and_a_second_replaces_it' (3061) panicked at crates/vpn-server/src/server.rs:461:9:
-assertion `left == right` failed: a reconnect must not leak
-  left: 2
- right: 1
-stack backtrace:
-   0: __rustc::rust_begin_unwind
-             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/panicking.rs:679:5
-   1: core::panicking::panic_fmt
-             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/panicking.rs:80:14
-   2: core::panicking::assert_failed_inner
-             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/panicking.rs:447:23
-   3: core::panicking::assert_failed::<usize, usize>
-             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/panicking.rs:407:5
-   4: vpn_server::server::tests::a_handshake_leases_an_address_and_a_second_replaces_it::{closure#0}
-             at ./src/server.rs:461:9
-   5: <core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>> as core::future::future::Future>::poll
-             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/future/future.rs:133:9
-   6: <core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>> as core::future::future::Future>::poll
-             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/future/future.rs:133:9
-   7: <tokio::runtime::scheduler::current_thread::CoreGuard>::block_on::<core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>>::{closure#0}::{closure#0}::{closure#0}
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/scheduler/current_thread/mod.rs:833:70
-   8: tokio::task::coop::with_budget::<core::task::poll::Poll<()>, <tokio::runtime::scheduler::current_thread::CoreGuard>::block_on<core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>>::{closure#0}::{closure#0}::{closure#0}>
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/task/coop/mod.rs:167:5
-   9: tokio::task::coop::budget::<core::task::poll::Poll<()>, <tokio::runtime::scheduler::current_thread::CoreGuard>::block_on<core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>>::{closure#0}::{closure#0}::{closure#0}>
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/task/coop/mod.rs:133:5
-  10: <tokio::runtime::scheduler::current_thread::CoreGuard>::block_on::<core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>>::{closure#0}::{closure#0}
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/scheduler/current_thread/mod.rs:833:25
-  11: <tokio::runtime::scheduler::current_thread::Context>::enter::<core::task::poll::Poll<()>, <tokio::runtime::scheduler::current_thread::CoreGuard>::block_on<core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>>::{closure#0}::{closure#0}>
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/scheduler/current_thread/mod.rs:488:19
-  12: <tokio::runtime::scheduler::current_thread::CoreGuard>::block_on::<core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>>::{closure#0}
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/scheduler/current_thread/mod.rs:832:44
-  13: <tokio::runtime::scheduler::current_thread::CoreGuard>::enter::<<tokio::runtime::scheduler::current_thread::CoreGuard>::block_on<core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>>::{closure#0}, core::option::Option<()>>::{closure#0}
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/scheduler/current_thread/mod.rs:909:68
-  14: <tokio::runtime::context::scoped::Scoped<tokio::runtime::scheduler::Context>>::set::<<tokio::runtime::scheduler::current_thread::CoreGuard>::enter<<tokio::runtime::scheduler::current_thread::CoreGuard>::block_on<core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>>::{closure#0}, core::option::Option<()>>::{closure#0}, (alloc::boxed::Box<tokio::runtime::scheduler::current_thread::Core>, core::option::Option<()>)>
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/context/scoped.rs:40:9
-  15: tokio::runtime::context::set_scheduler::<(alloc::boxed::Box<tokio::runtime::scheduler::current_thread::Core>, core::option::Option<()>), <tokio::runtime::scheduler::current_thread::CoreGuard>::enter<<tokio::runtime::scheduler::current_thread::CoreGuard>::block_on<core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>>::{closure#0}, core::option::Option<()>>::{closure#0}>::{closure#0}
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/context.rs:187:38
-  16: <std::thread::local::LocalKey<tokio::runtime::context::Context>>::try_with::<tokio::runtime::context::set_scheduler<(alloc::boxed::Box<tokio::runtime::scheduler::current_thread::Core>, core::option::Option<()>), <tokio::runtime::scheduler::current_thread::CoreGuard>::enter<<tokio::runtime::scheduler::current_thread::CoreGuard>::block_on<core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>>::{closure#0}, core::option::Option<()>>::{closure#0}>::{closure#0}, (alloc::boxed::Box<tokio::runtime::scheduler::current_thread::Core>, core::option::Option<()>)>
-             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/local.rs:463:12
-  17: <std::thread::local::LocalKey<tokio::runtime::context::Context>>::with::<tokio::runtime::context::set_scheduler<(alloc::boxed::Box<tokio::runtime::scheduler::current_thread::Core>, core::option::Option<()>), <tokio::runtime::scheduler::current_thread::CoreGuard>::enter<<tokio::runtime::scheduler::current_thread::CoreGuard>::block_on<core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>>::{closure#0}, core::option::Option<()>>::{closure#0}>::{closure#0}, (alloc::boxed::Box<tokio::runtime::scheduler::current_thread::Core>, core::option::Option<()>)>
-             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/local.rs:427:20
-  18: tokio::runtime::context::set_scheduler::<(alloc::boxed::Box<tokio::runtime::scheduler::current_thread::Core>, core::option::Option<()>), <tokio::runtime::scheduler::current_thread::CoreGuard>::enter<<tokio::runtime::scheduler::current_thread::CoreGuard>::block_on<core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>>::{closure#0}, core::option::Option<()>>::{closure#0}>
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/context.rs:187:17
-  19: <tokio::runtime::scheduler::current_thread::CoreGuard>::enter::<<tokio::runtime::scheduler::current_thread::CoreGuard>::block_on<core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>>::{closure#0}, core::option::Option<()>>
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/scheduler/current_thread/mod.rs:909:27
-  20: <tokio::runtime::scheduler::current_thread::CoreGuard>::block_on::<core::pin::Pin<&mut core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>>
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/scheduler/current_thread/mod.rs:820:24
-  21: <tokio::runtime::scheduler::current_thread::CurrentThread>::block_on::<core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>::{closure#0}
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/scheduler/current_thread/mod.rs:218:33
-  22: tokio::runtime::context::runtime::enter_runtime::<<tokio::runtime::scheduler::current_thread::CurrentThread>::block_on<core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>::{closure#0}, ()>
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/context/runtime.rs:65:16
-  23: <tokio::runtime::scheduler::current_thread::CurrentThread>::block_on::<core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/scheduler/current_thread/mod.rs:206:9
-  24: <tokio::runtime::runtime::Runtime>::block_on_inner::<core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/runtime.rs:374:52
-  25: <tokio::runtime::runtime::Runtime>::block_on::<core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>
-             at /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.53.3/src/runtime/runtime.rs:343:18
-  26: vpn_server::server::tests::a_handshake_leases_an_address_and_a_second_replaces_it
-             at ./src/server.rs:461:80
-  27: vpn_server::server::tests::a_handshake_leases_an_address_and_a_second_replaces_it::{closure#0}
-             at ./src/server.rs:442:70
-  28: <vpn_server::server::tests::a_handshake_leases_an_address_and_a_second_replaces_it::{closure#0} as core::ops::function::FnOnce<()>>::call_once
-             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/ops/function.rs:250:5
-  29: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
-             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/ops/function.rs:250:5
-note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
-
-
-failures:
-    server::tests::a_handshake_leases_an_address_and_a_second_replaces_it
-
-test result: FAILED. 15 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
-
-error: test failed, to rerun pass `-p vpn-server --lib`
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `vpn-server` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `vpn-server` (lib test) due to 1 previous error
 -- FAILED: cargo test --workspace
 
 ############ $ cargo test -p bproto --features jni
-   Compiling bproto v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-ffi)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.20s
-     Running unittests src/lib.rs (target/debug/deps/bproto-2bbf268fc8988e9f)
+   Compiling vpn-server v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-server)
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+   --> crates/vpn-server/src/server.rs:288:23
+    |
+288 |         let session = self.sessions.remove(old_tag).await?;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `()`
+    |
+    = help: the nightly-only, unstable trait `Try` is not implemented for `()`
 
-running 6 tests
-test tests::bad_hex_is_reported ... ok
-test tests::recv_timeout_rejects_a_null_handle ... ok
-test tests::connect_rejects_a_bad_config ... ok
-test tests::version_is_exposed ... ok
-test tests::session_id_helper_writes_32_bytes ... ok
-test jni::tests::pump_moves_packets_both_ways ... ok
-
-test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
-
--- OK: cargo test -p bproto --features jni
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `vpn-server` (lib) due to 1 previous error
+-- FAILED: cargo test -p bproto --features jni
 
 ############ PANEL BACKEND
 ############ $ (panel) cargo fmt --check
@@ -373,95 +140,95 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 ############ $ (panel) cargo build --all-targets
     Updating crates.io index
  Downloading crates ...
-  Downloaded atoi v2.0.0
-  Downloaded argon2 v0.5.3
-  Downloaded autocfg v1.5.1
   Downloaded allocator-api2 v0.2.21
-  Downloaded num-iter v0.1.46
-  Downloaded axum v0.8.9
-  Downloaded parking_lot_core v0.9.12
-  Downloaded tinystr v0.8.4
-  Downloaded either v1.19.0
-  Downloaded futures-executor v0.3.34
-  Downloaded crc v3.4.0
-  Downloaded foldhash v0.1.5
-  Downloaded byteorder v1.5.0
-  Downloaded rand_chacha v0.3.1
-  Downloaded sha1 v0.10.7
-  Downloaded dotenvy v0.15.7
-  Downloaded futures-io v0.3.34
-  Downloaded rsa v0.9.10
-  Downloaded base64ct v1.8.3
-  Downloaded parking v2.2.1
-  Downloaded scopeguard v1.2.0
-  Downloaded byteorder-lite v0.1.0
-  Downloaded mime v0.3.17
-  Downloaded home v0.5.12
-  Downloaded httpdate v1.0.3
-  Downloaded signature v2.2.0
-  Downloaded sqlx-macros v0.8.6
-  Downloaded hex v0.4.3
-  Downloaded num-integer v0.1.47
-  Downloaded pem-rfc7468 v0.7.0
-  Downloaded stringprep v0.1.5
+  Downloaded atoi v2.0.0
   Downloaded axum-core v0.5.6
+  Downloaded autocfg v1.5.1
+  Downloaded argon2 v0.5.3
+  Downloaded sha1 v0.10.7
   Downloaded spki v0.7.3
+  Downloaded hex v0.4.3
+  Downloaded httpdate v1.0.3
+  Downloaded crc v3.4.0
+  Downloaded scopeguard v1.2.0
+  Downloaded home v0.5.12
+  Downloaded either v1.19.0
+  Downloaded icu_locale_core v2.3.0
+  Downloaded futures-io v0.3.34
+  Downloaded sqlx-macros v0.8.6
   Downloaded futures-sink v0.3.34
   Downloaded md-5 v0.10.6
-  Downloaded password-hash v0.5.0
+  Downloaded rand_chacha v0.3.1
+  Downloaded num-iter v0.1.46
+  Downloaded signature v2.2.0
+  Downloaded mime v0.3.17
+  Downloaded parking v2.2.1
+  Downloaded base64ct v1.8.3
+  Downloaded futures-executor v0.3.34
+  Downloaded stringprep v0.1.5
+  Downloaded dotenvy v0.15.7
+  Downloaded crossbeam-queue v0.3.14
+  Downloaded num-integer v0.1.47
+  Downloaded pem-rfc7468 v0.7.0
   Downloaded pkg-config v0.3.34
   Downloaded zerovec-derive v0.11.6
-  Downloaded whoami v1.6.1
-  Downloaded hashlink v0.10.0
-  Downloaded crossbeam-queue v0.3.14
-  Downloaded lock_api v0.4.14
-  Downloaded event-listener v5.4.2
-  Downloaded const-oid v0.9.6
-  Downloaded matchit v0.8.4
-  Downloaded parking_lot v0.12.5
-  Downloaded serde_path_to_error v0.1.20
+  Downloaded byteorder-lite v0.1.0
   Downloaded crc-catalog v2.5.0
+  Downloaded foldhash v0.1.5
   Downloaded pkcs8 v0.10.2
-  Downloaded crossbeam-utils v0.8.23
-  Downloaded pkcs1 v0.7.5
   Downloaded ppv-lite86 v0.2.21
-  Downloaded tokio-stream v0.1.19
-  Downloaded spin v0.9.9
+  Downloaded serde_path_to_error v0.1.20
   Downloaded sqlx-macros-core v0.8.6
-  Downloaded unicode-properties v0.1.4
+  Downloaded tinystr v0.8.4
+  Downloaded hashlink v0.10.0
+  Downloaded whoami v1.6.1
+  Downloaded byteorder v1.5.0
+  Downloaded parking_lot v0.12.5
+  Downloaded parking_lot_core v0.9.12
+  Downloaded const-oid v0.9.6
+  Downloaded event-listener v5.4.2
+  Downloaded lock_api v0.4.14
+  Downloaded pkcs1 v0.7.5
+  Downloaded spin v0.9.9
   Downloaded yoke v0.8.3
-  Downloaded icu_normalizer_data v2.3.0
-  Downloaded icu_provider v2.3.1
-  Downloaded qrcode v0.14.1
-  Downloaded num-traits v0.2.19
   Downloaded blake2 v0.10.6
-  Downloaded icu_locale_core v2.3.0
+  Downloaded password-hash v0.5.0
+  Downloaded matchit v0.8.4
+  Downloaded axum v0.8.9
+  Downloaded tokio-stream v0.1.19
   Downloaded unicode-bidi v0.3.18
   Downloaded bytemuck v1.25.2
-  Downloaded der v0.7.10
+  Downloaded crossbeam-utils v0.8.23
+  Downloaded icu_provider v2.3.1
   Downloaded flume v0.11.1
+  Downloaded num-traits v0.2.19
+  Downloaded unicode-properties v0.1.4
+  Downloaded qrcode v0.14.1
+  Downloaded der v0.7.10
+  Downloaded futures-intrusive v0.5.0
+  Downloaded icu_normalizer_data v2.3.0
+  Downloaded sqlx-sqlite v0.8.6
   Downloaded icu_collections v2.3.0
   Downloaded sqlx-mysql v0.8.6
-  Downloaded sqlx-sqlite v0.8.6
-  Downloaded futures-intrusive v0.5.0
-  Downloaded icu_properties v2.3.0
+  Downloaded rsa v0.9.10
   Downloaded rand v0.8.8
   Downloaded sqlx-core v0.8.6
   Downloaded unicode-normalization v0.1.26
   Downloaded zerovec v0.11.8
+  Downloaded icu_properties v2.3.0
+  Downloaded num-bigint-dig v0.8.6
+  Downloaded sqlx-postgres v0.8.6
   Downloaded hashbrown v0.15.5
   Downloaded icu_properties_data v2.3.0
   Downloaded libm v0.2.16
-  Downloaded num-bigint-dig v0.8.6
-  Downloaded sqlx-postgres v0.8.6
   Downloaded moxcms v0.8.1
-  Downloaded sqlx v0.8.6
   Downloaded webpki-roots v1.0.9
+  Downloaded sqlx v0.8.6
   Downloaded vcpkg v0.2.15
   Downloaded image v0.25.10
   Downloaded zerocopy v0.8.63
-  Downloaded pxfm v0.1.30
   Downloaded icu_normalizer v2.3.0
+  Downloaded pxfm v0.1.30
   Downloaded libsqlite3-sys v0.30.1
    Compiling proc-macro2 v1.0.107
    Compiling unicode-ident v1.0.27
@@ -474,8 +241,8 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling bytes v1.12.1
    Compiling once_cell v1.21.4
    Compiling writeable v0.6.4
-   Compiling litemap v0.8.3
    Compiling itoa v1.0.18
+   Compiling litemap v0.8.3
    Compiling icu_normalizer_data v2.3.0
    Compiling syn v3.0.9
    Compiling version_check v0.9.5
@@ -483,16 +250,16 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling syn v2.0.119
    Compiling generic-array v0.14.7
    Compiling icu_properties_data v2.3.0
-   Compiling find-msvc-tools v0.1.14
    Compiling mio v1.2.4
    Compiling socket2 v0.6.5
+   Compiling find-msvc-tools v0.1.14
    Compiling futures-sink v0.3.34
    Compiling shlex v2.0.1
    Compiling cc v1.8.0
-   Compiling memchr v2.8.3
-   Compiling typenum v1.20.1
-   Compiling smallvec v1.16.3
    Compiling percent-encoding v2.3.2
+   Compiling memchr v2.8.3
+   Compiling smallvec v1.16.3
+   Compiling typenum v1.20.1
    Compiling autocfg v1.5.1
    Compiling serde v1.0.229
    Compiling futures-io v0.3.34
@@ -508,8 +275,8 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling parking_lot_core v0.9.12
    Compiling lock_api v0.4.14
    Compiling signal-hook-registry v1.4.8
-   Compiling tracing-attributes v0.1.31
    Compiling tracing-core v0.1.36
+   Compiling tracing-attributes v0.1.31
    Compiling zerofrom-derive v0.1.8
    Compiling yoke-derive v0.8.4
    Compiling zerovec-derive v0.11.6
@@ -523,18 +290,18 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling log v0.4.34
    Compiling subtle v2.6.1
    Compiling tokio v1.53.3
+   Compiling serde_core v1.0.229
    Compiling tinystr v0.8.4
    Compiling potential_utf v0.1.6
    Compiling icu_locale_core v2.3.0
    Compiling icu_collections v2.3.0
-   Compiling serde_core v1.0.229
    Compiling tracing v0.1.44
    Compiling getrandom v0.2.17
    Compiling icu_provider v2.3.1
    Compiling icu_properties v2.3.0
    Compiling equivalent v1.0.3
-   Compiling cpufeatures v0.2.17
    Compiling crossbeam-utils v0.8.23
+   Compiling cpufeatures v0.2.17
    Compiling http v1.5.0
    Compiling allocator-api2 v0.2.21
    Compiling thiserror v2.0.21
@@ -560,9 +327,9 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling hashlink v0.10.0
    Compiling crossbeam-queue v0.3.14
    Compiling digest v0.10.7
-   Compiling zeroize v1.9.1
    Compiling httparse v1.10.1
    Compiling tower-service v0.3.3
+   Compiling zeroize v1.9.1
    Compiling rustls-pki-types v1.15.1
    Compiling parking_lot v0.12.5
    Compiling idna v1.1.0
@@ -575,28 +342,28 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling flume v0.11.1
    Compiling url v2.5.8
    Compiling futures-intrusive v0.5.0
+   Compiling tokio-stream v0.1.19
    Compiling either v1.19.0
    Compiling futures-executor v0.3.34
-   Compiling tokio-stream v0.1.19
    Compiling sync_wrapper v1.0.2
-   Compiling tower-layer v0.3.3
+   Compiling httpdate v1.0.3
    Compiling rustls v0.23.46
    Compiling zerocopy v0.8.63
    Compiling atomic-waker v1.1.2
+   Compiling tower-layer v0.3.3
    Compiling base64 v0.22.1
-   Compiling httpdate v1.0.3
    Compiling serde_json v1.0.154
-   Compiling sqlx-core v0.8.6
    Compiling hyper v1.12.0
+   Compiling sqlx-core v0.8.6
    Compiling atoi v2.0.0
-   Compiling rustls-webpki v0.103.15
    Compiling serde_urlencoded v0.7.1
    Compiling http-body-util v0.1.5
    Compiling rand_core v0.6.4
    Compiling ipnet v2.12.2
    Compiling base64 v0.23.1
-   Compiling hyper-util v0.1.21
    Compiling sqlx-sqlite v0.8.6
+   Compiling hyper-util v0.1.21
+   Compiling rustls-webpki v0.103.15
    Compiling tower v0.5.3
    Compiling hex v0.4.3
    Compiling dotenvy v0.15.7
@@ -605,25 +372,25 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling heck v0.5.0
    Compiling sqlx-macros-core v0.8.6
    Compiling regex-automata v0.4.18
-   Compiling ppv-lite86 v0.2.21
    Compiling tokio-rustls v0.26.6
    Compiling moxcms v0.8.1
+   Compiling ppv-lite86 v0.2.21
    Compiling webpki-roots v1.0.9
+   Compiling mime v0.3.17
    Compiling byteorder-lite v0.1.0
+   Compiling anyhow v1.0.104
    Compiling bitflags v2.13.2
    Compiling bytemuck v1.25.2
-   Compiling anyhow v1.0.104
-   Compiling base64ct v1.8.3
    Compiling lazy_static v1.5.1
-   Compiling mime v0.3.17
+   Compiling base64ct v1.8.3
    Compiling password-hash v0.5.0
-   Compiling axum-core v0.5.6
+   Compiling image v0.25.10
    Compiling sharded-slab v0.1.7
    Compiling tower-http v0.6.11
+   Compiling axum-core v0.5.6
    Compiling hyper-rustls v0.27.10
-   Compiling image v0.25.10
-   Compiling matchers v0.2.0
    Compiling rand_chacha v0.3.1
+   Compiling matchers v0.2.0
    Compiling sqlx-macros v0.8.6
    Compiling blake2 v0.10.6
    Compiling serde_path_to_error v0.1.20
@@ -631,20 +398,20 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
    Compiling thread_local v1.1.10
    Compiling matchit v0.8.4
    Compiling nu-ansi-term v0.50.3
-   Compiling axum v0.8.9
-   Compiling tracing-subscriber v0.3.23
    Compiling argon2 v0.5.3
    Compiling sqlx v0.8.6
-   Compiling qrcode v0.14.1
+   Compiling tracing-subscriber v0.3.23
+   Compiling axum v0.8.9
    Compiling rand v0.8.8
    Compiling reqwest v0.12.28
+   Compiling qrcode v0.14.1
    Compiling hmac v0.12.1
    Compiling bproto-panel v0.1.0 (/home/runner/work/bProto/bProto/panel/backend)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 51.79s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 44.70s
 -- OK: cargo build --all-targets
 
 ############ $ (panel) cargo test
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
      Running unittests src/main.rs (target/debug/deps/panel-456d2137952bf23a)
 
 running 37 tests
@@ -686,7 +453,7 @@ test api_tests::session_reports_accumulate_and_close ... ok
 test tests::password_hash_roundtrip ... ok
 test api_tests::password_change_rotates_the_credential ... ok
 
-test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.19s
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.74s
 
 -- OK: cargo test
 
@@ -697,7 +464,7 @@ test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 + typescript 5.9.3
 + vite 6.4.4
 
-Done in 1.4s using pnpm v9.15.9
+Done in 1.2s using pnpm v9.15.9
 ############ $ npx tsc --noEmit
 -- OK: tsc
 ############ $ npm run build
@@ -713,34 +480,36 @@ computing gzip size...
 [2mdist/[22m[32mindex.html                 [39m[1m[2m  0.41 kB[22m[1m[22m[2m │ gzip:  0.28 kB[22m
 [2mdist/[22m[2massets/[22m[35mindex-CcnqClAN.css  [39m[1m[2m 19.79 kB[22m[1m[22m[2m │ gzip:  4.64 kB[22m
 [2mdist/[22m[2massets/[22m[36mindex-CvmeSaZv.js   [39m[1m[2m286.35 kB[22m[1m[22m[2m │ gzip: 84.47 kB[22m
-[32m✓ built in 1.23s[39m
+[32m✓ built in 991ms[39m
 -- OK: build
 ############ FUNCTIONAL: run.sh demo
-==> starting a local server on 127.0.0.1:40178 (no --datapath, no root)
-  ok server is up
+==> building vpn-server
+   Compiling vpn-server v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-server)
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+   --> crates/vpn-server/src/server.rs:288:23
+    |
+288 |         let session = self.sessions.remove(old_tag).await?;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `()`
+    |
+    = help: the nightly-only, unstable trait `Try` is not implemented for `()`
 
-configuration OK: server=127.0.0.1:40178 donor=www.cloudflare.com mtu=1251 user_id=1
-
-tunnel up:
-  assigned address : 10.66.0.2
-  MTU              : 1251
-[2m2026-10-22T15:30:09.078200Z[0m [32m INFO[0m [2mbproto[0m[2m:[0m stats [3mrtt_ms[0m[2m=[0m333.0 [3mcwnd[0m[2m=[0m12510 [3mrx[0m[2m=[0m0 [3mtx[0m[2m=[0m0 [3mdropped[0m[2m=[0m0 [3muptime_s[0m[2m=[0m0
-[2m2026-10-22T15:30:10.078978Z[0m [32m INFO[0m [2mbproto[0m[2m:[0m stats [3mrtt_ms[0m[2m=[0m333.0 [3mcwnd[0m[2m=[0m12510 [3mrx[0m[2m=[0m0 [3mtx[0m[2m=[0m0 [3mdropped[0m[2m=[0m0 [3muptime_s[0m[2m=[0m1
-[2m2026-10-22T15:30:11.079813Z[0m [32m INFO[0m [2mbproto[0m[2m:[0m stats [3mrtt_ms[0m[2m=[0m333.0 [3mcwnd[0m[2m=[0m12510 [3mrx[0m[2m=[0m0 [3mtx[0m[2m=[0m0 [3mdropped[0m[2m=[0m0 [3muptime_s[0m[2m=[0m2
-[2m2026-10-22T15:30:12.081566Z[0m [32m INFO[0m [2mbproto[0m[2m:[0m stats [3mrtt_ms[0m[2m=[0m333.0 [3mcwnd[0m[2m=[0m12510 [3mrx[0m[2m=[0m0 [3mtx[0m[2m=[0m0 [3mdropped[0m[2m=[0m0 [3muptime_s[0m[2m=[0m3
-
-server side of the exchange
-  [2m2026-10-22T15:30:08.964957Z[0m [32m INFO[0m [2mvpn_server[0m[2m:[0m configuration loaded [3mlisten[0m[2m=[0m127.0.0.1:40178 [3mdonor[0m[2m=[0mwww.cloudflare.com [3musers[0m[2m=[0m1 [3mtunnel[0m[2m=[0m10.66.0.0/24 [3mpanel[0m[2m=[0m"disabled"
-  [2m2026-10-22T15:30:08.965100Z[0m [33m WARN[0m [2mvpn_server[0m[2m:[0m no panel configured: keys are static, traffic is reported nowhere
-  [2m2026-10-22T15:30:08.965163Z[0m [32m INFO[0m [2mvpn_server[0m[2m:[0m listener up [3maddr[0m[2m=[0m127.0.0.1:40178
-  [2m2026-10-22T15:30:08.965192Z[0m [33m WARN[0m [2mvpn_server[0m[2m:[0m running without --datapath: handshakes are answered, IP packets are dropped
-  [2m2026-10-22T15:30:08.966386Z[0m [32m INFO[0m [2mvpn_server[0m[2m:[0m stats [3msessions[0m[2m=[0m0 [3mhandshakes[0m[2m=[0m0 [3mrejected[0m[2m=[0m0 [3munknown_tags[0m[2m=[0m0
-  [2m2026-10-22T15:30:09.077616Z[0m [32m INFO[0m [2mvpn_server::server[0m[2m:[0m session established [3muser[0m[2m=[0m1 [3mip[0m[2m=[0m10.66.0.2 [3mfrom[0m[2m=[0m127.0.0.1:40061
-  ok handshake and session worked end to end
--- OK: run.sh demo
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `vpn-server` (lib) due to 1 previous error
+err  vpn-server not found after building vpn-server
+-- FAILED: run.sh demo
 
 ############ FUNCTIONAL: server --check-config
-==> /home/runner/work/bProto/bProto/target/debug/vpn-server --check-config
-[2m2026-10-22T15:30:12.097628Z[0m [32m INFO[0m [2mvpn_server[0m[2m:[0m configuration loaded [3mlisten[0m[2m=[0m0.0.0.0:443 [3mdonor[0m[2m=[0mwww.cloudflare.com [3musers[0m[2m=[0m2 [3mtunnel[0m[2m=[0m10.66.0.0/24 [3mpanel[0m[2m=[0m"disabled"
-configuration OK
--- OK: check-config
+==> building vpn-server
+   Compiling vpn-server v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-server)
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+   --> crates/vpn-server/src/server.rs:288:23
+    |
+288 |         let session = self.sessions.remove(old_tag).await?;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `()`
+    |
+    = help: the nightly-only, unstable trait `Try` is not implemented for `()`
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `vpn-server` (lib) due to 1 previous error
+err  vpn-server not found after building vpn-server
+-- FAILED: check-config
