@@ -1,0 +1,16 @@
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe network from the runner
+        run: |
+          echo "runner: $(uname -m)"
+          curl -sSf -o /dev/null -w 'crates.io index: %{http_code}\n' https://index.crates.io/config.json || echo "crates.io unreachable"
+          curl -sSf -o /dev/null -w 'static.rust-lang.org: %{http_code}\n' https://static.rust-lang.org/dist/channel-rust-stable.toml || echo "static.rust-lang.org unreachable"
