@@ -1,0 +1,57 @@
+# bProto server systemd unit.
+# Install:
+#   cargo build --release -p vpn-server
+#   install -m0755 target/release/vpn-server /usr/local/bin/vpn-server
+#   install -d /etc/bproto && install -m0600 server.toml /etc/bproto/server.toml
+#   install -m0644 deploy/bproto-server.service /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now bproto-server
+#
+# The unit grants exactly the capabilities the data path needs and drops the
+# rest, so the process never runs as root.
+
+[Unit]
+Description=bProto VPN server
+Documentation=https://example.invalid/bproto/docs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/vpn-server --config /etc/bproto/server.toml --datapath
+Restart=on-failure
+RestartSec=2
+User=bproto
+Group=bproto
+
+# Data path needs NET_ADMIN (TUN + nft). Nothing else.
+AmbientCapabilities=CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_ADMIN
+NoNewPrivileges=yes
+
+# Hardening
+PrivateTmp=yes
+# The TUN device lives in /dev/net/tun.
+PrivateDevices=no
+ProtectSystem=strict
+ProtectHome=yes
+# IPv4 forwarding is set by /etc/sysctl.d/99-bproto.conf instead of from here, so
+# this stays on: a network-facing process should not be able to write sysctls.
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+# AF_NETLINK is required by the `nft` child process that loads the NAT ruleset.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+LimitNOFILE=1048576
+
+# Logs
+Environment=RUST_LOG=info
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

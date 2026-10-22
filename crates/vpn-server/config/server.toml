@@ -1,0 +1,41 @@
+# bProto server configuration. Copy to /etc/bproto/server.toml.
+#
+# Secrets (tag_key, user psk) are normally pushed by the control panel over the
+# loopback admin API; this file is the self-contained MVP path.
+
+# UDP listener. Publish on :443 with a QUIC-shaped flow to look like HTTP/3.
+listen_addr = "0.0.0.0:443"
+
+# Routing tag key K_tag: 32 bytes hex. MUST match the panel and every client.
+# Generate with: openssl rand -hex 32
+tag_key = "0000000000000000000000000000000000000000000000000000000000000000"
+
+[donor]
+# The site whose identity we borrow. It MUST support HTTP/3 for the UDP path.
+sni = "www.cloudflare.com"
+alpn = ["h3"]
+# health_interval_secs = 30
+# addr_override = "104.16.132.229:443"
+
+[tun]
+name = "bproto0"
+address = "10.66.0.1"
+netmask = "255.255.255.0"
+mtu = 1280
+# nat_interface = "eth0"   # omit to skip NAT setup
+
+[admin]
+# Loopback only. The server refuses to start the admin API on a public address.
+listen_addr = "127.0.0.1:9100"
+# Bearer token the panel presents. Generate with: openssl rand -hex 32
+token = ""
+
+# Self-contained user table (MVP). The panel replaces this at stage 2.
+[[users]]
+id = 1
+# openssl rand -hex 32
+psk = "1111111111111111111111111111111111111111111111111111111111111111"
+
+[[users]]
+id = 2
+psk = "2222222222222222222222222222222222222222222222222222222222222222"

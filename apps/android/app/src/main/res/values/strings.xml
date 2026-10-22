@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">bProto</string>
+    <string name="config_label">bproto:// key URI</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="status_idle">Idle</string>
+    <string name="permission_needed">VPN permission is required</string>
+    <string name="notification_channel">Tunnel</string>
+    <string name="notification_title">bProto is running</string>
+</resources>

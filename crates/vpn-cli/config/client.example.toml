@@ -1,0 +1,39 @@
+# bProto client configuration. Copy to `client.toml` next to the `bproto`
+# binary, or generate one from the panel's key URI:
+#
+#   bproto import 'bproto://import/...' --out client.toml
+#
+# Everything in this file is a secret: it is the account.
+
+# UDP endpoint of your server. Same value the panel was given as the inbound.
+server = "203.0.113.10:443"
+
+# Numerical user id issued by the panel (`users.id`).
+user_id = 1
+
+# Pre-shared key, 32 bytes hex. Generate with `bproto genkey` or `openssl rand -hex 32`.
+psk = "0000000000000000000000000000000000000000000000000000000000000000"
+
+# Routing tag key K_tag. Must be byte-identical to `tag_key` in server.toml and
+# in the panel's BPROTO_TAG_KEY. It is shared by every user of a deployment.
+tag_key = "0000000000000000000000000000000000000000000000000000000000000000"
+
+# Tunnel MTU; capped at 1251 by the framing overhead.
+mtu = 1280
+
+# ClientHello fingerprint. Only meaningful once a donor is configured
+# (stage 2 "mode B"); harmless now.
+# chrome112 | chrome108 | safari171 | firefox105
+fingerprint = "chrome112"
+
+# off | shape | shape_and_bypass. Only `off` is implemented today.
+stealth = "off"
+
+# How long to keep retrying the handshake before giving up.
+handshake_timeout = "10s"
+
+[donor]
+# The site whose identity is borrowed in mode B. Must serve HTTP/3.
+sni = "www.cloudflare.com"
+# alpn = ["h3"]
+# addr_override = "104.16.132.229:443"

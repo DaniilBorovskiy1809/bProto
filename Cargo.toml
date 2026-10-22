@@ -1,0 +1,59 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/vpn-core",
+    "crates/vpn-tun",
+    "crates/vpn-server",
+    "crates/vpn-cli",
+    "crates/vpn-ffi",
+]
+default-members = ["crates/vpn-core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+# let-chains and `is_multiple_of` set the floor at 1.88.
+rust-version = "1.88"
+
+[workspace.dependencies]
+# --- crypto (RustCrypto only; no hand-rolled primitives) ---
+chacha20poly1305 = "0.10"
+x25519-dalek = { version = "2.0", features = ["static_secrets", "zeroize"] }
+hkdf = "0.12"
+sha2 = "0.10"
+hmac = "0.12"
+subtle = "2.6"
+zeroize = { version = "1.8", features = ["derive"] }
+rand = "0.8"
+getrandom = "0.2"
+
+# --- transport ---
+tokio = { version = "1.44", features = ["rt-multi-thread", "net", "time", "sync", "macros", "io-util", "signal"] }
+quinn = { version = "0.11", default-features = false, features = ["runtime-tokio", "rustls-ring"] }
+
+# --- tls / masquerade ---
+# craftls is a drop-in rustls replacement with ClientHello fingerprinting.
+# Patched for session_id injection, see crates/craftls/PATCH.md
+# rustls = { git = "https://github.com/3andne/craftls", rev = "<PIN>" }
+
+# --- plumbing ---
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "2.0"
+anyhow = "1.0"
+bitvec = "1.0"
+
+# --- server ---
+tun = "0.7"
+clap = { version = "4.5", features = ["derive"] }
+
+# --- panel backend (separate, not in workspace by default) ---
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

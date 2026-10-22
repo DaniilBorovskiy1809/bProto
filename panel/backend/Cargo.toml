@@ -1,0 +1,38 @@
+[package]
+name = "bproto-panel"
+description = "bProto control panel backend: axum + SQLite"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+
+# The panel is its own build unit; it is not part of the protocol workspace.
+[workspace]
+
+[[bin]]
+name = "panel"
+path = "src/main.rs"
+
+[dependencies]
+axum = "0.8"
+tokio = { version = "1.44", features = ["rt-multi-thread", "macros", "net", "signal"] }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "macros"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+argon2 = "0.5"
+hmac = "0.12"
+sha2 = "0.10"
+rand = "0.8"
+subtle = "2.6"
+hex = "0.4"
+qrcode = "0.14"
+tower-http = { version = "0.6", features = ["trace", "limit"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-webpki-roots"] }
+base64 = "0.22"
+url = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1.0"
+
+[dev-dependencies]
+tokio = { version = "1.44", features = ["macros", "rt"] }
+tower = { version = "0.5", features = ["util"] }

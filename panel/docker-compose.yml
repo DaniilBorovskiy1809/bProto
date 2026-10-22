@@ -1,0 +1,62 @@
+# bProto control panel: HTTPS terminator + static frontend + backend.
+#
+# Bring up with:
+#   BPROTO_DOMAIN=panel.example.com \
+#   BPROTO_TAG_KEY=$(openssl rand -hex 32) \
+#   BPROTO_ADMIN_PASSWORD="$(openssl rand -base64 24)" \
+#     docker compose up -d --build
+#
+# BPROTO_TAG_KEY MUST be byte-identical to `tag_key` in the server's
+# server.toml; it is what turns a user id into a routing tag.
+services:
+  # One-shot: copies the built SPA into the volume Caddy serves from.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    command: ["sh", "-c", "cp -r /app/dist/. /srv/"]
+    volumes:
+      - frontend_dist:/srv
+    restart: "no"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      BPROTO_DOMAIN: ${BPROTO_DOMAIN:?set BPROTO_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - frontend_dist:/srv:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      panel:
+        condition: service_started
+      frontend:
+        condition: service_completed_successfully
+
+  panel:
+    build:
+      context: ../..
+      dockerfile: panel/backend/Dockerfile
+    restart: unless-stopped
+    # No ports: published only to Caddy on the compose network.
+    expose:
+      - "8080"
+    environment:
+      BPROTO_LISTEN: 0.0.0.0:8080
+      BPROTO_DB: sqlite:///data/panel.db?mode=rwc
+      BPROTO_TAG_KEY: ${BPROTO_TAG_KEY:?set BPROTO_TAG_KEY}
+      BPROTO_ADMIN_PASSWORD: ${BPROTO_ADMIN_PASSWORD:-}
+      RUST_LOG: info
+    volumes:
+      - panel_data:/data
+
+volumes:
+  caddy_data:
+  caddy_config:
+  panel_data:
+  frontend_dist:

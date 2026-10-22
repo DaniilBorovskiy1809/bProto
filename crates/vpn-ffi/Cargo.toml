@@ -1,0 +1,27 @@
+[package]
+name = "bproto"
+description = "bProto C-ABI / JNI surface for Android and iOS"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "bproto"
+# cdylib -> libbproto.so (Android/desktop), staticlib -> libbproto.a (iOS)
+crate-type = ["cdylib", "staticlib"]
+
+[features]
+default = []
+# Java/Kotlin entry points for the Android app. Off by default so desktop and
+# iOS builds do not pull in the JNI bridge.
+jni = ["dep:jni"]
+
+[dependencies]
+vpn-core = { path = "../vpn-core" }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+serde_json.workspace = true
+tracing.workspace = true
+jni = { version = "0.21", optional = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

@@ -1,0 +1,28 @@
+[package]
+name = "vpn-server"
+description = "bProto server: QUIC listener, ClientHello interceptor, TUN + NAT"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "vpn-server"
+path = "src/main.rs"
+
+[dependencies]
+vpn-core = { path = "../vpn-core" }
+vpn-tun = { path = "../vpn-tun" }
+tokio.workspace = true
+serde.workspace = true
+toml.workspace = true
+clap.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }

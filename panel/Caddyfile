@@ -1,0 +1,37 @@
+# HTTPS is mandatory. Caddy terminates TLS, serves the static panel and
+# reverse-proxies the API. The panel backend never listens on a public address.
+
+{$BPROTO_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# API to the backend. `handle` (not `handle_path`) keeps the /api prefix,
+	# which is what the backend's routes are declared with.
+	handle /api/* {
+		reverse_proxy panel:8080
+	}
+
+	# Subscription links handed to clients: /sub/<sub_id>.
+	handle /sub/* {
+		reverse_proxy panel:8080
+	}
+
+	# Static frontend build (produced by `just frontend` or the frontend image).
+	# `try_files` is the SPA fallback so deep links resolve to index.html.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	log {
+		output file /data/access.log
+	}
+}
