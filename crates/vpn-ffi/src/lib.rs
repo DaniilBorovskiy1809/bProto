@@ -230,7 +230,10 @@ pub unsafe extern "C" fn bproto_send(
     // SAFETY: caller promised `len` readable bytes.
     let packet = unsafe { std::slice::from_raw_parts(buf, len) };
     match t.rt.block_on(t.tunnel.send_ip_packet(packet)) {
-        Ok(()) => len as c_int,
+        Ok(true) => len as c_int,
+        // The congestion window was full: nothing was sent, and that is not an
+        // error — the transport would have dropped the packet anyway.
+        Ok(false) => 0,
         Err(e) => {
             set_error(&format!("send failed: {e}"));
             -1

@@ -12,10 +12,11 @@ use std::os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
+use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
-use vpn_core::server::{ServerNode, ServerParams};
 use vpn_core::tags::TagTable;
-use vpn_core::{DonorSpec, Fingerprint, IpPool, MAX_DATAGRAM, StealthLevel, TunnelConfig};
+use vpn_core::{DonorSpec, HelloProfile, IpPool, MAX_DATAGRAM, TunnelConfig};
+use vpn_server::server::{Node, Outcome};
 
 use super::{current_stop, run_pump};
 use crate::{BprotoTunnel, bproto_assigned_ip, bproto_connect, bproto_free};
@@ -26,8 +27,10 @@ const USER: u64 = 42;
 
 /// The server side of the link, plus the channel of packets aimed at its TUN.
 struct Harness {
-    node: Arc<ServerNode>,
+    node: Arc<Node>,
     addr: SocketAddr,
+    /// A socket bound for the server's outbound path.
+    sock: Arc<UdpSocket>,
     to_tun: mpsc::Receiver<Vec<u8>>,
 }
 
@@ -35,7 +38,6 @@ fn start_server(rt: &tokio::runtime::Runtime) -> Harness {
     let mut table = TagTable::new();
     table.insert(&TAG_KEY, USER, PSK);
     let tags = Arc::new(RwLock::new(table));
-    let pool = IpPool::new("10.66.0.0".parse().unwrap(), 24);
 
     let (sock, addr) = rt
         .block_on(async {
@@ -44,28 +46,33 @@ fn start_server(rt: &tokio::runtime::Runtime) -> Harness {
             Ok::<_, std::io::Error>((Arc::new(sock), addr))
         })
         .expect("bind loopback");
-    let node = Arc::new(ServerNode::new(
-        Arc::clone(&sock),
+    let node = Arc::new(Node::new(
         tags,
-        pool,
-        ServerParams::default(),
+        IpPool::new(Ipv4Addr::new(10, 66, 0, 0), 24),
+        vpn_core::packet::TUNNEL_MTU,
     ));
 
     let (to_tun_tx, to_tun) = mpsc::channel::<Vec<u8>>(1024);
     let reader = Arc::clone(&node);
+    let reader_sock = Arc::clone(&sock);
     rt.spawn(async move {
         let mut buf = vec![0u8; MAX_DATAGRAM + 32];
         loop {
-            let Ok((n, from)) = reader.socket().recv_from(&mut buf).await else {
+            let Ok((n, from)) = reader_sock.recv_from(&mut buf).await else {
                 break;
             };
-            if let Ok(Some(pkt)) = reader.handle(&buf[..n], from, 0).await {
+            if let Ok(Outcome::Packet(pkt)) = reader.route(&reader_sock, &buf[..n], from, 0).await {
                 let _ = to_tun_tx.send(pkt).await;
             }
         }
     });
 
-    Harness { node, addr, to_tun }
+    Harness {
+        node,
+        addr,
+        sock,
+        to_tun,
+    }
 }
 
 fn client_config(server: SocketAddr) -> TunnelConfig {
@@ -76,8 +83,8 @@ fn client_config(server: SocketAddr) -> TunnelConfig {
         user_id: USER,
         tag_key: TAG_KEY,
         mtu: 1280,
-        fingerprint: Fingerprint::Chrome112,
-        stealth: StealthLevel::Off,
+        fingerprint: HelloProfile::default(),
+        masquerade: false,
         handshake_timeout: Duration::from_secs(3),
     }
 }
@@ -214,8 +221,9 @@ fn pump_moves_packets_both_ways() {
 
     // Downlink: server -> descriptor.
     let down = ip_packet([1, 1, 1, 1], [10, 66, 0, 2], 0xB2);
+    let sock = Arc::clone(&harness.sock);
     let sent = rt
-        .block_on(harness.node.seal_outbound(client_ip, &down, 0))
+        .block_on(harness.node.send_to_client(&sock, client_ip, &down, 0))
         .expect("sealing outbound must work");
     assert!(sent, "the leased address must be routable");
     let got =

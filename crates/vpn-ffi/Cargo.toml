@@ -26,3 +26,6 @@ jni = { version = "0.21", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[dev-dependencies]
+vpn-server = { path = "../vpn-server" }
