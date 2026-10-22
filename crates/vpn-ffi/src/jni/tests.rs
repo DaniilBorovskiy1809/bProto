@@ -29,8 +29,6 @@ const USER: u64 = 42;
 struct Harness {
     node: Arc<Node>,
     addr: SocketAddr,
-    /// A socket bound for the server's outbound path.
-    sock: Arc<UdpSocket>,
     to_tun: mpsc::Receiver<Vec<u8>>,
 }
 
@@ -47,6 +45,7 @@ fn start_server(rt: &tokio::runtime::Runtime) -> Harness {
         })
         .expect("bind loopback");
     let node = Arc::new(Node::new(
+        Arc::clone(&sock),
         tags,
         IpPool::new(Ipv4Addr::new(10, 66, 0, 0), 24),
         vpn_core::packet::TUNNEL_MTU,
@@ -61,18 +60,13 @@ fn start_server(rt: &tokio::runtime::Runtime) -> Harness {
             let Ok((n, from)) = reader_sock.recv_from(&mut buf).await else {
                 break;
             };
-            if let Ok(Outcome::Packet(pkt)) = reader.route(&reader_sock, &buf[..n], from, 0).await {
+            if let Ok(Outcome::Packet(pkt)) = reader.route(&buf[..n], from, 0).await {
                 let _ = to_tun_tx.send(pkt).await;
             }
         }
     });
 
-    Harness {
-        node,
-        addr,
-        sock,
-        to_tun,
-    }
+    Harness { node, addr, to_tun }
 }
 
 fn client_config(server: SocketAddr) -> TunnelConfig {
@@ -221,9 +215,8 @@ fn pump_moves_packets_both_ways() {
 
     // Downlink: server -> descriptor.
     let down = ip_packet([1, 1, 1, 1], [10, 66, 0, 2], 0xB2);
-    let sock = Arc::clone(&harness.sock);
     let sent = rt
-        .block_on(harness.node.send_to_client(&sock, client_ip, &down, 0))
+        .block_on(harness.node.send_to_client(client_ip, &down, 0))
         .expect("sealing outbound must work");
     assert!(sent, "the leased address must be routable");
     let got =

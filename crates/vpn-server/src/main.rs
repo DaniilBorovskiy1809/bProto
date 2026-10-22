@@ -110,6 +110,7 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!(addr = %sock.local_addr()?, "listener up");
 
     let node = Arc::new(Node::new(
+        Arc::clone(&sock),
         Arc::clone(&tags),
         IpPool::new(network, pool_prefix),
         (cfg.tun.mtu as usize).min(packet::TUNNEL_MTU),
@@ -251,7 +252,7 @@ async fn serve(ctx: ServeCtx) -> anyhow::Result<()> {
         tokio::select! {
             received = sock.recv_from(&mut datagram) => {
                 let Ok((n, from)) = received else { continue };
-                match node.route(&sock, &datagram[..n], from, clock.now_us()).await {
+                match node.route(&datagram[..n], from, clock.now_us()).await {
                     Ok(Outcome::Packet(pkt)) => {
                         if let Some(device) = &device
                             && let Err(e) = device.write_packet(&pkt)
@@ -269,7 +270,7 @@ async fn serve(ctx: ServeCtx) -> anyhow::Result<()> {
 
             Some(pkt) = tun_rx.recv() => {
                 let Some(dst) = vpn_core::ip::dst_ipv4(&pkt) else { continue };
-                match node.send_to_client(&sock, dst, &pkt, clock.now_us()).await {
+                match node.send_to_client(dst, &pkt, clock.now_us()).await {
                     Ok(true) => {}
                     Ok(false) => tracing::trace!(%dst, "no route, or congestion window full"),
                     Err(e) => tracing::debug!(error = %e, "outbound packet dropped"),
@@ -277,7 +278,7 @@ async fn serve(ctx: ServeCtx) -> anyhow::Result<()> {
             }
 
             _ = tick.tick() => {
-                let closed = node.reap(&sock, clock.now_us()).await;
+                let closed = node.reap(clock.now_us()).await;
                 if !closed.is_empty()
                     && let Some(panel) = &panel
                 {

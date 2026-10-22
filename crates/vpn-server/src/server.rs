@@ -126,6 +126,11 @@ pub struct ClosedSession {
 /// The server node.
 #[derive(Debug)]
 pub struct Node {
+    /// The socket every datagram is received on and answered from. The node
+    /// owns it because sending from any other socket would deliver packets the
+    /// client is entitled to discard: it only accepts the source it shook
+    /// hands with.
+    sock: Arc<UdpSocket>,
     tags: Arc<RwLock<TagTable>>,
     sessions: EndpointSet<SessionMeta>,
     /// Wire tag of each user's current session, keyed by the routing tag the
@@ -142,10 +147,11 @@ pub struct Node {
 }
 
 impl Node {
-    /// Build a node over a tag table and an address pool.
+    /// Build a node over a socket, a tag table and an address pool.
     #[must_use]
-    pub fn new(tags: Arc<RwLock<TagTable>>, pool: IpPool, mtu: usize) -> Self {
+    pub fn new(sock: Arc<UdpSocket>, tags: Arc<RwLock<TagTable>>, pool: IpPool, mtu: usize) -> Self {
         Self {
+            sock,
             tags,
             sessions: EndpointSet::new(),
             by_identity: RwLock::new(HashMap::new()),
@@ -178,14 +184,13 @@ impl Node {
     /// say to a forgery, and answering would tell a prober it found something.
     pub async fn route(
         &self,
-        sock: &UdpSocket,
         datagram: &[u8],
         from: SocketAddr,
         now_us: u64,
     ) -> Result<Outcome, Error> {
         let header = packet::Header::decode(datagram)?;
         if header.is_control() {
-            return self.accept(sock, datagram, from, now_us).await;
+            return self.accept(datagram, from, now_us).await;
         }
 
         let Some(session) = self.sessions.by_tag(header.session_tag).await else {
@@ -201,7 +206,7 @@ impl Node {
         // fails authentication inside `deliver`.
         session.set_peer(from);
 
-        match vpn_rt::deliver(sock, &session, datagram, now_us).await {
+        match vpn_rt::deliver(&self.sock, &session, datagram, now_us).await {
             Ok(Some(pkt)) => Ok(Outcome::Packet(pkt)),
             Ok(None) => Ok(Outcome::Nothing),
             Err(Error::NoSession) => {
@@ -215,7 +220,6 @@ impl Node {
     /// Answer a `HELLO` and open the session.
     async fn accept(
         &self,
-        sock: &UdpSocket,
         datagram: &[u8],
         from: SocketAddr,
         now_us: u64,
@@ -271,7 +275,7 @@ impl Node {
             t.bind_ip(&verified.tag, ip);
         }
 
-        udp::send(sock, &reply, from).await?;
+        udp::send(&self.sock, &reply, from).await?;
         self.counters.handshakes.fetch_add(1, Ordering::Relaxed);
         tracing::info!(user = verified.user_id, %ip, %from, "session established");
         Ok(Outcome::Handshaked {
@@ -315,7 +319,6 @@ impl Node {
     /// window is full and the packet was dropped.
     pub async fn send_to_client(
         &self,
-        sock: &UdpSocket,
         dst: Ipv4Addr,
         packet: &[u8],
         now_us: u64,
@@ -323,12 +326,12 @@ impl Node {
         let Some(session) = self.sessions.by_addr(dst).await else {
             return Ok(false);
         };
-        vpn_rt::send_ip(sock, &session, packet, now_us).await
+        vpn_rt::send_ip(&self.sock, &session, packet, now_us).await
     }
 
     /// Flush every session's ACKs and keepalives, returning the ones that went
     /// idle so the caller can release their addresses and report them.
-    pub async fn reap(&self, sock: &UdpSocket, now_us: u64) -> Vec<ClosedSession> {
+    pub async fn reap(&self, now_us: u64) -> Vec<ClosedSession> {
         let mut closed = Vec::new();
         for (tag, session) in self.sessions.snapshot().await {
             let (expired, outbox) = {
@@ -338,7 +341,7 @@ impl Node {
             };
             let peer = session.peer();
             for dgram in outbox {
-                let _ = udp::send(sock, &dgram, peer).await;
+                let _ = udp::send(&self.sock, &dgram, peer).await;
             }
             if !expired {
                 continue;
@@ -420,12 +423,11 @@ impl Node {
 /// Convenience for tests and the binary: a node wired to a socket.
 pub async fn drive(
     node: &Node,
-    sock: &UdpSocket,
     datagram: &[u8],
     from: SocketAddr,
     now_us: u64,
 ) -> Option<Vec<u8>> {
-    match node.route(sock, datagram, from, now_us).await {
+    match node.route(datagram, from, now_us).await {
         Ok(Outcome::Packet(pkt)) => Some(pkt),
         _ => None,
     }
@@ -449,8 +451,9 @@ mod tests {
         Arc::new(RwLock::new(t))
     }
 
-    fn node() -> Node {
+    fn node(sock: Arc<UdpSocket>) -> Node {
         Node::new(
+            sock,
             tags(),
             IpPool::new(Ipv4Addr::new(10, 66, 0, 0), 24),
             vpn_core::packet::TUNNEL_MTU,
@@ -473,8 +476,8 @@ mod tests {
 
     #[tokio::test]
     async fn a_probe_is_rejected_and_counted() {
-        let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
-        let node = node();
+        let sock = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
+        let node = node(Arc::clone(&sock));
         let bogus = packet::encode_plaintext_control(
             0,
             0,
@@ -488,7 +491,7 @@ mod tests {
             .encode(),
         );
         let from: SocketAddr = "127.0.0.1:5000".parse().unwrap();
-        assert!(node.route(&sock, &bogus, from, 0).await.is_err());
+        assert!(node.route(&bogus, from, 0).await.is_err());
         let s = node.stats().await;
         assert_eq!(s.rejected_handshakes, 1);
         assert_eq!(s.sessions, 0);
@@ -496,13 +499,13 @@ mod tests {
 
     #[tokio::test]
     async fn a_handshake_leases_an_address_and_a_second_replaces_it() {
-        let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let sock = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
         let addr = sock.local_addr().unwrap();
-        let node = node();
+        let node = node(Arc::clone(&sock));
         let from: SocketAddr = "127.0.0.1:5000".parse().unwrap();
 
         let (_s, hello) = handshake::start(&cfg(addr), unix_now_secs()).unwrap();
-        let outcome = node.route(&sock, &hello, from, 0).await.unwrap();
+        let outcome = node.route(&hello, from, 0).await.unwrap();
         let first_ip = match outcome {
             Outcome::Handshaked { ip, .. } => ip,
             other => panic!("expected a handshake, got {other:?}"),
@@ -512,19 +515,19 @@ mod tests {
 
         // A reconnect from the same user must replace, not leak.
         let (_s2, hello2) = handshake::start(&cfg(addr), unix_now_secs()).unwrap();
-        let outcome = node.route(&sock, &hello2, from, 1_000).await.unwrap();
+        let outcome = node.route(&hello2, from, 1_000).await.unwrap();
         assert!(matches!(outcome, Outcome::Handshaked { .. }));
         assert_eq!(node.stats().await.sessions, 1, "a reconnect must not leak");
     }
 
     #[tokio::test]
     async fn unknown_tags_are_counted_and_do_not_create_sessions() {
-        let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
-        let node = node();
+        let sock = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
+        let node = node(Arc::clone(&sock));
         let mut dg = packet::Header::new(0, 0xDEAD, 1).encode().to_vec();
         dg.extend_from_slice(&[0u8; 32]);
         let from: SocketAddr = "127.0.0.1:5000".parse().unwrap();
-        assert!(node.route(&sock, &dg, from, 0).await.is_err());
+        assert!(node.route(&dg, from, 0).await.is_err());
         assert_eq!(node.stats().await.unknown_tags, 1);
         assert_eq!(node.stats().await.sessions, 0);
     }
@@ -533,37 +536,37 @@ mod tests {
     async fn a_session_born_late_is_not_reaped_immediately() {
         // Regression: seeding the idle timer at zero made any session created
         // more than `idle_timeout` after start-up die on the first tick.
-        let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let sock = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
         let addr = sock.local_addr().unwrap();
-        let node = node();
+        let node = node(Arc::clone(&sock));
         let from: SocketAddr = "127.0.0.1:5000".parse().unwrap();
 
         let (_s, hello) = handshake::start(&cfg(addr), unix_now_secs()).unwrap();
         let born = 300_000_000u64;
-        node.route(&sock, &hello, from, born).await.unwrap();
+        node.route(&hello, from, born).await.unwrap();
         assert_eq!(node.stats().await.sessions, 1);
 
-        assert!(node.reap(&sock, born + 1_000_000).await.is_empty());
+        assert!(node.reap(born + 1_000_000).await.is_empty());
         assert_eq!(node.stats().await.sessions, 1);
 
         let idle = IDLE_TIMEOUT.as_micros() as u64;
-        let closed = node.reap(&sock, born + idle).await;
+        let closed = node.reap(born + idle).await;
         assert_eq!(closed.len(), 1);
         assert_eq!(node.stats().await.sessions, 0);
     }
 
     #[tokio::test]
     async fn reaping_hands_back_the_address_and_a_final_delta() {
-        let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let sock = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
         let addr = sock.local_addr().unwrap();
-        let node = node();
+        let node = node(Arc::clone(&sock));
         let from: SocketAddr = "127.0.0.1:5000".parse().unwrap();
 
         let (_s, hello) = handshake::start(&cfg(addr), unix_now_secs()).unwrap();
-        node.route(&sock, &hello, from, 0).await.unwrap();
+        node.route(&hello, from, 0).await.unwrap();
 
         let idle = IDLE_TIMEOUT.as_micros() as u64;
-        let closed = node.reap(&sock, idle).await;
+        let closed = node.reap(idle).await;
         assert_eq!(closed.len(), 1);
         assert_eq!(closed[0].ip, Ipv4Addr::new(10, 66, 0, 2));
         assert_eq!(closed[0].user_id, USER);
@@ -574,16 +577,16 @@ mod tests {
 
         // The address must be reusable.
         let (_s, hello2) = handshake::start(&cfg(addr), unix_now_secs()).unwrap();
-        let out = node.route(&sock, &hello2, from, idle + 1).await.unwrap();
+        let out = node.route(&hello2, from, idle + 1).await.unwrap();
         assert!(matches!(out, Outcome::Handshaked { ip, .. } if ip == Ipv4Addr::new(10, 66, 0, 2)));
     }
 
     #[tokio::test]
     async fn an_outbound_packet_without_a_route_is_dropped_not_errored() {
-        let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
-        let node = node();
+        let sock = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
+        let node = node(Arc::clone(&sock));
         assert!(!node
-            .send_to_client(&sock, Ipv4Addr::new(10, 66, 0, 9), &[0x45; 20], 0)
+            .send_to_client(Ipv4Addr::new(10, 66, 0, 9), &[0x45; 20], 0)
             .await
             .unwrap());
     }

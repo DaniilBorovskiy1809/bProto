@@ -44,9 +44,7 @@ struct Harness {
 
 /// Run a node exactly as the binary does: one receive loop, one housekeeping
 /// tick, packets for the TUN pushed down a channel.
-async fn start_node(node: Arc<Node>) -> (SocketAddr, mpsc::Receiver<Vec<u8>>) {
-    let sock = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
-    let addr = sock.local_addr().unwrap();
+async fn start_node(node: Arc<Node>, sock: Arc<UdpSocket>) -> mpsc::Receiver<Vec<u8>> {
     let (to_tun_tx, to_tun) = mpsc::channel::<Vec<u8>>(1024);
 
     {
@@ -58,25 +56,28 @@ async fn start_node(node: Arc<Node>) -> (SocketAddr, mpsc::Receiver<Vec<u8>>) {
                 let Ok((n, from)) = sock.recv_from(&mut buf).await else {
                     break;
                 };
-                if let Ok(Outcome::Packet(pkt)) = node.route(&sock, &buf[..n], from, 0).await {
+                if let Ok(Outcome::Packet(pkt)) = node.route(&buf[..n], from, 0).await {
                     let _ = to_tun_tx.send(pkt).await;
                 }
             }
         });
     }
-    (addr, to_tun)
+    to_tun
 }
 
 async fn start_server() -> Harness {
     let mut table = TagTable::new();
     table.insert(&TAG_KEY, USER, PSK);
     let tags = Arc::new(RwLock::new(table));
+    let sock = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
+    let addr = sock.local_addr().unwrap();
     let node = Arc::new(Node::new(
+        Arc::clone(&sock),
         tags,
         IpPool::new(Ipv4Addr::new(10, 66, 0, 0), 24),
         vpn_core::packet::TUNNEL_MTU,
     ));
-    let (addr, to_tun) = start_node(Arc::clone(&node)).await;
+    let to_tun = start_node(Arc::clone(&node), sock).await;
     Harness { node, addr, to_tun }
 }
 
@@ -129,10 +130,9 @@ async fn server_to_client_ip_traffic_arrives() {
     down[12..16].copy_from_slice(&[1, 1, 1, 1]);
     down[16..20].copy_from_slice(&client_ip.octets());
 
-    let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
     let sent = h
         .node
-        .send_to_client(&sock, client_ip, &down, 0)
+        .send_to_client(client_ip, &down, 0)
         .await
         .unwrap();
     assert!(sent, "the client's address must be routable");
@@ -173,12 +173,15 @@ async fn two_users_get_distinct_addresses() {
     table.insert(&TAG_KEY, 1, [0x01; 32]);
     table.insert(&TAG_KEY, 2, [0x02; 32]);
     let tags = Arc::new(RwLock::new(table));
+    let sock = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
+    let addr = sock.local_addr().unwrap();
     let node = Arc::new(Node::new(
+        Arc::clone(&sock),
         tags,
         IpPool::new(Ipv4Addr::new(10, 66, 0, 0), 24),
         vpn_core::packet::TUNNEL_MTU,
     ));
-    let (addr, _to_tun) = start_node(Arc::clone(&node)).await;
+    let _to_tun = start_node(Arc::clone(&node), sock).await;
 
     let mut c1 = config(addr, [0x01; 32], Duration::from_secs(2));
     c1.user_id = 1;
