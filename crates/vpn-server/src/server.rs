@@ -8,9 +8,10 @@
 //! `Arc`, so two clients never serialise on each other — including when one of
 //! them is stalled.
 
+use std::collections::HashMap;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex as StdMutex, RwLock};
 use std::time::Duration;
 
 use tokio::net::UdpSocket;
@@ -127,8 +128,16 @@ pub struct ClosedSession {
 pub struct Node {
     tags: Arc<RwLock<TagTable>>,
     sessions: EndpointSet<SessionMeta>,
+    /// Wire tag of each user's current session, keyed by the routing tag the
+    /// client authenticated with. The wire tag is derived from the handshake's
+    /// ephemeral secret and therefore changes on every reconnect, so identity
+    /// is the only stable key to enforce "one session per user" with.
+    by_identity: RwLock<HashMap<[u8; TAG_LEN], u32>>,
     pool: Mutex<IpPool>,
     mtu: usize,
+    /// Final reports for sessions evicted by a reconnect, drained by
+    /// [`Self::take_deltas`].
+    pending: StdMutex<Vec<SessionDelta>>,
     pub counters: Counters,
 }
 
@@ -139,8 +148,10 @@ impl Node {
         Self {
             tags,
             sessions: EndpointSet::new(),
+            by_identity: RwLock::new(HashMap::new()),
             pool: Mutex::new(pool),
             mtu,
+            pending: StdMutex::new(Vec::new()),
             counters: Counters::default(),
         }
     }
@@ -225,6 +236,16 @@ impl Node {
             return Err(Error::BadLabel);
         };
 
+        // One session per user. Evict *before* leasing an address: a reconnect
+        // that took a new address first would strand the old one in the pool
+        // until the old session's idle timer fired.
+        if let Some(closed) = self.evict(&verified.tag).await {
+            let finals = Self::final_deltas(&[closed], unix_now_secs() as i64);
+            if let Ok(mut pending) = self.pending.lock() {
+                pending.extend(finals);
+            }
+        }
+
         let ip = {
             let mut pool = self.pool.lock().await;
             pool.allocate().ok_or(Error::NoSession)? // pool exhausted
@@ -233,10 +254,7 @@ impl Node {
         let server_eph = KeyPair::generate();
         let (reply, keys, session_tag) = handshake::respond(&verified, &server_eph, ip)?;
 
-        // Replacing a user's session is the normal reconnect path: release the
-        // old address so the pool does not leak.
-        if let Some(old) = self
-            .sessions
+        self.sessions
             .insert(
                 session_tag,
                 vpn_rt::server_endpoint(keys, session_tag, self.mtu, now_us),
@@ -244,10 +262,9 @@ impl Node {
                 Some(ip),
                 SessionMeta::new(verified.user_id, verified.tag, ip),
             )
-            .await
-        {
-            self.pool.lock().await.release(old.meta.ip);
-            tracing::debug!(user = verified.user_id, released = %old.meta.ip, "replaced a session");
+            .await;
+        if let Ok(mut by_identity) = self.by_identity.write() {
+            by_identity.insert(verified.tag, session_tag);
         }
 
         if let Ok(mut t) = self.tags.write() {
@@ -260,6 +277,34 @@ impl Node {
         Ok(Outcome::Handshaked {
             user_id: verified.user_id,
             ip,
+        })
+    }
+
+    /// End the session currently owned by `identity`, if any, and free its
+    /// address. Returns the closed session so its final byte counts can be
+    /// reported rather than lost.
+    async fn evict(&self, identity: &[u8; TAG_LEN]) -> Option<ClosedSession> {
+        let old_tag = self.by_identity.write().ok()?.remove(identity)?;
+        let session = self.sessions.remove(old_tag).await?;
+
+        let stats = session.endpoint.lock().await.stats();
+        let (rx, tx) = session.meta.take_delta(stats.rx_bytes, stats.tx_bytes);
+
+        self.pool.lock().await.release(session.meta.ip);
+        if let Ok(mut t) = self.tags.write() {
+            t.release_ip(&session.meta.tag);
+        }
+        tracing::info!(user = session.meta.user_id, ip = %session.meta.ip, "replaced a session");
+
+        Some(ClosedSession {
+            tag: old_tag,
+            user_id: session.meta.user_id,
+            ip: session.meta.ip,
+            routing_tag: session.meta.tag,
+            started_unix: session.meta.started_unix,
+            bytes_rx: rx,
+            bytes_tx: tx,
+            peer_ip: crate::control::peer_ip_string(session.peer().ip()),
         })
     }
 
@@ -318,6 +363,13 @@ impl Node {
                 t.release_ip(&c.routing_tag);
             }
             self.sessions.remove(c.tag).await;
+            // Only forget the identity if it still points here: a reconnect
+            // may already have replaced this session with a newer one.
+            if let Ok(mut by_identity) = self.by_identity.write()
+                && by_identity.get(&c.routing_tag) == Some(&c.tag)
+            {
+                by_identity.remove(&c.routing_tag);
+            }
             tracing::info!(user = c.user_id, ip = %c.ip, "session expired");
         }
         closed
@@ -337,6 +389,9 @@ impl Node {
                 bytes_tx: tx,
                 peer_ip: Some(crate::control::peer_ip_string(session.peer().ip())),
             });
+        }
+        if let Ok(mut pending) = self.pending.lock() {
+            out.append(&mut pending);
         }
         // Closed sessions are reported by the caller from `reap`, with an
         // `ended_at`. `now_unix` keeps the caller's clock authoritative.
