@@ -25,6 +25,8 @@ use crate::error::{Error, Result};
 pub const RECORD_HANDSHAKE: u8 = 0x16;
 /// Handshake message type: `client_hello`.
 pub const HANDSHAKE_CLIENT_HELLO: u8 = 0x01;
+/// Handshake message type: `server_hello`.
+pub const HANDSHAKE_SERVER_HELLO: u8 = 0x02;
 
 /// `session_id` length a browser sends in middlebox compatibility mode, and the
 /// exact length of our authentication label. Never change one without the other.
@@ -56,6 +58,167 @@ pub const EXT_PSK_KEY_EXCHANGE_MODES: u16 = 0x002d;
 pub const EXT_SUPPORTED_VERSIONS: u16 = 0x002b;
 pub const EXT_APPLICATION_SETTINGS: u16 = 0x44cd;
 pub const EXT_RENEGOTIATION_INFO: u16 = 0xff01;
+
+/// The TLS 1.3 cipher suite we claim: `TLS_AES_128_GCM_SHA256`.
+pub const CIPHER_TLS_AES_128_GCM_SHA256: u16 = 0x1301;
+/// X25519 named group, as assigned by IANA.
+pub const GROUP_X25519: u16 = 0x001d;
+/// Legacy version a TLS 1.3 `ServerHello` carries.
+pub const LEGACY_VERSION: u16 = 0x0303;
+
+/// The extension we carry our own handshake data in.
+///
+/// RFC 8701 reserves every value of the form `0x?a?a` for GREASE, and requires
+/// that peers ignore ones they do not understand. Nothing on the wire tells an
+/// observer that this particular reserved value is not grease.
+pub const EXT_GREASE_CARRIER: u16 = 0x0a0a;
+
+/// A `ServerHello` we can emit and read back.
+///
+/// This is the reply our server sends on the masquerade port instead of a
+/// bProto `HELLO_ACK`. It is deliberately *not* a complete TLS handshake: it is
+/// the first flight, shaped so that a middlebox classifying by packet
+/// inspection sees a `ServerHello` and nothing else. Our client reads it with
+/// the same code that built it; a prober never receives one, because a prober
+/// is relayed to the donor.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServerHello {
+    /// Server random. Doubles as the server's contribution to key derivation.
+    pub random: [u8; 32],
+    /// Echo of the `session_id` the client sent: our authentication label.
+    pub session_id_echo: Vec<u8>,
+    /// The one cipher suite we claim.
+    pub cipher_suite: u16,
+    /// X25519 key share, if the `key_share` extension carried one.
+    pub key_share: Option<[u8; 32]>,
+    /// Payload of the GREASE carrier extension, if present.
+    pub carried: Option<Vec<u8>>,
+}
+
+impl ServerHello {
+    /// Read a `ServerHello`, with or without a TLS record header.
+    pub fn parse(bytes: &[u8]) -> Result<Self> {
+        let mut cur = Reader::new(bytes);
+
+        // Optional TLS record header: content type (1) + version (2) + len (2).
+        if cur.peek_u8()? == RECORD_HANDSHAKE {
+            cur.u8()?;
+            cur.u16()?;
+            let len = cur.u16()? as usize;
+            if cur.remaining() < len {
+                return Err(Error::ShortDatagram {
+                    got: cur.remaining(),
+                    need: len,
+                });
+            }
+            cur = Reader::new(&bytes[5..5 + len]);
+        }
+
+        let handshake_type = cur.u8()?;
+        if handshake_type != HANDSHAKE_SERVER_HELLO {
+            return Err(Error::Handshake("not a ServerHello"));
+        }
+        let _len = cur.u24()?;
+        let _legacy_version = cur.u16()?;
+
+        let mut random = [0u8; 32];
+        cur.copy(&mut random)?;
+
+        let sid_len = cur.u8()? as usize;
+        let mut session_id_echo = vec![0u8; sid_len];
+        cur.copy(&mut session_id_echo)?;
+
+        let cipher_suite = cur.u16()?;
+        let _compression = cur.u8()?;
+
+        let ext_len = cur.u16()? as usize;
+        if cur.remaining() < ext_len {
+            return Err(Error::ShortDatagram {
+                got: cur.remaining(),
+                need: ext_len,
+            });
+        }
+        let mut ext = Reader::new(cur.take(ext_len)?);
+
+        let mut key_share = None;
+        let mut carried = None;
+        while ext.remaining() >= 4 {
+            let ty = ext.u16()?;
+            let len = ext.u16()? as usize;
+            let data = ext.take(len)?;
+            match ty {
+                EXT_KEY_SHARE => {
+                    let mut r = Reader::new(data);
+                    if r.u16()? == GROUP_X25519 {
+                        let len = r.u16()? as usize;
+                        if len == 32 {
+                            let mut k = [0u8; 32];
+                            r.copy(&mut k)?;
+                            key_share = Some(k);
+                        }
+                    }
+                }
+                EXT_GREASE_CARRIER => carried = Some(data.to_vec()),
+                _ => {}
+            }
+        }
+
+        Ok(Self {
+            random,
+            session_id_echo,
+            cipher_suite,
+            key_share,
+            carried,
+        })
+    }
+
+    /// Emit the `ServerHello` as a complete TLS record.
+    #[must_use]
+    pub fn build(&self) -> Vec<u8> {
+        let mut body = Vec::with_capacity(128);
+        body.extend_from_slice(&LEGACY_VERSION.to_be_bytes());
+        body.extend_from_slice(&self.random);
+        body.push(self.session_id_echo.len() as u8);
+        body.extend_from_slice(&self.session_id_echo);
+        body.extend_from_slice(&self.cipher_suite.to_be_bytes());
+        body.push(0); // compression method: null
+
+        let mut exts = Vec::new();
+        exts.extend_from_slice(&EXT_SUPPORTED_VERSIONS.to_be_bytes());
+        exts.extend_from_slice(&2u16.to_be_bytes());
+        exts.extend_from_slice(&0x0304u16.to_be_bytes());
+
+        if let Some(ks) = self.key_share {
+            let mut d = Vec::with_capacity(36);
+            d.extend_from_slice(&GROUP_X25519.to_be_bytes());
+            d.extend_from_slice(&32u16.to_be_bytes());
+            d.extend_from_slice(&ks);
+            exts.extend_from_slice(&EXT_KEY_SHARE.to_be_bytes());
+            exts.extend_from_slice(&(d.len() as u16).to_be_bytes());
+            exts.extend_from_slice(&d);
+        }
+        if let Some(c) = &self.carried {
+            exts.extend_from_slice(&EXT_GREASE_CARRIER.to_be_bytes());
+            exts.extend_from_slice(&(c.len() as u16).to_be_bytes());
+            exts.extend_from_slice(c);
+        }
+
+        body.extend_from_slice(&(exts.len() as u16).to_be_bytes());
+        body.extend_from_slice(&exts);
+
+        let mut handshake = Vec::with_capacity(4 + body.len());
+        handshake.push(HANDSHAKE_SERVER_HELLO);
+        handshake.extend_from_slice(&(body.len() as u32).to_be_bytes()[1..]);
+        handshake.extend_from_slice(&body);
+
+        let mut out = Vec::with_capacity(5 + handshake.len());
+        out.push(RECORD_HANDSHAKE);
+        out.extend_from_slice(&0x0303u16.to_be_bytes());
+        out.extend_from_slice(&(handshake.len() as u16).to_be_bytes());
+        out.extend_from_slice(&handshake);
+        out
+    }
+}
 
 /// Named `ClientHello` fingerprint. The shape (cipher order, extension order,
 /// GREASE positions) is what a passive fingerprinting DPI sees.
@@ -836,6 +999,48 @@ mod tests {
         assert_eq!(hello.alpn(), vec!["h2".to_string(), "http/1.1".to_string()]);
         assert!(hello.session_id.is_empty());
         assert!(hello.session_id_label().is_none());
+    }
+
+    #[test]
+    fn a_server_hello_survives_a_round_trip() {
+        let sh = ServerHello {
+            random: [0x5a; 32],
+            session_id_echo: vec![0xC3; 32],
+            cipher_suite: CIPHER_TLS_AES_128_GCM_SHA256,
+            key_share: Some([0x77; 32]),
+            carried: Some(vec![1, 2, 3, 4]),
+        };
+        let bytes = sh.build();
+        assert_eq!(bytes[0], RECORD_HANDSHAKE);
+        assert_eq!(bytes[5], HANDSHAKE_SERVER_HELLO);
+
+        let back = ServerHello::parse(&bytes).unwrap();
+        assert_eq!(back, sh);
+
+        // The bare handshake body must parse too: on QUIC there is no record
+        // header, and the caller may already have stripped it.
+        assert_eq!(ServerHello::parse(&bytes[5..]).unwrap(), sh);
+    }
+
+    #[test]
+    fn a_server_hello_without_the_optional_parts_parses() {
+        let sh = ServerHello {
+            random: [0x11; 32],
+            session_id_echo: Vec::new(),
+            cipher_suite: CIPHER_TLS_AES_128_GCM_SHA256,
+            key_share: None,
+            carried: None,
+        };
+        let back = ServerHello::parse(&sh.build()).unwrap();
+        assert_eq!(back, sh);
+        assert!(back.key_share.is_none());
+        assert!(back.carried.is_none());
+    }
+
+    #[test]
+    fn a_client_hello_is_not_a_server_hello() {
+        let bytes = ClientHelloBuilder::new(HelloProfile::Chrome120).build();
+        assert!(ServerHello::parse(&bytes).is_err());
     }
 
     #[test]
