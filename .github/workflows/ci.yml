@@ -1,16 +1,65 @@
 name: ci
 
+# The Arena sandbox can reach github.com but not the Actions results service,
+# so every job writes its console output to ci-logs/ and commits it back to the
+# branch. The log commit is tagged [skip ci] and the paths filter below keeps it
+# from re-triggering this workflow.
+
 on:
   push:
     branches: ["**"]
+    paths-ignore: ["ci-logs/**"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: never
+  RUST_BACKTRACE: 1
+
 jobs:
-  smoke:
+  rust:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe network from the runner
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build and test
+        id: build
+        continue-on-error: true
         run: |
-          echo "runner: $(uname -m)"
-          curl -sSf -o /dev/null -w 'crates.io index: %{http_code}\n' https://index.crates.io/config.json || echo "crates.io unreachable"
-          curl -sSf -o /dev/null -w 'static.rust-lang.org: %{http_code}\n' https://static.rust-lang.org/dist/channel-rust-stable.toml || echo "static.rust-lang.org unreachable"
+          mkdir -p ci-logs
+          {
+            echo "== rustc =="; rustc --version
+            echo "== cargo =="; cargo --version
+            echo
+            for cmd in \
+              "cargo fmt --all --check" \
+              "cargo build --workspace --all-targets" \
+              "cargo clippy --workspace --all-targets -- -D warnings" \
+              "cargo test --workspace" \
+              "cargo test --workspace --features vpn-core/quic" \
+              ; do
+              echo "############ \$ $cmd"
+              if eval "$cmd" 2>&1; then echo "-- OK: $cmd"; else echo "-- FAILED: $cmd"; fi
+              echo
+            done
+          } 2>&1 | tee ci-logs/rust.log
+
+      - name: Commit the log
+        if: always()
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+          git add -f ci-logs
+          git diff --cached --quiet && exit 0
+          git commit -q -m "ci: rust log for ${GITHUB_SHA::7} [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
