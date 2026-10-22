@@ -21,8 +21,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use tokio::net::UdpSocket;
-use tokio::sync::mpsc;
 use tokio::sync::Mutex;
+use tokio::sync::mpsc;
 use vpn_core::{Error, MAX_DATAGRAM, Result};
 use vpn_rt::udp;
 
@@ -139,13 +139,7 @@ impl Relay {
         let up = Arc::new(udp::bind_for(self.donor).await?);
         up.connect(self.donor).await?;
 
-        tokio::spawn(pump(
-            up,
-            rx,
-            Arc::clone(downstream),
-            peer,
-            self.idle,
-        ));
+        tokio::spawn(pump(up, rx, Arc::clone(downstream), peer, self.idle));
 
         tracing::debug!(%peer, donor = %self.donor, "opened a relay flow");
         Ok(tx)

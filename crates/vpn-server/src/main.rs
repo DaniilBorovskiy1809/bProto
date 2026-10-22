@@ -98,7 +98,12 @@ async fn main() -> anyhow::Result<()> {
                 every = format!("{}s", cfg.panel.interval_secs),
                 "control plane enabled: pulling keys, reporting traffic"
             );
-            spawn_key_puller(p.clone(), Arc::clone(&tags), tag_key, cfg.panel.interval_secs);
+            spawn_key_puller(
+                p.clone(),
+                Arc::clone(&tags),
+                tag_key,
+                cfg.panel.interval_secs,
+            );
         }
         None => tracing::warn!("no panel configured: keys are static, traffic is reported nowhere"),
     }

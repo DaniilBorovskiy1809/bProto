@@ -20,10 +20,10 @@ use std::ffi::{CStr, CString, c_char, c_int};
 use std::ptr;
 
 use vpn_client::Tunnel;
+use vpn_core::TunnelConfig;
 use vpn_core::auth::{TAG_LEN, compute_tag};
 use vpn_core::config::from_hex;
 use vpn_core::crypto::KEY_LEN;
-use vpn_core::TunnelConfig;
 
 /// The JNI tier is Unix-only: it does descriptor I/O with `poll(2)`/`fcntl(2)`,
 /// which Android and iOS both have and Windows does not. The feature is a no-op

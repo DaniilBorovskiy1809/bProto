@@ -182,12 +182,7 @@ fn decode_reply(state: &ClientHandshake, reply: &[u8]) -> Result<ReplyFields> {
         // Bound to *this* exchange: a replayed ACK from another session fails.
         return Err(Error::BadLabel);
     }
-    Ok((
-        ack.server_random,
-        ack.x25519_pub,
-        ack.assigned_ip,
-        ack.mac,
-    ))
+    Ok((ack.server_random, ack.x25519_pub, ack.assigned_ip, ack.mac))
 }
 
 /// A verified `HELLO`.
@@ -321,11 +316,7 @@ pub fn respond(
     assigned_ip: Ipv4Addr,
 ) -> Result<(Vec<u8>, SessionKeys, u32)> {
     let reply = prepare(verified, server_eph, assigned_ip);
-    Ok((
-        reply.encode_native(verified),
-        reply.keys,
-        reply.session_tag,
-    ))
+    Ok((reply.encode_native(verified), reply.keys, reply.session_tag))
 }
 
 #[cfg(test)]

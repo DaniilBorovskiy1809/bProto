@@ -925,7 +925,10 @@ mod tests {
         let mut msg = vec![HANDSHAKE_CLIENT_HELLO];
         msg.extend_from_slice(&(body.len() as u32).to_be_bytes()[1..]);
         msg.extend_from_slice(&body);
-        assert_eq!(ClientHello::parse(&msg).unwrap().sni(), Some("www.cloudflare.com"));
+        assert_eq!(
+            ClientHello::parse(&msg).unwrap().sni(),
+            Some("www.cloudflare.com")
+        );
     }
 
     #[test]

@@ -325,7 +325,10 @@ mod tests {
     fn masquerade_requires_a_pinned_donor() {
         let mut c = base();
         c.masquerade.enabled = true;
-        assert!(c.validate().is_err(), "an unpinned donor is a relay footgun");
+        assert!(
+            c.validate().is_err(),
+            "an unpinned donor is a relay footgun"
+        );
 
         c.donor.addr = Some("1.2.3.4:443".parse().unwrap());
         c.validate().unwrap();

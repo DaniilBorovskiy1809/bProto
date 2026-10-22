@@ -170,7 +170,12 @@ pub struct Node {
 impl Node {
     /// Build a node over a socket, a tag table and an address pool.
     #[must_use]
-    pub fn new(sock: Arc<UdpSocket>, tags: Arc<RwLock<TagTable>>, pool: IpPool, mtu: usize) -> Self {
+    pub fn new(
+        sock: Arc<UdpSocket>,
+        tags: Arc<RwLock<TagTable>>,
+        pool: IpPool,
+        mtu: usize,
+    ) -> Self {
         Self {
             sock,
             tags,
@@ -322,8 +327,7 @@ impl Node {
             return Err(Error::BadLabel);
         };
 
-        self.open(verified, from, now_us, Reply::Native, &[])
-            .await
+        self.open(verified, from, now_us, Reply::Native, &[]).await
     }
 
     /// The shared tail of both handshake paths: lease an address, derive the
@@ -526,12 +530,7 @@ impl Node {
 }
 
 /// Convenience for tests and the binary: a node wired to a socket.
-pub async fn drive(
-    node: &Node,
-    datagram: &[u8],
-    from: SocketAddr,
-    now_us: u64,
-) -> Option<Vec<u8>> {
+pub async fn drive(node: &Node, datagram: &[u8], from: SocketAddr, now_us: u64) -> Option<Vec<u8>> {
     match node.route(datagram, from, now_us).await {
         Ok(Outcome::Packet(pkt)) => Some(pkt),
         _ => None,
@@ -678,7 +677,10 @@ mod tests {
 
         let finals = Node::final_deltas(&closed, 1_700_000_000);
         assert_eq!(finals[0].ended_at, Some(1_700_000_000));
-        assert_eq!(finals[0].tag, vpn_core::config::to_hex(&closed[0].routing_tag));
+        assert_eq!(
+            finals[0].tag,
+            vpn_core::config::to_hex(&closed[0].routing_tag)
+        );
 
         // The address must be reusable.
         let (_s, hello2) = handshake::start(&cfg(addr), unix_now_secs()).unwrap();
@@ -690,10 +692,12 @@ mod tests {
     async fn an_outbound_packet_without_a_route_is_dropped_not_errored() {
         let sock = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
         let node = node(Arc::clone(&sock));
-        assert!(!node
-            .send_to_client(Ipv4Addr::new(10, 66, 0, 9), &[0x45; 20], 0)
-            .await
-            .unwrap());
+        assert!(
+            !node
+                .send_to_client(Ipv4Addr::new(10, 66, 0, 9), &[0x45; 20], 0)
+                .await
+                .unwrap()
+        );
     }
 
     #[test]

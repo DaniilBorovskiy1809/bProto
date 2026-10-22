@@ -10,7 +10,7 @@
 //! `crates/vpn-server/tests/relay.rs`, because this crate has no sockets.
 
 use vpn_core::auth::compute_tag;
-use vpn_core::crypto::{KeyPair, KEY_LEN};
+use vpn_core::crypto::{KEY_LEN, KeyPair};
 use vpn_core::hello::{ClientHelloBuilder, HelloProfile};
 use vpn_core::masquerade::{Verdict, classify, client_label};
 use vpn_core::tags::TagTable;
@@ -83,11 +83,17 @@ fn a_valid_client_is_served_and_a_probe_is_handed_to_the_donor() {
     // 3. So does one that found our tag but not the key: the MAC is wrong.
     let mut forged = label;
     forged[8] ^= 0x01;
-    assert_eq!(server_decides(&hello(forged, cr, pubk)), Verdict::RelayToDonor);
+    assert_eq!(
+        server_decides(&hello(forged, cr, pubk)),
+        Verdict::RelayToDonor
+    );
 
     // 4. And so does a replay of a label that was bound to a different
     //    ephemeral key.
-    assert_eq!(server_decides(&hello(label, cr, [0x09; 32])), Verdict::RelayToDonor);
+    assert_eq!(
+        server_decides(&hello(label, cr, [0x09; 32])),
+        Verdict::RelayToDonor
+    );
 }
 
 #[test]

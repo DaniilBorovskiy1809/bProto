@@ -346,8 +346,14 @@ mod tests {
         let set: EndpointSet<u64> = EndpointSet::new();
         let addr = "10.66.0.2".parse().unwrap();
         let peer: SocketAddr = "127.0.0.1:4000".parse().unwrap();
-        set.insert(0x1234, client_endpoint(keys(true), 0x1234, 1251, 0), peer, Some(addr), 42)
-            .await;
+        set.insert(
+            0x1234,
+            client_endpoint(keys(true), 0x1234, 1251, 0),
+            peer,
+            Some(addr),
+            42,
+        )
+        .await;
 
         assert_eq!(set.len().await, 1);
         assert!(set.by_tag(0x1234).await.is_some());
@@ -366,14 +372,16 @@ mod tests {
     async fn replacing_a_tag_returns_the_old_session() {
         let set: EndpointSet<u64> = EndpointSet::new();
         let peer: SocketAddr = "127.0.0.1:4000".parse().unwrap();
-        assert!(set
-            .insert(1, client_endpoint(keys(true), 1, 1251, 0), peer, None, 1)
-            .await
-            .is_none());
-        assert!(set
-            .insert(1, client_endpoint(keys(true), 1, 1251, 0), peer, None, 2)
-            .await
-            .is_some());
+        assert!(
+            set.insert(1, client_endpoint(keys(true), 1, 1251, 0), peer, None, 1)
+                .await
+                .is_none()
+        );
+        assert!(
+            set.insert(1, client_endpoint(keys(true), 1, 1251, 0), peer, None, 2)
+                .await
+                .is_some()
+        );
         assert_eq!(set.len().await, 1, "a reconnect must not leak sessions");
     }
 
@@ -409,7 +417,11 @@ mod tests {
         let client_session = client.by_tag(0xABCD).await.unwrap();
 
         let ip = vec![0x45u8; 60];
-        assert!(send_ip(&peer_sock, &client_session, &ip, 1_000).await.unwrap());
+        assert!(
+            send_ip(&peer_sock, &client_session, &ip, 1_000)
+                .await
+                .unwrap()
+        );
 
         let mut buf = vec![0u8; vpn_core::MAX_DATAGRAM + 32];
         let (n, from) = recv(&sock, &mut buf).await.unwrap();
@@ -444,6 +456,9 @@ mod tests {
         tokio::time::sleep(Duration::from_millis(5)).await;
         let b = c.now_us();
         assert!(b > a);
-        assert!(a < 1_000_000, "the clock starts near zero, not at boot time");
+        assert!(
+            a < 1_000_000,
+            "the clock starts near zero, not at boot time"
+        );
     }
 }

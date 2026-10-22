@@ -154,11 +154,7 @@ async fn server_to_client_ip_traffic_arrives() {
     down[12..16].copy_from_slice(&[1, 1, 1, 1]);
     down[16..20].copy_from_slice(&client_ip.octets());
 
-    let sent = h
-        .node
-        .send_to_client(client_ip, &down, 0)
-        .await
-        .unwrap();
+    let sent = h.node.send_to_client(client_ip, &down, 0).await.unwrap();
     assert!(sent, "the client's address must be routable");
 
     let got = tokio::time::timeout(Duration::from_secs(2), tunnel.recv_ip_packet())
@@ -275,7 +271,10 @@ async fn a_stranger_is_relayed_to_the_donor_and_gets_the_donors_answer() {
     assert_eq!(&buf[..n], &probe, "the probe must be relayed verbatim");
 
     // And the donor's answer comes back to the stranger from our listener.
-    donor.send_to(b"real donor response", upstream).await.unwrap();
+    donor
+        .send_to(b"real donor response", upstream)
+        .await
+        .unwrap();
     let (n, from) = tokio::time::timeout(Duration::from_secs(2), stranger.recv_from(&mut buf))
         .await
         .expect("the stranger must be answered within 2s")
@@ -303,7 +302,9 @@ async fn a_masquerade_client_completes_a_handshake_and_moves_packets() {
     cfg.masquerade = true;
     cfg.donor.sni = "www.cloudflare.com".into();
 
-    let tunnel = Tunnel::connect(cfg).await.expect("the masquerade handshake must succeed");
+    let tunnel = Tunnel::connect(cfg)
+        .await
+        .expect("the masquerade handshake must succeed");
     assert_eq!(tunnel.assigned_ip().to_string(), "10.66.0.2");
     assert_eq!(h.node.stats().await.sessions, 1);
     assert_eq!(

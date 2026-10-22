@@ -19,7 +19,7 @@ use tokio::task::JoinHandle;
 use tokio::time::MissedTickBehavior;
 use vpn_core::config::TunnelConfig;
 use vpn_core::handshake;
-use vpn_core::{Error, Result, MAX_DATAGRAM};
+use vpn_core::{Error, MAX_DATAGRAM, Result};
 use vpn_rt::{Clock, LiveSession, udp};
 
 /// Retransmit interval while the handshake is outstanding.
@@ -286,9 +286,6 @@ mod tests {
     async fn an_invalid_config_is_refused_before_any_io() {
         let mut c = cfg();
         c.donor.sni = String::new();
-        assert!(matches!(
-            Tunnel::connect(c).await,
-            Err(Error::Config(_))
-        ));
+        assert!(matches!(Tunnel::connect(c).await, Err(Error::Config(_))));
     }
 }

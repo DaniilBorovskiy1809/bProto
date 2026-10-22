@@ -216,7 +216,8 @@ impl Endpoint {
         }
         let dgram = self.seal_inner(InnerType::Ip, ip)?;
         self.tx_bytes += ip.len() as u64;
-        self.sent.on_sent(self.tx_pn - 1, now_us, dgram.len() as u64);
+        self.sent
+            .on_sent(self.tx_pn - 1, now_us, dgram.len() as u64);
         Ok(dgram)
     }
 
@@ -511,7 +512,10 @@ mod tests {
 
         // Feeding it back must release every in-flight byte and produce an RTT
         // sample, which is the whole point of acknowledging.
-        assert!(c.stats().in_flight > 0, "bytes are in flight before the ACK");
+        assert!(
+            c.stats().in_flight > 0,
+            "bytes are in flight before the ACK"
+        );
         assert_eq!(c.stats().rtt_us, c.rtt.initial(), "no sample yet");
         for dgram in &acks {
             c.open(dgram, NOW + 1_000).unwrap();

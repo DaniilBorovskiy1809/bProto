@@ -208,7 +208,10 @@ mod tests {
 
     #[test]
     fn peer_ips_are_normalised() {
-        assert_eq!(peer_ip_string("203.0.113.4".parse().unwrap()), "203.0.113.4");
+        assert_eq!(
+            peer_ip_string("203.0.113.4".parse().unwrap()),
+            "203.0.113.4"
+        );
         // An IPv4-mapped IPv6 socket address must report as IPv4.
         let mapped: IpAddr = "::ffff:203.0.113.4".parse().unwrap();
         assert_eq!(peer_ip_string(mapped), "203.0.113.4");
