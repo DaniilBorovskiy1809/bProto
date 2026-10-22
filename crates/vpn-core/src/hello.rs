@@ -807,8 +807,9 @@ mod tests {
         let mut ext = Vec::new();
         // server_name = example.org
         let host = b"example.org";
+        // extension_data = 2 (list length) + 1 (type) + 2 (host length) + host
         ext.extend_from_slice(&EXT_SERVER_NAME.to_be_bytes());
-        ext.extend_from_slice(&((host.len() + 3) as u16).to_be_bytes());
+        ext.extend_from_slice(&((host.len() + 5) as u16).to_be_bytes());
         ext.extend_from_slice(&((host.len() + 3) as u16).to_be_bytes());
         ext.push(0);
         ext.extend_from_slice(&(host.len() as u16).to_be_bytes());
