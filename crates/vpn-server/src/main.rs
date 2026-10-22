@@ -12,7 +12,7 @@
 //! There is no protocol logic in this file. It is I/O, lifecycle and reporting;
 //! the node itself is [`vpn_server::server::Node`].
 
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::Ipv4Addr;
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::Duration;
@@ -278,8 +278,9 @@ async fn serve(ctx: ServeCtx) -> anyhow::Result<()> {
 
             _ = tick.tick() => {
                 let closed = node.reap(&sock, clock.now_us()).await;
-                if !closed.is_empty() {
-                    if let Some(panel) = &panel {
+                if !closed.is_empty()
+                    && let Some(panel) = &panel
+                {
                         let finals = Node::final_deltas(&closed, unix_now_secs() as i64);
                         push(panel, finals).await;
                     }

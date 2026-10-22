@@ -136,7 +136,9 @@ impl ClientHello {
 
         // Optional TLS record header.
         if cur.peek_u8()? == RECORD_HANDSHAKE {
-            let _version = cur.u16()?;
+            // Record header: content type (1) + version (2) + length (2).
+            cur.u8()?;
+            cur.u16()?;
             let len = cur.u16()? as usize;
             if cur.remaining() < len {
                 return Err(Error::ShortDatagram {

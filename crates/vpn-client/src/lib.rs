@@ -54,6 +54,8 @@ pub struct Tunnel {
     assigned_ip: Ipv4Addr,
     clock: Clock,
     started: Instant,
+    /// Negotiated at handshake time, so it never needs the session lock.
+    mtu: usize,
     inbound_rx: Mutex<mpsc::Receiver<Vec<u8>>>,
     task: JoinHandle<()>,
 }
@@ -88,11 +90,12 @@ impl Tunnel {
         };
 
         let clock = Clock::new();
+        let mtu = cfg.effective_mtu();
         let session = Arc::new(LiveSession::new(
             vpn_rt::client_endpoint(
                 established.keys,
                 established.session_tag,
-                cfg.effective_mtu(),
+                mtu,
                 clock.now_us(),
             ),
             peer,
@@ -111,6 +114,7 @@ impl Tunnel {
             sock,
             peer,
             session,
+            mtu,
             assigned_ip: established.assigned_ip,
             clock,
             started: Instant::now(),
@@ -128,8 +132,10 @@ impl Tunnel {
     /// Effective tunnel MTU.
     #[must_use]
     pub fn mtu(&self) -> usize {
-        self.session.endpoint.blocking_lock().mtu()
+        self.mtu
     }
+
+/// Snapshot of the transport state, for logging and for the mobile UI.
 
     /// Raw descriptor of the tunnel's UDP socket.
     ///
@@ -145,7 +151,23 @@ impl Tunnel {
 
     /// Health snapshot.
     #[must_use]
-    pub fn stats(&self) -> TunnelStats {
+    pub async fn stats(&self) -> TunnelStats {
+        let s = self.session.endpoint.lock().await.stats();
+        TunnelStats {
+            rtt_us: s.rtt_us,
+            cwnd_bytes: s.cwnd_bytes,
+            rx_bytes: s.rx_bytes,
+            tx_bytes: s.tx_bytes,
+            dropped: s.dropped,
+            uptime_s: self.started.elapsed().as_secs(),
+        }
+    }
+
+    /// [`Self::stats`] for callers that are not on a runtime thread, such as
+    /// the C and JNI entry points. Panics if called from inside a tokio
+    /// worker; everything async must use `stats`.
+    #[must_use]
+    pub fn blocking_stats(&self) -> TunnelStats {
         let s = self.session.endpoint.blocking_lock().stats();
         TunnelStats {
             rtt_us: s.rtt_us,

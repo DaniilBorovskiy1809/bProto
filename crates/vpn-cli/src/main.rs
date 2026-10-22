@@ -136,14 +136,14 @@ async fn main() -> anyhow::Result<()> {
         Command::Connect { seconds } => {
             let cfg = resolve(cli.uri.as_deref(), &cli.config)?;
             let tunnel = Tunnel::connect(cfg).await?;
-            report(&tunnel);
+            report(&tunnel).await;
             if seconds == 0 {
                 println!("connected; Ctrl-C to exit");
                 tokio::signal::ctrl_c().await?;
             } else {
                 for _ in 0..seconds {
                     tokio::time::sleep(Duration::from_secs(1)).await;
-                    print_stats(&tunnel);
+                    print_stats(&tunnel.stats().await);
                 }
             }
             tunnel.close().await;
@@ -196,7 +196,7 @@ async fn up(cfg: TunnelConfig, iface: String, no_default_route: bool) -> anyhow:
     }
 
     let tunnel = Tunnel::connect(cfg).await?;
-    report(&tunnel);
+    report(&tunnel).await;
 
     let assigned = tunnel.assigned_ip();
     let device = dev::TunDevice::open(&iface).with_context(|| format!("open TUN {iface}"))?;
@@ -268,7 +268,7 @@ async fn up(cfg: TunnelConfig, iface: String, no_default_route: bool) -> anyhow:
                     tracing::debug!(error = %e, "outbound packet dropped");
                 }
             }
-            _ = stats_tick.tick() => print_stats(&tunnel),
+            _ = stats_tick.tick() => print_stats(&tunnel.stats().await),
             _ = tokio::signal::ctrl_c() => {
                 tracing::info!("shutting down");
                 break;
@@ -288,15 +288,15 @@ fn cfg_server_ip(tunnel: &Tunnel) -> std::net::Ipv4Addr {
     std::net::Ipv4Addr::new(o[0], o[1], o[2], 1)
 }
 
-fn report(tunnel: &Tunnel) {
+async fn report(tunnel: &Tunnel) {
+    let s = tunnel.stats().await;
     println!("tunnel up:");
     println!("  assigned address : {}", tunnel.assigned_ip());
     println!("  MTU              : {}", tunnel.mtu());
-    print_stats(tunnel);
+    print_stats(&s);
 }
 
-fn print_stats(tunnel: &Tunnel) {
-    let s = tunnel.stats();
+fn print_stats(s: &vpn_client::TunnelStats) {
     tracing::info!(
         rtt_ms = s.rtt_us as f64 / 1000.0,
         cwnd = s.cwnd_bytes,

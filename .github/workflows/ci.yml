@@ -70,7 +70,8 @@ jobs:
 
             echo "############ PANEL FRONTEND"
             cd panel/frontend
-            if (command -v pnpm >/dev/null && pnpm install --frozen-lockfile 2>&1 | tail -5); then
+            npm install -g pnpm@9 2>&1 | tail -2
+            if pnpm install --frozen-lockfile 2>&1 | tail -5; then
               echo "############ \$ npx tsc --noEmit"
               npx tsc --noEmit 2>&1 && echo "-- OK: tsc" || echo "-- FAILED: tsc"
               echo "############ \$ npm run build"

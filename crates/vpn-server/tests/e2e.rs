@@ -12,7 +12,7 @@ use std::time::Duration;
 use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
 use vpn_client::Tunnel;
-use vpn_core::packet::{self, MAX_DATAGRAM};
+use vpn_core::packet::MAX_DATAGRAM;
 use vpn_core::tags::TagTable;
 use vpn_core::{DonorSpec, HelloProfile, IpPool, TunnelConfig};
 use vpn_server::server::{Node, Outcome};

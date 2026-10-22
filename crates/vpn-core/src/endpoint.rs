@@ -513,7 +513,9 @@ mod tests {
         // sample, which is the whole point of acknowledging.
         assert!(c.stats().in_flight > 0, "bytes are in flight before the ACK");
         assert_eq!(c.stats().rtt_us, c.rtt.initial(), "no sample yet");
-        pump(&mut s, &mut c, NOW + 1_000);
+        for dgram in &acks {
+            c.open(dgram, NOW + 1_000).unwrap();
+        }
         assert_eq!(c.stats().in_flight, 0, "ACKs release in-flight bytes");
         assert!(
             c.stats().rtt_us > 0 && c.stats().rtt_us <= 1_000,

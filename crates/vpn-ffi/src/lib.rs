@@ -350,7 +350,7 @@ pub unsafe extern "C" fn bproto_stats(tunnel: *mut BprotoTunnel, out: *mut Bprot
             return -1;
         }
     };
-    let s = t.tunnel.stats();
+    let s = t.tunnel.blocking_stats();
     let snapshot = BprotoStats {
         rtt_us: s.rtt_us,
         cwnd_bytes: s.cwnd_bytes,
