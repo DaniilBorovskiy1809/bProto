@@ -364,19 +364,6 @@ pub unsafe extern "C" fn bproto_stats(tunnel: *mut BprotoTunnel, out: *mut Bprot
     0
 }
 
-/// Raise/lower the stealth level at runtime. Stage 2 feature; the entry point
-/// exists in MVP so the mobile clients have a stable ABI to bind against.
-#[unsafe(no_mangle)]
-pub extern "C" fn bproto_set_stealth(_tunnel: *mut BprotoTunnel, level: c_int) -> c_int {
-    match level {
-        0..=2 => 0,
-        _ => {
-            set_error("unknown stealth level");
-            -1
-        }
-    }
-}
-
 /// Release a tunnel handle. Safe to call with null.
 ///
 /// # Safety

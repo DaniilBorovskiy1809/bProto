@@ -57,7 +57,6 @@ int bproto_recv_timeout(BprotoTunnel *tunnel, uint8_t *buf, uintptr_t cap,
 int bproto_stats(BprotoTunnel *tunnel, BprotoStats *out);
 
 /// Stage-2 stealth level. 0 for the MVP.
-int bproto_set_stealth(BprotoTunnel *tunnel, int level);
 
 /// Compute the 32-byte ClientHello `session_id` label (stage 2). 0 on success.
 int bproto_compute_session_id(const char *psk_hex,
