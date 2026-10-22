@@ -12,7 +12,6 @@ use std::os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
-use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
 use vpn_core::tags::TagTable;
 use vpn_core::{DonorSpec, HelloProfile, IpPool, MAX_DATAGRAM, TunnelConfig};

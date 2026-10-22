@@ -102,13 +102,16 @@ jobs:
 
             echo "############ FUNCTIONAL: server --check-config"
             ./run.sh check-config 2>&1 && echo "-- OK: check-config" || echo "-- FAILED: check-config"
-          } 2>&1 | tee ci-logs/gate.log
+          } 2>&1 | tee "ci-logs/gate-${GITHUB_RUN_ID}.log"
 
       - name: Commit the log
         if: always()
         run: |
           git config user.name "ci-bot"
           git config user.email "ci-bot@users.noreply.github.com"
+          # One file per run. A single reused name made two concurrent runs
+          # rebase-conflict over the log itself.
+          ls -1t ci-logs/gate-*.log 2>/dev/null | tail -n +4 | xargs -r rm -f
           for _ in 1 2 3; do
             git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && break
             sleep 3
