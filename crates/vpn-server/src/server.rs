@@ -285,7 +285,8 @@ impl Node {
     /// reported rather than lost.
     async fn evict(&self, identity: &[u8; TAG_LEN]) -> Option<ClosedSession> {
         let old_tag = self.by_identity.write().ok()?.remove(identity)?;
-        let session = self.sessions.remove(old_tag).await?;
+        let session = self.sessions.by_tag(old_tag).await?;
+        self.sessions.remove(old_tag).await;
 
         let stats = session.endpoint.lock().await.stats();
         let (rx, tx) = session.meta.take_delta(stats.rx_bytes, stats.tx_bytes);
