@@ -297,7 +297,7 @@ async fn a_stranger_is_relayed_to_the_donor_and_gets_the_donors_answer() {
 #[tokio::test]
 async fn a_masquerade_client_completes_a_handshake_and_moves_packets() {
     let donor = UdpSocket::bind("127.0.0.1:0").await.unwrap();
-    let h = start_with(tags(), Some(donor.local_addr().unwrap())).await;
+    let mut h = start_with(tags(), Some(donor.local_addr().unwrap())).await;
 
     let mut cfg = config(h.addr, PSK, Duration::from_secs(2));
     cfg.masquerade = true;
