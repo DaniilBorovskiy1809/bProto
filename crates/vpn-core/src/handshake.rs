@@ -191,7 +191,7 @@ fn decode_reply(
 }
 
 /// A verified `HELLO`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VerifiedHello {
     /// The user's PSK.
     pub psk: [u8; KEY_LEN],

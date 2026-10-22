@@ -97,6 +97,15 @@ pub struct NodeStats {
     pub relay_flows: usize,
 }
 
+/// How the server's handshake reply is put on the wire.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Reply {
+    /// Our own plaintext `HELLO_ACK`: honest, and obviously not TLS.
+    Native,
+    /// A TLS `ServerHello`, for a port that must look like the donor's.
+    ServerHello,
+}
+
 /// What one inbound datagram turned out to be.
 #[derive(Debug)]
 pub enum Outcome {
@@ -240,15 +249,6 @@ impl Node {
             }
             Err(e) => Err(e),
         }
-    }
-
-    /// How the server's handshake reply is put on the wire.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    enum Reply {
-        /// Our own plaintext `HELLO_ACK`: honest, and obviously not TLS.
-        Native,
-        /// A TLS `ServerHello`, for a port that must look like the donor's.
-        ServerHello,
     }
 
     /// Route one inbound datagram on the masquerade listener.
