@@ -552,7 +552,7 @@ mod tests {
     fn a_session_born_late_is_not_instantly_expired() {
         // Regression: seeding `last_rx_us` from 0 made every session created
         // more than `idle_timeout` after start-up get reaped on the first tick.
-        let (_c, mut s) = pair(packet::TUNNEL_MTU);
+        let (_c, s) = pair(packet::TUNNEL_MTU);
         let born = 300_000_000u64;
         let mut late = s;
         late.last_rx_us = born;

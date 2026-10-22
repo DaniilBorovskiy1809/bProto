@@ -82,7 +82,7 @@ pub struct LiveSession<M> {
 }
 
 impl<M> LiveSession<M> {
-    fn new(endpoint: Endpoint, peer: SocketAddr, meta: M) -> Self {
+    pub fn new(endpoint: Endpoint, peer: SocketAddr, meta: M) -> Self {
         Self {
             endpoint: Mutex::new(endpoint),
             peer: std::sync::Mutex::new(peer),

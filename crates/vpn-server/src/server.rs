@@ -20,7 +20,7 @@ use vpn_core::config::to_hex;
 use vpn_core::crypto::KeyPair;
 use vpn_core::handshake;
 use vpn_core::{Error, IpPool, TagTable, packet, unix_now_secs};
-use vpn_rt::{Clock, EndpointSet, LiveSession, udp};
+use vpn_rt::{EndpointSet, udp};
 
 use crate::control::SessionDelta;
 

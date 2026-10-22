@@ -158,7 +158,7 @@ pub fn parse_psk(hex: &str) -> Option<[u8; KEY_LEN]> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{DonorSpec, Fingerprint, StealthLevel};
+    use crate::config::DonorSpec;
     use crate::crypto::KeyPair;
 
     const NOW: u64 = 1_800_000_000;
@@ -177,8 +177,8 @@ mod tests {
             user_id: 42,
             tag_key: [0x22; KEY_LEN],
             mtu: 1280,
-            fingerprint: Fingerprint::Chrome112,
-            stealth: StealthLevel::Off,
+            fingerprint: HelloProfile::Chrome120,
+            masquerade: false,
             handshake_timeout: std::time::Duration::from_secs(10),
         }
     }
