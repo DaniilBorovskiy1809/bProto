@@ -237,7 +237,8 @@ mod tests {
     async fn one_peer_keeps_one_upstream_socket() {
         let (donor, donor_addr) = bind().await;
         let (listener, _) = bind().await;
-        let (probe, probe_addr) = bind().await;
+        // Only the probe's address matters here; nothing is read back.
+        let (_probe, probe_addr) = bind().await;
         let relay = Relay::with_idle(donor_addr, Duration::from_secs(5));
 
         relay.forward(&listener, probe_addr, b"one").await.unwrap();
@@ -273,7 +274,9 @@ mod tests {
 
     #[tokio::test]
     async fn an_oversized_datagram_is_refused_without_opening_a_flow() {
-        let (donor, donor_addr) = bind().await;
+        // The donor must exist to be a valid relay target, but nothing reaches
+        // it: that is the assertion.
+        let (_donor, donor_addr) = bind().await;
         let (listener, _) = bind().await;
         let (_probe, probe_addr) = bind().await;
         let relay = Relay::with_idle(donor_addr, Duration::from_secs(5));
