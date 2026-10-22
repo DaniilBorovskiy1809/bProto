@@ -3,251 +3,7 @@ rustc 1.99.1 (58cf8f9c3 2026-10-13)
 
 ############ RUST WORKSPACE
 ############ $ cargo fmt --all --check
-Diff in /home/runner/work/bProto/bProto/crates/vpn-client/src/lib.rs:19:
- use tokio::time::MissedTickBehavior;
- use vpn_core::config::TunnelConfig;
- use vpn_core::handshake;
--use vpn_core::{Error, Result, MAX_DATAGRAM};
-+use vpn_core::{Error, MAX_DATAGRAM, Result};
- use vpn_rt::{Clock, LiveSession, udp};
- 
- /// Retransmit interval while the handshake is outstanding.
-Diff in /home/runner/work/bProto/bProto/crates/vpn-client/src/lib.rs:266:
-     async fn an_invalid_config_is_refused_before_any_io() {
-         let mut c = cfg();
-         c.donor.sni = String::new();
--        assert!(matches!(
--            Tunnel::connect(c).await,
--            Err(Error::Config(_))
--        ));
-+        assert!(matches!(Tunnel::connect(c).await, Err(Error::Config(_))));
-     }
- }
- 
-Diff in /home/runner/work/bProto/bProto/crates/vpn-core/src/endpoint.rs:216:
-         }
-         let dgram = self.seal_inner(InnerType::Ip, ip)?;
-         self.tx_bytes += ip.len() as u64;
--        self.sent.on_sent(self.tx_pn - 1, now_us, dgram.len() as u64);
-+        self.sent
-+            .on_sent(self.tx_pn - 1, now_us, dgram.len() as u64);
-         Ok(dgram)
-     }
- 
-Diff in /home/runner/work/bProto/bProto/crates/vpn-core/src/endpoint.rs:511:
- 
-         // Feeding it back must release every in-flight byte and produce an RTT
-         // sample, which is the whole point of acknowledging.
--        assert!(c.stats().in_flight > 0, "bytes are in flight before the ACK");
-+        assert!(
-+            c.stats().in_flight > 0,
-+            "bytes are in flight before the ACK"
-+        );
-         assert_eq!(c.stats().rtt_us, c.rtt.initial(), "no sample yet");
-         pump(&mut s, &mut c, NOW + 1_000);
-         assert_eq!(c.stats().in_flight, 0, "ACKs release in-flight bytes");
-Diff in /home/runner/work/bProto/bProto/crates/vpn-core/src/hello.rs:760:
-         let mut msg = vec![HANDSHAKE_CLIENT_HELLO];
-         msg.extend_from_slice(&(body.len() as u32).to_be_bytes()[1..]);
-         msg.extend_from_slice(&body);
--        assert_eq!(ClientHello::parse(&msg).unwrap().sni(), Some("www.cloudflare.com"));
-+        assert_eq!(
-+            ClientHello::parse(&msg).unwrap().sni(),
-+            Some("www.cloudflare.com")
-+        );
-     }
- 
-     #[test]
-Diff in /home/runner/work/bProto/bProto/crates/vpn-core/tests/censor_gets_real_site.rs:10:
- //! `crates/vpn-server/tests/relay.rs`, because this crate has no sockets.
- 
- use vpn_core::auth::compute_tag;
--use vpn_core::crypto::{KeyPair, KEY_LEN};
-+use vpn_core::crypto::{KEY_LEN, KeyPair};
- use vpn_core::hello::{ClientHelloBuilder, HelloProfile};
- use vpn_core::masquerade::{Verdict, classify, client_label};
- use vpn_core::tags::TagTable;
-Diff in /home/runner/work/bProto/bProto/crates/vpn-core/tests/censor_gets_real_site.rs:62:
-         &pubk,
-         vpn_core::auth::time_window(NOW),
-     ));
--    assert_eq!(server_decides(&hello(label, cr, pubk)), Verdict::Intercept(USER));
-+    assert_eq!(
-+        server_decides(&hello(label, cr, pubk)),
-+        Verdict::Intercept(USER)
-+    );
- 
-     // 2. A censor probing with a random session id gets the donor.
-     let random_sid = [0xC3u8; 32];
-Diff in /home/runner/work/bProto/bProto/crates/vpn-core/tests/censor_gets_real_site.rs:74:
-     // 3. So does one that found our tag but not the key: the MAC is wrong.
-     let mut forged = label;
-     forged[8] ^= 0x01;
--    assert_eq!(server_decides(&hello(forged, cr, pubk)), Verdict::RelayToDonor);
-+    assert_eq!(
-+        server_decides(&hello(forged, cr, pubk)),
-+        Verdict::RelayToDonor
-+    );
- 
-     // 4. And so does a replay of a label that was bound to a different
-     //    ephemeral key.
-Diff in /home/runner/work/bProto/bProto/crates/vpn-core/tests/censor_gets_real_site.rs:81:
--    assert_eq!(server_decides(&hello(label, cr, [0x09; 32])), Verdict::RelayToDonor);
-+    assert_eq!(
-+        server_decides(&hello(label, cr, [0x09; 32])),
-+        Verdict::RelayToDonor
-+    );
- }
- 
- #[test]
-Diff in /home/runner/work/bProto/bProto/crates/vpn-ffi/src/lib.rs:20:
- use std::ptr;
- 
- use vpn_client::Tunnel;
-+use vpn_core::TunnelConfig;
- use vpn_core::auth::{TAG_LEN, compute_tag};
- use vpn_core::config::from_hex;
- use vpn_core::crypto::KEY_LEN;
-Diff in /home/runner/work/bProto/bProto/crates/vpn-ffi/src/lib.rs:26:
--use vpn_core::TunnelConfig;
- 
- /// The JNI tier is Unix-only: it does descriptor I/O with `poll(2)`/`fcntl(2)`,
- /// which Android and iOS both have and Windows does not. The feature is a no-op
-Diff in /home/runner/work/bProto/bProto/crates/vpn-rt/src/lib.rs:346:
-         let set: EndpointSet<u64> = EndpointSet::new();
-         let addr = "10.66.0.2".parse().unwrap();
-         let peer: SocketAddr = "127.0.0.1:4000".parse().unwrap();
--        set.insert(0x1234, client_endpoint(keys(true), 0x1234, 1251, 0), peer, Some(addr), 42)
--            .await;
-+        set.insert(
-+            0x1234,
-+            client_endpoint(keys(true), 0x1234, 1251, 0),
-+            peer,
-+            Some(addr),
-+            42,
-+        )
-+        .await;
- 
-         assert_eq!(set.len().await, 1);
-         assert!(set.by_tag(0x1234).await.is_some());
-Diff in /home/runner/work/bProto/bProto/crates/vpn-rt/src/lib.rs:366:
-     async fn replacing_a_tag_returns_the_old_session() {
-         let set: EndpointSet<u64> = EndpointSet::new();
-         let peer: SocketAddr = "127.0.0.1:4000".parse().unwrap();
--        assert!(set
--            .insert(1, client_endpoint(keys(true), 1, 1251, 0), peer, None, 1)
--            .await
--            .is_none());
--        assert!(set
--            .insert(1, client_endpoint(keys(true), 1, 1251, 0), peer, None, 2)
--            .await
--            .is_some());
-+        assert!(
-+            set.insert(1, client_endpoint(keys(true), 1, 1251, 0), peer, None, 1)
-+                .await
-+                .is_none()
-+        );
-+        assert!(
-+            set.insert(1, client_endpoint(keys(true), 1, 1251, 0), peer, None, 2)
-+                .await
-+                .is_some()
-+        );
-         assert_eq!(set.len().await, 1, "a reconnect must not leak sessions");
-     }
- 
-Diff in /home/runner/work/bProto/bProto/crates/vpn-rt/src/lib.rs:409:
-         let client_session = client.by_tag(0xABCD).await.unwrap();
- 
-         let ip = vec![0x45u8; 60];
--        assert!(send_ip(&peer_sock, &client_session, &ip, 1_000).await.unwrap());
-+        assert!(
-+            send_ip(&peer_sock, &client_session, &ip, 1_000)
-+                .await
-+                .unwrap()
-+        );
- 
-         let mut buf = vec![0u8; vpn_core::MAX_DATAGRAM + 32];
-         let (n, from) = recv(&sock, &mut buf).await.unwrap();
-Diff in /home/runner/work/bProto/bProto/crates/vpn-rt/src/lib.rs:444:
-         tokio::time::sleep(Duration::from_millis(5)).await;
-         let b = c.now_us();
-         assert!(b > a);
--        assert!(a < 1_000_000, "the clock starts near zero, not at boot time");
-+        assert!(
-+            a < 1_000_000,
-+            "the clock starts near zero, not at boot time"
-+        );
-     }
- }
- 
-Diff in /home/runner/work/bProto/bProto/crates/vpn-server/src/config.rs:325:
-     fn masquerade_requires_a_pinned_donor() {
-         let mut c = base();
-         c.masquerade.enabled = true;
--        assert!(c.validate().is_err(), "an unpinned donor is a relay footgun");
-+        assert!(
-+            c.validate().is_err(),
-+            "an unpinned donor is a relay footgun"
-+        );
- 
-         c.donor.addr = Some("1.2.3.4:443".parse().unwrap());
-         c.validate().unwrap();
-Diff in /home/runner/work/bProto/bProto/crates/vpn-server/src/control.rs:208:
- 
-     #[test]
-     fn peer_ips_are_normalised() {
--        assert_eq!(peer_ip_string("203.0.113.4".parse().unwrap()), "203.0.113.4");
-+        assert_eq!(
-+            peer_ip_string("203.0.113.4".parse().unwrap()),
-+            "203.0.113.4"
-+        );
-         // An IPv4-mapped IPv6 socket address must report as IPv4.
-         let mapped: IpAddr = "::ffff:203.0.113.4".parse().unwrap();
-         assert_eq!(peer_ip_string(mapped), "203.0.113.4");
-Diff in /home/runner/work/bProto/bProto/crates/vpn-server/src/server.rs:514:
- 
-         let finals = Node::final_deltas(&closed, 1_700_000_000);
-         assert_eq!(finals[0].ended_at, Some(1_700_000_000));
--        assert_eq!(finals[0].tag, vpn_core::config::to_hex(&closed[0].routing_tag));
-+        assert_eq!(
-+            finals[0].tag,
-+            vpn_core::config::to_hex(&closed[0].routing_tag)
-+        );
- 
-         // The address must be reusable.
-         let (_s, hello2) = handshake::start(&cfg(addr), unix_now_secs()).unwrap();
-Diff in /home/runner/work/bProto/bProto/crates/vpn-server/src/server.rs:526:
-     async fn an_outbound_packet_without_a_route_is_dropped_not_errored() {
-         let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
-         let node = node();
--        assert!(!node
--            .send_to_client(&sock, Ipv4Addr::new(10, 66, 0, 9), &[0x45; 20], 0)
--            .await
--            .unwrap());
-+        assert!(
-+            !node
-+                .send_to_client(&sock, Ipv4Addr::new(10, 66, 0, 9), &[0x45; 20], 0)
-+                .await
-+                .unwrap()
-+        );
-     }
- 
-     #[test]
-Diff in /home/runner/work/bProto/bProto/crates/vpn-server/src/main.rs:97:
-                 every = format!("{}s", cfg.panel.interval_secs),
-                 "control plane enabled: pulling keys, reporting traffic"
-             );
--            spawn_key_puller(p.clone(), Arc::clone(&tags), tag_key, cfg.panel.interval_secs);
-+            spawn_key_puller(
-+                p.clone(),
-+                Arc::clone(&tags),
-+                tag_key,
-+                cfg.panel.interval_secs,
-+            );
-         }
-         None => tracing::warn!("no panel configured: keys are static, traffic is reported nowhere"),
-     }
--- FAILED: cargo fmt --all --check
+-- OK: cargo fmt --all --check
 
 ############ $ cargo build --workspace --all-targets
     Updating crates.io index
@@ -305,372 +61,148 @@ Diff in /home/runner/work/bProto/bProto/crates/vpn-server/src/main.rs:97:
       Adding zerotrie v0.2.5
       Adding zerovec v0.11.9
       Adding zerovec-derive v0.11.7
- Downloading crates ...
-  Downloaded atomic-waker v1.1.2
-  Downloaded base64 v0.23.1
-  Downloaded bitflags v2.13.2
-  Downloaded base64 v0.22.1
-  Downloaded displaydoc v0.2.7
-  Downloaded futures-channel v0.3.34
-  Downloaded form_urlencoded v1.2.2
-  Downloaded http v1.5.0
-  Downloaded http-body v1.1.0
-  Downloaded idna_adapter v1.2.2
-  Downloaded httparse v1.10.1
-  Downloaded hyper-rustls v0.27.10
-  Downloaded http-body-util v0.1.5
-  Downloaded ipnet v2.12.2
-  Downloaded icu_provider v2.4.0
-  Downloaded icu_normalizer_data v2.4.0
-  Downloaded icu_locale_core v2.4.0
-  Downloaded hyper-util v0.1.21
-  Downloaded icu_collections v2.4.0
-  Downloaded idna v1.1.0
-  Downloaded icu_properties v2.4.0
-  Downloaded hyper v1.12.0
-  Downloaded icu_properties_data v2.4.0
-  Downloaded icu_normalizer v2.4.0
-  Downloaded litemap v0.8.3
-  Downloaded percent-encoding v2.3.2
-  Downloaded potential_utf v0.1.6
-  Downloaded reqwest v0.12.28
-  Downloaded ryu v1.0.23
-  Downloaded serde_urlencoded v0.7.1
-  Downloaded sync_wrapper v1.0.2
-  Downloaded synstructure v0.14.0
-  Downloaded tinystr v0.8.5
-  Downloaded tokio-rustls v0.26.6
-  Downloaded tower v0.5.3
-  Downloaded tower-layer v0.3.3
-  Downloaded tower-service v0.3.3
-  Downloaded tower-http v0.6.11
-  Downloaded try-lock v0.2.5
-  Downloaded utf8_iter v1.0.4
-  Downloaded url v2.5.8
-  Downloaded want v0.3.2
-  Downloaded webpki-roots v1.0.10
-  Downloaded writeable v0.6.4
-  Downloaded yoke v0.8.4
-  Downloaded yoke-derive v0.8.4
-  Downloaded zerofrom v0.1.8
-  Downloaded zerofrom-derive v0.1.8
-  Downloaded zerovec-derive v0.11.7
-  Downloaded zerotrie v0.2.5
-  Downloaded zerovec v0.11.9
-   Compiling syn v3.0.9
-   Compiling getrandom v0.2.17
-   Compiling stable_deref_trait v1.2.1
-   Compiling smallvec v1.16.3
-   Compiling find-msvc-tools v0.1.14
-   Compiling rand_core v0.6.4
-   Compiling futures-core v0.3.34
-   Compiling shlex v2.0.1
-   Compiling crypto-common v0.1.7
-   Compiling x25519-dalek v2.0.1
-   Compiling digest v0.10.7
-   Compiling universal-hash v0.5.1
-   Compiling cipher v0.4.4
-   Compiling poly1305 v0.8.0
-   Compiling hmac v0.12.1
-   Compiling aead v0.5.2
-   Compiling chacha20 v0.9.1
-   Compiling hkdf v0.12.4
-   Compiling sha2 v0.10.9
-   Compiling cc v1.8.0
-   Compiling chacha20poly1305 v0.10.1
-   Compiling writeable v0.6.4
-   Compiling litemap v0.8.3
-   Compiling icu_properties_data v2.4.0
-   Compiling icu_normalizer_data v2.4.0
-   Compiling synstructure v0.14.0
-   Compiling ring v0.17.14
-   Compiling serde_derive v1.0.229
-   Compiling thiserror-impl v2.0.21
-   Compiling tokio-macros v2.7.2
-   Compiling zerofrom-derive v0.1.8
-   Compiling tokio v1.53.3
-   Compiling thiserror v2.0.21
-   Compiling zerofrom v0.1.8
-   Compiling yoke-derive v0.8.4
-   Compiling zerovec-derive v0.11.7
-   Compiling serde v1.0.229
-   Compiling yoke v0.8.4
-   Compiling displaydoc v0.2.7
-   Compiling zerovec v0.11.9
    Compiling vpn-core v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-core)
-   Compiling zerotrie v0.2.5
-   Compiling tinystr v0.8.5
-   Compiling icu_locale_core v2.4.0
-warning: unused variable: `version`
-   --> crates/vpn-core/src/hello.rs:139:17
+error[E0432]: unresolved imports `crate::config::Fingerprint`, `crate::config::StealthLevel`
+   --> crates/vpn-core/src/masquerade.rs:161:36
     |
-139 |             let version = cur.u16()?;
-    |                 ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_version`
-    |
-    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+161 |     use crate::config::{DonorSpec, Fingerprint, StealthLevel};
+    |                                    ^^^^^^^^^^^  ^^^^^^^^^^^^ no `StealthLevel` in `config`
+    |                                    |
+    |                                    no `Fingerprint` in `config`
 
-   Compiling potential_utf v0.1.6
-warning: variable does not need to be mutable
-   --> crates/vpn-core/src/hello.rs:498:13
+error[E0560]: struct `config::TunnelConfig` has no field named `stealth`
+   --> crates/vpn-core/src/masquerade.rs:181:13
     |
-498 |         let mut push = |out: &mut Vec<u8>, ty: u16, data: &[u8]| {
-    |             ----^^^^
-    |             |
-    |             help: remove this `mut`
+181 |             stealth: StealthLevel::Off,
+    |             ^^^^^^^ `config::TunnelConfig` does not have this field
+    |
+    = note: available fields are: `masquerade`
+
+warning: variable does not need to be mutable
+   --> crates/vpn-core/src/endpoint.rs:559:18
+    |
+559 |         let (_c, mut s) = pair(packet::TUNNEL_MTU);
+    |                  ----^
+    |                  |
+    |                  help: remove this `mut`
     |
     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
 
-   Compiling toml_datetime v0.6.11
-   Compiling serde_spanned v0.6.9
-   Compiling utf8_iter v1.0.4
-   Compiling icu_collections v2.4.0
-   Compiling icu_provider v2.4.0
-   Compiling toml_edit v0.22.27
-warning: `vpn-core` (lib) generated 2 warnings (run `cargo fix --lib -p vpn-core` to apply 2 suggestions)
-   Compiling http v1.5.0
-   Compiling percent-encoding v2.3.2
-   Compiling http-body v1.1.0
-   Compiling vpn-rt v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-rt)
-error[E0252]: the name `Opened` is defined multiple times
-  --> crates/vpn-rt/src/lib.rs:34:80
-   |
-31 | use vpn_core::endpoint::{Endpoint, EndpointParams, EndpointStats, Opened, Role};
-   |                                                                   ------ previous import of the type `Opened` here
-...
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                ^^^^^^--
-   |                                                                                |
-   |                                                                                `Opened` reimported here
-   |                                                                                help: remove unnecessary import
-   |
-   = note: `Opened` must be defined only once in the type namespace of this module
-
-error[E0252]: the name `Role` is defined multiple times
-  --> crates/vpn-rt/src/lib.rs:34:88
-   |
-31 | use vpn_core::endpoint::{Endpoint, EndpointParams, EndpointStats, Opened, Role};
-   |                                                                           ---- previous import of the type `Role` here
-...
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                        ^^^^ `Role` reimported here
-   |
-   = note: `Role` must be defined only once in the type namespace of this module
-
-warning: unused imports: `Opened` and `Role`
-  --> crates/vpn-rt/src/lib.rs:34:80
-   |
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                ^^^^^^  ^^^^
-   |
-   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
-
-For more information about this error, try `rustc --explain E0252`.
-warning: `vpn-rt` (lib) generated 1 warning
-error: could not compile `vpn-rt` (lib) due to 2 previous errors; 1 warning emitted
+Some errors have detailed explanations: E0432, E0560.
+For more information about an error, try `rustc --explain E0432`.
+warning: `vpn-core` (lib test) generated 1 warning
+error: could not compile `vpn-core` (lib test) due to 2 previous errors; 1 warning emitted
 warning: build failed, waiting for other jobs to finish...
 -- FAILED: cargo build --workspace --all-targets
 
 ############ $ cargo clippy --workspace --all-targets -- -D warnings
-    Checking getrandom v0.2.17
-    Checking serde v1.0.229
-    Checking tokio v1.53.3
-    Checking thiserror v2.0.21
-    Checking zerofrom v0.1.8
-    Checking rand_core v0.6.4
-    Checking stable_deref_trait v1.2.1
-    Checking yoke v0.8.4
-    Checking crypto-common v0.1.7
-    Checking digest v0.10.7
-    Checking universal-hash v0.5.1
-    Checking cipher v0.4.4
-    Checking hmac v0.12.1
-    Checking poly1305 v0.8.0
-    Checking aead v0.5.2
-    Checking chacha20 v0.9.1
-    Checking hkdf v0.12.4
-    Checking sha2 v0.10.9
-    Checking x25519-dalek v2.0.1
-    Checking chacha20poly1305 v0.10.1
-    Checking zerovec v0.11.9
-    Checking smallvec v1.16.3
     Checking vpn-core v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-core)
-    Checking futures-core v0.3.34
-    Checking writeable v0.6.4
-    Checking litemap v0.8.3
-    Checking zerotrie v0.2.5
-    Checking tinystr v0.8.5
-    Checking potential_utf v0.1.6
-    Checking toml_datetime v0.6.11
-    Checking icu_locale_core v2.4.0
-    Checking serde_spanned v0.6.9
-    Checking utf8_iter v1.0.4
-    Checking toml_edit v0.22.27
-error: unused variable: `version`
-   --> crates/vpn-core/src/hello.rs:139:17
-    |
-139 |             let version = cur.u16()?;
-    |                 ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_version`
-    |
-    = note: `-D unused-variables` implied by `-D warnings`
-    = help: to override `-D warnings` add `#[allow(unused_variables)]`
+    Checking http-body v1.1.0
+    Checking slab v0.4.12
+    Checking futures-task v0.3.34
+    Checking untrusted v0.9.0
+    Checking ring v0.17.14
+    Checking icu_normalizer v2.4.0
+    Checking futures-util v0.3.34
+    Checking icu_properties v2.4.0
+    Checking try-lock v0.2.5
+    Checking tower-service v0.3.3
+    Checking idna_adapter v1.2.2
+    Checking want v0.3.2
+    Checking rustls-webpki v0.103.15
+    Checking httparse v1.10.1
+    Checking form_urlencoded v1.2.2
+    Checking atomic-waker v1.1.2
+    Checking idna v1.1.0
+    Checking hyper v1.12.0
+    Checking sync_wrapper v1.0.2
+    Checking rustls v0.23.46
+    Checking futures-channel v0.3.34
+    Checking base64 v0.23.1
+    Checking ipnet v2.12.2
+    Checking tower-layer v0.3.3
+    Checking hyper-util v0.1.21
+    Checking tower v0.5.3
+    Checking tracing-subscriber v0.3.23
+    Checking vpn-rt v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-rt)
+    Checking vpn-client v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-client)
+    Checking vpn-tun v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-tun)
+    Checking url v2.5.8
+    Checking clap v4.6.7
+    Checking webpki-roots v1.0.10
+    Checking bitflags v2.13.2
+    Checking ryu v1.0.23
+    Checking serde_urlencoded v0.7.1
+    Checking tower-http v0.6.11
+    Checking http-body-util v0.1.5
+    Checking base64 v0.22.1
+error[E0624]: associated function `new` is private
+  --> crates/vpn-client/src/lib.rs:91:45
+   |
+91 |         let session = Arc::new(LiveSession::new(
+   |                                             ^^^ private associated function
+   |
+  ::: crates/vpn-rt/src/lib.rs:85:5
+   |
+85 |     fn new(endpoint: Endpoint, peer: SocketAddr, meta: M) -> Self {
+   |     ------------------------------------------------------------- private associated function defined here
 
-error: variable does not need to be mutable
-   --> crates/vpn-core/src/hello.rs:498:13
-    |
-498 |         let mut push = |out: &mut Vec<u8>, ty: u16, data: &[u8]| {
-    |             ----^^^^
-    |             |
-    |             help: remove this `mut`
-    |
-    = note: `-D unused-mut` implied by `-D warnings`
-    = help: to override `-D warnings` add `#[allow(unused_mut)]`
-
-    Checking icu_provider v2.4.0
-    Checking icu_collections v2.4.0
-    Checking http v1.5.0
-    Checking percent-encoding v2.3.2
-    Checking toml v0.8.23
-    Checking icu_normalizer_data v2.4.0
-    Checking icu_properties_data v2.4.0
-error: manual implementation of `.is_multiple_of()`
-   --> crates/vpn-core/src/hello.rs:172:12
-    |
-172 |         if cs_len % 2 != 0 {
-    |            ^^^^^^^^^^^^^^^ help: replace with: `!cs_len.is_multiple_of(2)`
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#manual_is_multiple_of
-    = note: `-D clippy::manual-is-multiple-of` implied by `-D warnings`
-    = help: to override `-D warnings` add `#[allow(clippy::manual_is_multiple_of)]`
-
-    Checking rustls-pki-types v1.15.1
-error: could not compile `vpn-core` (lib) due to 3 previous errors
+    Checking tokio-rustls v0.26.6
+For more information about this error, try `rustc --explain E0624`.
+error: could not compile `vpn-client` (lib test) due to 1 previous error
 warning: build failed, waiting for other jobs to finish...
+error: could not compile `vpn-client` (lib) due to 1 previous error
 -- FAILED: cargo clippy --workspace --all-targets -- -D warnings
 
 ############ $ cargo test --workspace
-warning: unused variable: `version`
-   --> crates/vpn-core/src/hello.rs:139:17
-    |
-139 |             let version = cur.u16()?;
-    |                 ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_version`
-    |
-    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
-
-warning: variable does not need to be mutable
-   --> crates/vpn-core/src/hello.rs:498:13
-    |
-498 |         let mut push = |out: &mut Vec<u8>, ty: u16, data: &[u8]| {
-    |             ----^^^^
-    |             |
-    |             help: remove this `mut`
-    |
-    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
-
-warning: `vpn-core` (lib) generated 2 warnings (run `cargo fix --lib -p vpn-core` to apply 2 suggestions)
-   Compiling toml v0.8.23
-   Compiling icu_normalizer_data v2.4.0
-   Compiling icu_properties_data v2.4.0
    Compiling vpn-rt v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-rt)
-error[E0252]: the name `Opened` is defined multiple times
-  --> crates/vpn-rt/src/lib.rs:34:80
+   Compiling vpn-tun v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-tun)
+   Compiling vpn-core v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-core)
+   Compiling vpn-client v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-client)
+   Compiling vpn-server v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-server)
+error[E0624]: associated function `new` is private
+  --> crates/vpn-client/src/lib.rs:91:45
    |
-31 | use vpn_core::endpoint::{Endpoint, EndpointParams, EndpointStats, Opened, Role};
-   |                                                                   ------ previous import of the type `Opened` here
-...
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                ^^^^^^--
-   |                                                                                |
-   |                                                                                `Opened` reimported here
-   |                                                                                help: remove unnecessary import
+91 |         let session = Arc::new(LiveSession::new(
+   |                                             ^^^ private associated function
    |
-   = note: `Opened` must be defined only once in the type namespace of this module
+  ::: crates/vpn-rt/src/lib.rs:85:5
+   |
+85 |     fn new(endpoint: Endpoint, peer: SocketAddr, meta: M) -> Self {
+   |     ------------------------------------------------------------- private associated function defined here
 
-error[E0252]: the name `Role` is defined multiple times
-  --> crates/vpn-rt/src/lib.rs:34:88
+warning: unused imports: `Clock` and `LiveSession`
+  --> crates/vpn-server/src/server.rs:23:14
    |
-31 | use vpn_core::endpoint::{Endpoint, EndpointParams, EndpointStats, Opened, Role};
-   |                                                                           ---- previous import of the type `Role` here
-...
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                        ^^^^ `Role` reimported here
-   |
-   = note: `Role` must be defined only once in the type namespace of this module
-
-   Compiling rustls-pki-types v1.15.1
-warning: unused imports: `Opened` and `Role`
-  --> crates/vpn-rt/src/lib.rs:34:80
-   |
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                ^^^^^^  ^^^^
+23 | use vpn_rt::{Clock, EndpointSet, LiveSession, udp};
+   |              ^^^^^               ^^^^^^^^^^^
    |
    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
-   Compiling untrusted v0.9.0
-For more information about this error, try `rustc --explain E0252`.
-warning: `vpn-rt` (lib) generated 1 warning
-error: could not compile `vpn-rt` (lib) due to 2 previous errors; 1 warning emitted
+For more information about this error, try `rustc --explain E0624`.
+error: could not compile `vpn-client` (lib) due to 1 previous error
 warning: build failed, waiting for other jobs to finish...
+warning: `vpn-server` (lib) generated 1 warning (run `cargo fix --lib -p vpn-server` to apply 1 suggestion)
 -- FAILED: cargo test --workspace
 
 ############ $ cargo test -p bproto --features jni
    Compiling vpn-core v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-core)
-warning: unused variable: `version`
-   --> crates/vpn-core/src/hello.rs:139:17
-    |
-139 |             let version = cur.u16()?;
-    |                 ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_version`
-    |
-    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
-
-warning: variable does not need to be mutable
-   --> crates/vpn-core/src/hello.rs:498:13
-    |
-498 |         let mut push = |out: &mut Vec<u8>, ty: u16, data: &[u8]| {
-    |             ----^^^^
-    |             |
-    |             help: remove this `mut`
-    |
-    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
-
    Compiling vpn-rt v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-rt)
-error[E0252]: the name `Opened` is defined multiple times
-  --> crates/vpn-rt/src/lib.rs:34:80
+   Compiling vpn-client v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-client)
+error[E0624]: associated function `new` is private
+  --> crates/vpn-client/src/lib.rs:91:45
    |
-31 | use vpn_core::endpoint::{Endpoint, EndpointParams, EndpointStats, Opened, Role};
-   |                                                                   ------ previous import of the type `Opened` here
-...
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                ^^^^^^--
-   |                                                                                |
-   |                                                                                `Opened` reimported here
-   |                                                                                help: remove unnecessary import
+91 |         let session = Arc::new(LiveSession::new(
+   |                                             ^^^ private associated function
    |
-   = note: `Opened` must be defined only once in the type namespace of this module
+  ::: crates/vpn-rt/src/lib.rs:85:5
+   |
+85 |     fn new(endpoint: Endpoint, peer: SocketAddr, meta: M) -> Self {
+   |     ------------------------------------------------------------- private associated function defined here
 
-error[E0252]: the name `Role` is defined multiple times
-  --> crates/vpn-rt/src/lib.rs:34:88
-   |
-31 | use vpn_core::endpoint::{Endpoint, EndpointParams, EndpointStats, Opened, Role};
-   |                                                                           ---- previous import of the type `Role` here
-...
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                        ^^^^ `Role` reimported here
-   |
-   = note: `Role` must be defined only once in the type namespace of this module
-
-warning: unused imports: `Opened` and `Role`
-  --> crates/vpn-rt/src/lib.rs:34:80
-   |
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                ^^^^^^  ^^^^
-   |
-   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
-
-For more information about this error, try `rustc --explain E0252`.
-warning: `vpn-rt` (lib) generated 1 warning
-error: could not compile `vpn-rt` (lib) due to 2 previous errors; 1 warning emitted
+For more information about this error, try `rustc --explain E0624`.
+error: could not compile `vpn-client` (lib) due to 1 previous error
 warning: build failed, waiting for other jobs to finish...
-warning: `vpn-core` (lib) generated 2 warnings (run `cargo fix --lib -p vpn-core` to apply 2 suggestions)
 -- FAILED: cargo test -p bproto --features jni
 
 ############ PANEL BACKEND
@@ -680,94 +212,99 @@ warning: `vpn-core` (lib) generated 2 warnings (run `cargo fix --lib -p vpn-core
 ############ $ (panel) cargo build --all-targets
     Updating crates.io index
  Downloading crates ...
-  Downloaded futures-sink v0.3.34
-  Downloaded icu_collections v2.3.0
-  Downloaded md-5 v0.10.6
-  Downloaded moxcms v0.8.1
-  Downloaded blake2 v0.10.6
-  Downloaded unicode-bidi v0.3.18
-  Downloaded vcpkg v0.2.15
-  Downloaded argon2 v0.5.3
-  Downloaded base64ct v1.8.3
-  Downloaded allocator-api2 v0.2.21
-  Downloaded unicode-properties v0.1.4
-  Downloaded icu_properties_data v2.3.0
-  Downloaded axum-core v0.5.6
-  Downloaded parking v2.2.1
-  Downloaded icu_normalizer_data v2.3.0
-  Downloaded sha1 v0.10.7
-  Downloaded autocfg v1.5.1
-  Downloaded crossbeam-queue v0.3.14
-  Downloaded icu_properties v2.3.0
-  Downloaded num-bigint-dig v0.8.6
   Downloaded axum v0.8.9
-  Downloaded crc-catalog v2.5.0
-  Downloaded hashbrown v0.15.5
-  Downloaded sqlx-macros v0.8.6
-  Downloaded crc v3.4.0
-  Downloaded tinystr v0.8.4
-  Downloaded icu_provider v2.3.1
-  Downloaded mime v0.3.17
-  Downloaded num-integer v0.1.47
-  Downloaded pkcs8 v0.10.2
-  Downloaded either v1.19.0
-  Downloaded icu_locale_core v2.3.0
-  Downloaded sqlx-macros-core v0.8.6
-  Downloaded crossbeam-utils v0.8.23
-  Downloaded dotenvy v0.15.7
-  Downloaded pem-rfc7468 v0.7.0
-  Downloaded rsa v0.9.10
-  Downloaded event-listener v5.4.2
-  Downloaded password-hash v0.5.0
-  Downloaded hashlink v0.10.0
-  Downloaded serde_path_to_error v0.1.20
-  Downloaded qrcode v0.14.1
-  Downloaded sqlx-sqlite v0.8.6
-  Downloaded atoi v2.0.0
-  Downloaded whoami v1.6.1
-  Downloaded httpdate v1.0.3
-  Downloaded signature v2.2.0
-  Downloaded hex v0.4.3
-  Downloaded matchit v0.8.4
-  Downloaded byteorder-lite v0.1.0
-  Downloaded lock_api v0.4.14
+  Downloaded md-5 v0.10.6
+  Downloaded allocator-api2 v0.2.21
+  Downloaded autocfg v1.5.1
+  Downloaded blake2 v0.10.6
   Downloaded home v0.5.12
-  Downloaded tokio-stream v0.1.19
-  Downloaded futures-io v0.3.34
-  Downloaded num-iter v0.1.46
-  Downloaded foldhash v0.1.5
-  Downloaded parking_lot_core v0.9.12
-  Downloaded pkcs1 v0.7.5
-  Downloaded stringprep v0.1.5
-  Downloaded spki v0.7.3
-  Downloaded futures-executor v0.3.34
-  Downloaded parking_lot v0.12.5
-  Downloaded pkg-config v0.3.34
-  Downloaded scopeguard v1.2.0
-  Downloaded spin v0.9.9
-  Downloaded const-oid v0.9.6
-  Downloaded num-traits v0.2.19
-  Downloaded yoke v0.8.3
-  Downloaded bytemuck v1.25.2
-  Downloaded der v0.7.10
-  Downloaded flume v0.11.1
-  Downloaded sqlx-core v0.8.6
-  Downloaded zerovec-derive v0.11.6
-  Downloaded futures-intrusive v0.5.0
-  Downloaded sqlx-mysql v0.8.6
-  Downloaded unicode-normalization v0.1.26
-  Downloaded icu_normalizer v2.3.0
-  Downloaded libm v0.2.16
-  Downloaded sqlx-postgres v0.8.6
-  Downloaded zerovec v0.11.8
+  Downloaded rsa v0.9.10
   Downloaded sqlx v0.8.6
+  Downloaded crc-catalog v2.5.0
+  Downloaded moxcms v0.8.1
+  Downloaded tinystr v0.8.4
+  Downloaded yoke v0.8.3
+  Downloaded pkg-config v0.3.34
+  Downloaded either v1.19.0
+  Downloaded hashlink v0.10.0
+  Downloaded futures-executor v0.3.34
+  Downloaded lock_api v0.4.14
+  Downloaded mime v0.3.17
+  Downloaded sqlx-postgres v0.8.6
+  Downloaded pkcs8 v0.10.2
+  Downloaded bytemuck v1.25.2
+  Downloaded tokio-stream v0.1.19
+  Downloaded crossbeam-queue v0.3.14
+  Downloaded flume v0.11.1
+  Downloaded num-iter v0.1.46
+  Downloaded num-traits v0.2.19
+  Downloaded ppv-lite86 v0.2.21
+  Downloaded dotenvy v0.15.7
+  Downloaded sha1 v0.10.7
+  Downloaded axum-core v0.5.6
+  Downloaded futures-intrusive v0.5.0
+  Downloaded unicode-bidi v0.3.18
+  Downloaded crc v3.4.0
+  Downloaded matchit v0.8.4
+  Downloaded parking_lot_core v0.9.12
+  Downloaded rand_chacha v0.3.1
+  Downloaded futures-sink v0.3.34
+  Downloaded sqlx-macros v0.8.6
+  Downloaded sqlx-sqlite v0.8.6
+  Downloaded icu_normalizer_data v2.3.0
+  Downloaded icu_normalizer v2.3.0
+  Downloaded spin v0.9.9
+  Downloaded zerocopy v0.8.63
+  Downloaded zerovec-derive v0.11.6
+  Downloaded argon2 v0.5.3
+  Downloaded icu_provider v2.3.1
+  Downloaded sqlx-core v0.8.6
+  Downloaded httpdate v1.0.3
+  Downloaded scopeguard v1.2.0
   Downloaded webpki-roots v1.0.9
-  Downloaded image v0.25.10
+  Downloaded const-oid v0.9.6
+  Downloaded base64ct v1.8.3
+  Downloaded hashbrown v0.15.5
+  Downloaded parking_lot v0.12.5
+  Downloaded icu_properties v2.3.0
+  Downloaded pem-rfc7468 v0.7.0
+  Downloaded stringprep v0.1.5
+  Downloaded qrcode v0.14.1
+  Downloaded vcpkg v0.2.15
+  Downloaded der v0.7.10
+  Downloaded atoi v2.0.0
+  Downloaded libm v0.2.16
+  Downloaded serde_path_to_error v0.1.20
+  Downloaded event-listener v5.4.2
+  Downloaded icu_properties_data v2.3.0
+  Downloaded hex v0.4.3
+  Downloaded icu_locale_core v2.3.0
+  Downloaded parking v2.2.1
+  Downloaded pkcs1 v0.7.5
+  Downloaded sqlx-macros-core v0.8.6
+  Downloaded num-integer v0.1.47
+  Downloaded byteorder v1.5.0
+  Downloaded crossbeam-utils v0.8.23
+  Downloaded futures-io v0.3.34
+  Downloaded icu_collections v2.3.0
+  Downloaded zerovec v0.11.8
+  Downloaded unicode-properties v0.1.4
+  Downloaded password-hash v0.5.0
+  Downloaded signature v2.2.0
+  Downloaded sqlx-mysql v0.8.6
+  Downloaded byteorder-lite v0.1.0
+  Downloaded rand v0.8.8
+  Downloaded num-bigint-dig v0.8.6
+  Downloaded unicode-normalization v0.1.26
+  Downloaded spki v0.7.3
+  Downloaded foldhash v0.1.5
   Downloaded pxfm v0.1.30
+  Downloaded whoami v1.6.1
   Downloaded libsqlite3-sys v0.30.1
+  Downloaded image v0.25.10
    Compiling proc-macro2 v1.0.107
-   Compiling unicode-ident v1.0.27
    Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
    Compiling libc v0.2.191
    Compiling cfg-if v1.0.5
    Compiling pin-project-lite v0.2.17
@@ -775,32 +312,32 @@ warning: `vpn-core` (lib) generated 2 warnings (run `cargo fix --lib -p vpn-core
    Compiling futures-core v0.3.34
    Compiling bytes v1.12.1
    Compiling once_cell v1.21.4
-   Compiling writeable v0.6.4
    Compiling itoa v1.0.18
+   Compiling writeable v0.6.4
    Compiling litemap v0.8.3
-   Compiling icu_normalizer_data v2.3.0
-   Compiling syn v3.0.9
    Compiling version_check v0.9.5
+   Compiling icu_normalizer_data v2.3.0
    Compiling utf8_iter v1.0.4
-   Compiling syn v2.0.119
    Compiling generic-array v0.14.7
+   Compiling syn v3.0.9
+   Compiling syn v2.0.119
    Compiling shlex v2.0.1
    Compiling icu_properties_data v2.3.0
-   Compiling mio v1.2.4
-   Compiling socket2 v0.6.5
    Compiling find-msvc-tools v0.1.14
+   Compiling socket2 v0.6.5
+   Compiling mio v1.2.4
    Compiling futures-sink v0.3.34
    Compiling cc v1.8.0
-   Compiling percent-encoding v2.3.2
-   Compiling memchr v2.8.3
-   Compiling smallvec v1.16.3
    Compiling typenum v1.20.1
+   Compiling percent-encoding v2.3.2
+   Compiling smallvec v1.16.3
+   Compiling memchr v2.8.3
    Compiling autocfg v1.5.1
    Compiling serde v1.0.229
+   Compiling slab v0.4.12
    Compiling synstructure v0.14.0
    Compiling futures-io v0.3.34
    Compiling futures-task v0.3.34
-   Compiling slab v0.4.12
    Compiling futures-util v0.3.34
    Compiling block-buffer v0.10.4
    Compiling crypto-common v0.1.7
@@ -809,9 +346,8 @@ warning: `vpn-core` (lib) generated 2 warnings (run `cargo fix --lib -p vpn-core
    Compiling parking_lot_core v0.9.12
    Compiling scopeguard v1.2.0
    Compiling lock_api v0.4.14
-   Compiling signal-hook-registry v1.4.8
    Compiling tracing-attributes v0.1.31
-   Compiling tracing-core v0.1.36
+   Compiling signal-hook-registry v1.4.8
    Compiling zerofrom-derive v0.1.8
    Compiling yoke-derive v0.8.4
    Compiling zerovec-derive v0.11.6
@@ -821,19 +357,20 @@ warning: `vpn-core` (lib) generated 2 warnings (run `cargo fix --lib -p vpn-core
    Compiling serde_derive v1.0.229
    Compiling tokio-macros v2.7.2
    Compiling zerotrie v0.2.5
+   Compiling tracing-core v0.1.36
    Compiling zerovec v0.11.8
    Compiling log v0.4.34
    Compiling subtle v2.6.1
    Compiling tokio v1.53.3
    Compiling tinystr v0.8.4
    Compiling potential_utf v0.1.6
-   Compiling icu_collections v2.3.0
    Compiling icu_locale_core v2.3.0
+   Compiling icu_collections v2.3.0
    Compiling serde_core v1.0.229
    Compiling tracing v0.1.44
    Compiling icu_provider v2.3.1
-   Compiling icu_properties v2.3.0
    Compiling getrandom v0.2.17
+   Compiling icu_properties v2.3.0
    Compiling equivalent v1.0.3
    Compiling crossbeam-utils v0.8.23
    Compiling cpufeatures v0.2.17
@@ -848,84 +385,78 @@ warning: `vpn-core` (lib) generated 2 warnings (run `cargo fix --lib -p vpn-core
    Compiling thiserror-impl v2.0.21
    Compiling num-traits v0.2.19
    Compiling ring v0.17.14
+   Compiling zmij v1.0.23
    Compiling vcpkg v0.2.15
    Compiling parking v2.2.1
    Compiling hashbrown v0.17.1
    Compiling crc-catalog v2.5.0
    Compiling pkg-config v0.3.34
-   Compiling zmij v1.0.23
    Compiling crc v3.4.0
    Compiling indexmap v2.14.2
    Compiling event-listener v5.4.2
    Compiling libsqlite3-sys v0.30.1
    Compiling idna_adapter v1.2.2
-   Compiling crossbeam-queue v0.3.14
    Compiling hashlink v0.10.0
+   Compiling crossbeam-queue v0.3.14
    Compiling digest v0.10.7
    Compiling httparse v1.10.1
-   Compiling tower-service v0.3.3
    Compiling zeroize v1.9.1
-   Compiling rustls-pki-types v1.15.1
+   Compiling tower-service v0.3.3
    Compiling parking_lot v0.12.5
+   Compiling rustls-pki-types v1.15.1
    Compiling idna v1.1.0
    Compiling spin v0.9.9
    Compiling futures-channel v0.3.34
-   Compiling untrusted v0.9.0
    Compiling try-lock v0.2.5
+   Compiling untrusted v0.9.0
    Compiling want v0.3.2
    Compiling sha2 v0.10.9
    Compiling flume v0.11.1
    Compiling url v2.5.8
    Compiling futures-intrusive v0.5.0
+   Compiling tokio-stream v0.1.19
    Compiling either v1.19.0
    Compiling futures-executor v0.3.34
-   Compiling tokio-stream v0.1.19
    Compiling sync_wrapper v1.0.2
+   Compiling zerocopy v0.8.63
    Compiling serde_json v1.0.154
    Compiling httpdate v1.0.3
    Compiling rustls v0.23.46
-   Compiling zerocopy v0.8.63
-   Compiling atomic-waker v1.1.2
    Compiling tower-layer v0.3.3
+   Compiling atomic-waker v1.1.2
    Compiling base64 v0.22.1
    Compiling hyper v1.12.0
    Compiling sqlx-core v0.8.6
    Compiling atoi v2.0.0
-   Compiling rustls-webpki v0.103.15
    Compiling serde_urlencoded v0.7.1
    Compiling http-body-util v0.1.5
    Compiling rand_core v0.6.4
    Compiling ipnet v2.12.2
    Compiling base64 v0.23.1
    Compiling hyper-util v0.1.21
-   Compiling sqlx-sqlite v0.8.6
    Compiling tower v0.5.3
    Compiling hex v0.4.3
    Compiling dotenvy v0.15.7
    Compiling regex-syntax v0.8.11
    Compiling pxfm v0.1.30
    Compiling heck v0.5.0
-   Compiling sqlx-macros-core v0.8.6
    Compiling ppv-lite86 v0.2.21
    Compiling regex-automata v0.4.18
    Compiling moxcms v0.8.1
-   Compiling tokio-rustls v0.26.6
    Compiling webpki-roots v1.0.9
-   Compiling mime v0.3.17
+   Compiling lazy_static v1.5.1
+   Compiling base64ct v1.8.3
    Compiling byteorder-lite v0.1.0
-   Compiling anyhow v1.0.104
+   Compiling mime v0.3.17
    Compiling bitflags v2.13.2
    Compiling bytemuck v1.25.2
-   Compiling base64ct v1.8.3
-   Compiling lazy_static v1.5.1
-   Compiling sharded-slab v0.1.7
-   Compiling password-hash v0.5.0
+   Compiling anyhow v1.0.104
+   Compiling image v0.25.10
    Compiling tower-http v0.6.11
    Compiling axum-core v0.5.6
-   Compiling hyper-rustls v0.27.10
+   Compiling password-hash v0.5.0
+   Compiling sharded-slab v0.1.7
    Compiling matchers v0.2.0
-   Compiling sqlx-macros v0.8.6
-   Compiling image v0.25.10
    Compiling rand_chacha v0.3.1
    Compiling blake2 v0.10.6
    Compiling serde_path_to_error v0.1.20
@@ -933,20 +464,26 @@ warning: `vpn-core` (lib) generated 2 warnings (run `cargo fix --lib -p vpn-core
    Compiling thread_local v1.1.10
    Compiling nu-ansi-term v0.50.3
    Compiling matchit v0.8.4
-   Compiling axum v0.8.9
    Compiling tracing-subscriber v0.3.23
+   Compiling axum v0.8.9
    Compiling argon2 v0.5.3
-   Compiling qrcode v0.14.1
    Compiling rand v0.8.8
-   Compiling sqlx v0.8.6
-   Compiling reqwest v0.12.28
+   Compiling qrcode v0.14.1
    Compiling hmac v0.12.1
+   Compiling sqlx-sqlite v0.8.6
+   Compiling sqlx-macros-core v0.8.6
+   Compiling rustls-webpki v0.103.15
+   Compiling sqlx-macros v0.8.6
+   Compiling sqlx v0.8.6
+   Compiling tokio-rustls v0.26.6
+   Compiling hyper-rustls v0.27.10
+   Compiling reqwest v0.12.28
    Compiling bproto-panel v0.1.0 (/home/runner/work/bProto/bProto/panel/backend)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 54.16s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 54.91s
 -- OK: cargo build --all-targets
 
 ############ $ (panel) cargo test
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
      Running unittests src/main.rs (target/debug/deps/panel-456d2137952bf23a)
 
 running 37 tests
@@ -955,9 +492,10 @@ test api_tests::clients_cannot_log_in_as_admins ... ok
 test api_tests::audit_log_records_admin_actions ... ok
 test api_tests::protected_routes_need_a_bearer_token ... ok
 test api_tests::inbound_needs_a_flag_to_take_its_clients_with_it ... ok
-test api_tests::tag_sync_follows_a_changed_k_tag ... ok
+test api_tests::inbound_client_config_and_subscription_flow ... ok
 test auth::tests::bearer_parsing ... ok
 test auth::tests::client_ip_prefers_forwarded_for ... ok
+test api_tests::tag_sync_follows_a_changed_k_tag ... ok
 test auth::tests::rate_limiter_drains ... ok
 test auth::tests::rate_limiter_keys_are_independent ... ok
 test inbounds::tests::server_must_be_ip_port ... ok
@@ -966,7 +504,6 @@ test inbounds::tests::usernames_are_restricted ... ok
 test keys::tests::base64url_known_values ... ok
 test keys::tests::config_uri_is_importable_shape ... ok
 test keys::tests::psk_is_random ... ok
-test keys::tests::qr_renders_svg ... ok
 test keys::tests::tag_matches_vpn_core_vector ... ok
 test stats::tests::db_path_hint_strips_the_url ... ok
 test stats::tests::demo_server_id_is_stable ... ok
@@ -981,178 +518,65 @@ test subs::tests::plain_text_payload_is_parsed ... ok
 test subs::tests::private_addresses_are_disallowed ... ok
 test subs::tests::sub_url_has_no_double_slash ... ok
 test tests::panel_name_is_set ... ok
-test api_tests::inbound_client_config_and_subscription_flow ... ok
+test keys::tests::qr_renders_svg ... ok
 test tests::sub_ids_fit_the_column ... ok
 test tests::tokens_are_unique_and_long ... ok
 test api_tests::session_reports_accumulate_and_close ... ok
 test tests::password_hash_roundtrip ... ok
 test api_tests::password_change_rotates_the_credential ... ok
 
-test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.77s
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.28s
 
 -- OK: cargo test
 
 ############ PANEL FRONTEND
--- FAILED: npm ci
+-- FAILED: pnpm install
 ############ FUNCTIONAL: run.sh demo
 ==> building vpn-server
-   Compiling httparse v1.10.1
-   Compiling slab v0.4.12
-   Compiling futures-task v0.3.34
-   Compiling ring v0.17.14
-   Compiling futures-util v0.3.34
-   Compiling icu_normalizer v2.4.0
-   Compiling icu_properties v2.4.0
-   Compiling rustls v0.23.46
-   Compiling tower-service v0.3.3
-   Compiling try-lock v0.2.5
-   Compiling want v0.3.2
-   Compiling form_urlencoded v1.2.2
-   Compiling rustls-webpki v0.103.15
-   Compiling idna_adapter v1.2.2
-   Compiling atomic-waker v1.1.2
-   Compiling hyper v1.12.0
-   Compiling idna v1.1.0
-   Compiling futures-channel v0.3.34
-   Compiling sync_wrapper v1.0.2
-   Compiling base64 v0.23.1
-   Compiling tower-layer v0.3.3
-   Compiling ipnet v2.12.2
-   Compiling url v2.5.8
-   Compiling tower v0.5.3
-   Compiling hyper-util v0.1.21
-warning: unused variable: `version`
-   --> crates/vpn-core/src/hello.rs:139:17
-    |
-139 |             let version = cur.u16()?;
-    |                 ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_version`
-    |
-    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
-
-warning: variable does not need to be mutable
-   --> crates/vpn-core/src/hello.rs:498:13
-    |
-498 |         let mut push = |out: &mut Vec<u8>, ty: u16, data: &[u8]| {
-    |             ----^^^^
-    |             |
-    |             help: remove this `mut`
-    |
-    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
-
-warning: `vpn-core` (lib) generated 2 warnings (run `cargo fix --lib -p vpn-core` to apply 2 suggestions)
-   Compiling webpki-roots v1.0.10
-   Compiling bitflags v2.13.2
-   Compiling ryu v1.0.23
-   Compiling serde_urlencoded v0.7.1
-   Compiling clap_derive v4.6.7
-   Compiling tower-http v0.6.11
-   Compiling http-body-util v0.1.5
-   Compiling base64 v0.22.1
-   Compiling tracing-subscriber v0.3.23
-   Compiling vpn-tun v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-tun)
-   Compiling tokio-rustls v0.26.6
-   Compiling hyper-rustls v0.27.10
-   Compiling clap v4.6.7
-   Compiling vpn-rt v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-rt)
-error[E0252]: the name `Opened` is defined multiple times
-  --> crates/vpn-rt/src/lib.rs:34:80
+warning: unused imports: `Clock` and `LiveSession`
+  --> crates/vpn-server/src/server.rs:23:14
    |
-31 | use vpn_core::endpoint::{Endpoint, EndpointParams, EndpointStats, Opened, Role};
-   |                                                                   ------ previous import of the type `Opened` here
-...
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                ^^^^^^--
-   |                                                                                |
-   |                                                                                `Opened` reimported here
-   |                                                                                help: remove unnecessary import
-   |
-   = note: `Opened` must be defined only once in the type namespace of this module
-
-error[E0252]: the name `Role` is defined multiple times
-  --> crates/vpn-rt/src/lib.rs:34:88
-   |
-31 | use vpn_core::endpoint::{Endpoint, EndpointParams, EndpointStats, Opened, Role};
-   |                                                                           ---- previous import of the type `Role` here
-...
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                        ^^^^ `Role` reimported here
-   |
-   = note: `Role` must be defined only once in the type namespace of this module
-
-warning: unused imports: `Opened` and `Role`
-  --> crates/vpn-rt/src/lib.rs:34:80
-   |
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                ^^^^^^  ^^^^
+23 | use vpn_rt::{Clock, EndpointSet, LiveSession, udp};
+   |              ^^^^^               ^^^^^^^^^^^
    |
    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
-For more information about this error, try `rustc --explain E0252`.
-warning: `vpn-rt` (lib) generated 1 warning
-error: could not compile `vpn-rt` (lib) due to 2 previous errors; 1 warning emitted
+warning: `vpn-server` (lib) generated 1 warning (run `cargo fix --lib -p vpn-server` to apply 1 suggestion)
+   Compiling vpn-server v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-server)
+warning: unused import: `SocketAddr`
+  --> crates/vpn-server/src/main.rs:15:26
+   |
+15 | use std::net::{Ipv4Addr, SocketAddr};
+   |                          ^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vpn-server` (bin "vpn-server") generated 1 warning (run `cargo fix --bin "vpn-server" -p vpn-server` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.98s
+==> building vpn-cli
+   Compiling vpn-core v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-core)
+   Compiling vpn-rt v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-rt)
+   Compiling vpn-tun v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-tun)
+   Compiling vpn-client v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-client)
+error[E0624]: associated function `new` is private
+  --> crates/vpn-client/src/lib.rs:91:45
+   |
+91 |         let session = Arc::new(LiveSession::new(
+   |                                             ^^^ private associated function
+   |
+  ::: crates/vpn-rt/src/lib.rs:85:5
+   |
+85 |     fn new(endpoint: Endpoint, peer: SocketAddr, meta: M) -> Self {
+   |     ------------------------------------------------------------- private associated function defined here
+
+For more information about this error, try `rustc --explain E0624`.
+error: could not compile `vpn-client` (lib) due to 1 previous error
 warning: build failed, waiting for other jobs to finish...
-err  vpn-server not found after building vpn-server
+err  bproto not found after building vpn-cli
 -- FAILED: run.sh demo
 
 ############ FUNCTIONAL: server --check-config
-==> building vpn-server
-warning: unused variable: `version`
-   --> crates/vpn-core/src/hello.rs:139:17
-    |
-139 |             let version = cur.u16()?;
-    |                 ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_version`
-    |
-    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
-
-warning: variable does not need to be mutable
-   --> crates/vpn-core/src/hello.rs:498:13
-    |
-498 |         let mut push = |out: &mut Vec<u8>, ty: u16, data: &[u8]| {
-    |             ----^^^^
-    |             |
-    |             help: remove this `mut`
-    |
-    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
-
-warning: `vpn-core` (lib) generated 2 warnings (run `cargo fix --lib -p vpn-core` to apply 2 suggestions)
-   Compiling reqwest v0.12.28
-   Compiling vpn-rt v0.1.0 (/home/runner/work/bProto/bProto/crates/vpn-rt)
-error[E0252]: the name `Opened` is defined multiple times
-  --> crates/vpn-rt/src/lib.rs:34:80
-   |
-31 | use vpn_core::endpoint::{Endpoint, EndpointParams, EndpointStats, Opened, Role};
-   |                                                                   ------ previous import of the type `Opened` here
-...
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                ^^^^^^--
-   |                                                                                |
-   |                                                                                `Opened` reimported here
-   |                                                                                help: remove unnecessary import
-   |
-   = note: `Opened` must be defined only once in the type namespace of this module
-
-error[E0252]: the name `Role` is defined multiple times
-  --> crates/vpn-rt/src/lib.rs:34:88
-   |
-31 | use vpn_core::endpoint::{Endpoint, EndpointParams, EndpointStats, Opened, Role};
-   |                                                                           ---- previous import of the type `Role` here
-...
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                        ^^^^ `Role` reimported here
-   |
-   = note: `Role` must be defined only once in the type namespace of this module
-
-warning: unused imports: `Opened` and `Role`
-  --> crates/vpn-rt/src/lib.rs:34:80
-   |
-34 | pub use vpn_core::endpoint::{EndpointParams as Params, EndpointStats as Stats, Opened, Role};
-   |                                                                                ^^^^^^  ^^^^
-   |
-   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
-
-For more information about this error, try `rustc --explain E0252`.
-warning: `vpn-rt` (lib) generated 1 warning
-error: could not compile `vpn-rt` (lib) due to 2 previous errors; 1 warning emitted
-warning: build failed, waiting for other jobs to finish...
-err  vpn-server not found after building vpn-server
--- FAILED: check-config
+==> /home/runner/work/bProto/bProto/target/debug/vpn-server --check-config
+[2m2026-10-22T15:08:50.876534Z[0m [32m INFO[0m [2mvpn_server[0m[2m:[0m configuration loaded [3mlisten[0m[2m=[0m0.0.0.0:443 [3mdonor[0m[2m=[0mwww.cloudflare.com [3musers[0m[2m=[0m2 [3mtunnel[0m[2m=[0m10.66.0.0/24 [3mpanel[0m[2m=[0m"disabled"
+configuration OK
+-- OK: check-config
