@@ -135,8 +135,6 @@ impl Tunnel {
         self.mtu
     }
 
-/// Snapshot of the transport state, for logging and for the mobile UI.
-
     /// Raw descriptor of the tunnel's UDP socket.
     ///
     /// Android needs this to call `VpnService.protect(fd)`: without it the
