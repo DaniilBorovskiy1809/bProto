@@ -12,4 +12,5 @@
 
 pub mod config;
 pub mod control;
+pub mod relay;
 pub mod server;

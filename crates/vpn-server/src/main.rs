@@ -28,6 +28,7 @@ use vpn_tun::{dev, nat};
 
 use vpn_server::config::ServerConfig;
 use vpn_server::control::{PanelClient, SessionReport, apply_keys};
+use vpn_server::relay::Relay;
 use vpn_server::server::{Node, Outcome};
 
 #[derive(Debug, Parser)]
@@ -102,19 +103,40 @@ async fn main() -> anyhow::Result<()> {
         None => tracing::warn!("no panel configured: keys are static, traffic is reported nowhere"),
     }
 
+    // Masquerade and the plain datapath are two front-ends for the same node,
+    // but only one of them can own the port: a session established over the
+    // masquerade handshake must keep talking to the address it shook hands
+    // with. So the mode picks the listener, not the other way round.
+    let masquerade = cfg.masquerade.enabled;
+    let listen_addr = if masquerade {
+        cfg.masquerade.listen_addr
+    } else {
+        cfg.listen_addr
+    };
     let sock = Arc::new(
-        udp::bind(cfg.listen_addr)
+        udp::bind(listen_addr)
             .await
-            .with_context(|| format!("bind UDP {}", cfg.listen_addr))?,
+            .with_context(|| format!("bind UDP {listen_addr}"))?,
     );
-    tracing::info!(addr = %sock.local_addr()?, "listener up");
+    tracing::info!(addr = %sock.local_addr()?, masquerade, "listener up");
 
-    let node = Arc::new(Node::new(
+    let mut node = Node::new(
         Arc::clone(&sock),
         Arc::clone(&tags),
         IpPool::new(network, pool_prefix),
         (cfg.tun.mtu as usize).min(packet::TUNNEL_MTU),
-    ));
+    );
+    if masquerade {
+        // `validate` has already refused an unpinned donor, so this unwrap is
+        // the same assertion restated at the point of use.
+        let donor = cfg
+            .donor
+            .addr
+            .with_context(|| "masquerade needs donor.addr".to_string())?;
+        tracing::info!(donor = %donor, "masquerade listener: strangers are relayed to the donor");
+        node = node.with_donor(Relay::new(donor));
+    }
+    let node = Arc::new(node);
 
     let device = if cli.datapath {
         Some(Arc::new(bring_up_tun(&cfg, tun_addr, prefix)?))
@@ -132,6 +154,7 @@ async fn main() -> anyhow::Result<()> {
         panel,
         clock: Clock::new(),
         report_every: Duration::from_secs(cfg.panel.interval_secs.max(1)),
+        masquerade,
     })
     .await
 }
@@ -203,6 +226,8 @@ struct ServeCtx {
     panel: Option<PanelClient>,
     clock: Clock,
     report_every: Duration,
+    /// Run the datagram path that answers strangers with the donor.
+    masquerade: bool,
 }
 
 async fn serve(ctx: ServeCtx) -> anyhow::Result<()> {
@@ -213,6 +238,7 @@ async fn serve(ctx: ServeCtx) -> anyhow::Result<()> {
         panel,
         clock,
         report_every,
+        masquerade,
     } = ctx;
 
     // TUN reads block, so they happen on a dedicated thread that hands packets
@@ -252,7 +278,13 @@ async fn serve(ctx: ServeCtx) -> anyhow::Result<()> {
         tokio::select! {
             received = sock.recv_from(&mut datagram) => {
                 let Ok((n, from)) = received else { continue };
-                match node.route(&datagram[..n], from, clock.now_us()).await {
+                let routed = if masquerade {
+                    node.route_masquerade(&datagram[..n], from, clock.now_us())
+                        .await
+                } else {
+                    node.route(&datagram[..n], from, clock.now_us()).await
+                };
+                match routed {
                     Ok(Outcome::Packet(pkt)) => {
                         if let Some(device) = &device
                             && let Err(e) = device.write_packet(&pkt)
@@ -264,6 +296,9 @@ async fn serve(ctx: ServeCtx) -> anyhow::Result<()> {
                         tracing::debug!(user_id, %ip, "accepted a client");
                     }
                     Ok(Outcome::Nothing) => {}
+                    Ok(Outcome::Relayed) => {
+                        tracing::trace!(%from, "relayed to the donor")
+                    }
                     Err(e) => tracing::debug!(error = %e, %from, "datagram rejected"),
                 }
             }

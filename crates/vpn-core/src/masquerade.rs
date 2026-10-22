@@ -20,15 +20,17 @@
 use crate::auth;
 use crate::config::TunnelConfig;
 use crate::crypto::KEY_LEN;
+use crate::handshake::VerifiedHello;
 use crate::hello::{BROWSER_SESSION_ID_LEN, ClientHello, ClientHelloBuilder, HelloProfile};
 use crate::packet::MAX_DATAGRAM;
 use crate::tags::TagTable;
 
 /// What the server should do with an inbound handshake.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Verdict {
-    /// The label verified: serve this user.
-    Intercept(u64),
+    /// The label verified: serve this client. Carries everything the server
+    /// needs to answer, so the identity is looked up exactly once.
+    Intercept(VerifiedHello),
     /// Not ours: forward the bytes to the donor untouched.
     RelayToDonor,
 }
@@ -60,7 +62,7 @@ pub fn classify(hello: &ClientHello, tags: &TagTable, now_unix_secs: u64) -> Ver
     let Some((psk, user_id)) = tags.lookup(&tag) else {
         return Verdict::RelayToDonor;
     };
-    if auth::verify_label_mac(
+    if !auth::verify_label_mac(
         &psk,
         &tag,
         &hello.random,
@@ -68,10 +70,15 @@ pub fn classify(hello: &ClientHello, tags: &TagTable, now_unix_secs: u64) -> Ver
         now_unix_secs,
         &label[auth::TAG_LEN..],
     ) {
-        Verdict::Intercept(user_id)
-    } else {
-        Verdict::RelayToDonor
+        return Verdict::RelayToDonor;
     }
+    Verdict::Intercept(VerifiedHello {
+        psk,
+        user_id,
+        tag,
+        client_random: hello.random,
+        x25519_pub,
+    })
 }
 
 /// The 32-byte label this client puts in `session_id`.
@@ -183,6 +190,14 @@ mod tests {
         }
     }
 
+    /// The user id an intercepted hello was verified as.
+    fn intercepted(verdict: Verdict) -> Option<u64> {
+        match verdict {
+            Verdict::Intercept(v) => Some(v.user_id),
+            Verdict::RelayToDonor => None,
+        }
+    }
+
     fn hello_with(label: [u8; BROWSER_SESSION_ID_LEN], random: [u8; 32]) -> ClientHello {
         let bytes = ClientHelloBuilder::new(HelloProfile::Chrome120)
             .sni("www.cloudflare.com")
@@ -198,8 +213,8 @@ mod tests {
         let cr = [0x0A; 32];
         let label = client_label(&cfg(), &cr, &[0x22; 32], NOW);
         assert_eq!(
-            classify(&hello_with(label, cr), &table(), NOW),
-            Verdict::Intercept(42)
+            intercepted(classify(&hello_with(label, cr), &table(), NOW)),
+            Some(42)
         );
     }
 
@@ -209,8 +224,8 @@ mod tests {
         let label = client_label(&cfg(), &cr, &[0x22; 32], NOW);
         let hello = hello_with(label, cr);
         assert_eq!(
-            classify(&hello, &table(), NOW + auth::WINDOW_SECS),
-            Verdict::Intercept(42)
+            intercepted(classify(&hello, &table(), NOW + auth::WINDOW_SECS)),
+            Some(42)
         );
         assert_eq!(
             classify(&hello, &table(), NOW + 3 * auth::WINDOW_SECS),
@@ -298,7 +313,7 @@ mod tests {
         assert_eq!(hello.sni(), Some("www.cloudflare.com"));
         assert_eq!(hello.alpn(), vec!["h3".to_string()]);
         assert_eq!(hello.x25519_key_share(), Some(eph.public_bytes()));
-        assert_eq!(classify(&hello, &table(), NOW), Verdict::Intercept(42));
+        assert_eq!(intercepted(classify(&hello, &table(), NOW)), Some(42));
     }
 
     #[test]

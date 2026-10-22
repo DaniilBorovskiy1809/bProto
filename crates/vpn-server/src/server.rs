@@ -19,11 +19,12 @@ use tokio::sync::Mutex;
 use vpn_core::auth::TAG_LEN;
 use vpn_core::config::to_hex;
 use vpn_core::crypto::KeyPair;
-use vpn_core::handshake;
-use vpn_core::{Error, IpPool, TagTable, packet, unix_now_secs};
+use vpn_core::handshake::{self, VerifiedHello};
+use vpn_core::{Error, IpPool, TagTable, masquerade, packet, unix_now_secs};
 use vpn_rt::{EndpointSet, udp};
 
 use crate::control::SessionDelta;
+use crate::relay::Relay;
 
 /// Default housekeeping period.
 pub const TICK: Duration = vpn_rt::TICK;
@@ -75,6 +76,8 @@ pub struct Counters {
     pub handshakes: AtomicU64,
     /// Handshakes that failed verification: probing, replays, wrong keys.
     pub rejected_handshakes: AtomicU64,
+    /// Datagrams forwarded to the donor because they were not ours.
+    pub relayed: AtomicU64,
 }
 
 /// Snapshot of the whole node.
@@ -88,6 +91,10 @@ pub struct NodeStats {
     pub rejected_handshakes: u64,
     /// Datagrams whose tag matched no live session.
     pub unknown_tags: u64,
+    /// Datagrams forwarded to the donor.
+    pub relayed: u64,
+    /// Live donor-relay flows, i.e. peers currently being forwarded.
+    pub relay_flows: usize,
 }
 
 /// What one inbound datagram turned out to be.
@@ -99,6 +106,8 @@ pub enum Outcome {
     Packet(Vec<u8>),
     /// Consumed by the protocol itself (ACK, keepalive, …).
     Nothing,
+    /// Forwarded to the donor: not one of our clients.
+    Relayed,
 }
 
 /// A session that just ended, handed back so the caller can release resources
@@ -143,6 +152,9 @@ pub struct Node {
     /// Final reports for sessions evicted by a reconnect, drained by
     /// [`Self::take_deltas`].
     pending: StdMutex<Vec<SessionDelta>>,
+    /// Where to send datagrams that are not ours. `None` outside the
+    /// masquerade listener, where such datagrams are simply dropped.
+    donor: Option<Relay>,
     pub counters: Counters,
 }
 
@@ -158,8 +170,16 @@ impl Node {
             pool: Mutex::new(pool),
             mtu,
             pending: StdMutex::new(Vec::new()),
+            donor: None,
             counters: Counters::default(),
         }
+    }
+
+    /// Attach a donor relay, turning this into a masquerade listener.
+    #[must_use]
+    pub fn with_donor(mut self, relay: Relay) -> Self {
+        self.donor = Some(relay);
+        self
     }
 
     /// The live sessions, for the outbound path.
@@ -175,6 +195,11 @@ impl Node {
             handshakes: self.counters.handshakes.load(Ordering::Relaxed),
             rejected_handshakes: self.counters.rejected_handshakes.load(Ordering::Relaxed),
             unknown_tags: vpn_rt::unknown_tags(&self.sessions),
+            relayed: self.counters.relayed.load(Ordering::Relaxed),
+            relay_flows: match &self.donor {
+                Some(r) => r.len().await,
+                None => 0,
+            },
         }
     }
 
@@ -217,6 +242,63 @@ impl Node {
         }
     }
 
+    /// How the server's handshake reply is put on the wire.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum Reply {
+        /// Our own plaintext `HELLO_ACK`: honest, and obviously not TLS.
+        Native,
+        /// A TLS `ServerHello`, for a port that must look like the donor's.
+        ServerHello,
+    }
+
+    /// Route one inbound datagram on the masquerade listener.
+    ///
+    /// The order matters. A datagram is offered to the `ClientHello` parser
+    /// first, because that is what a stranger sends; only if it is not one does
+    /// it go to the ordinary datapath as an established session's traffic. Our
+    /// data packets start with a zero flags byte and `0x16` is the TLS record
+    /// type, so the two cannot be confused.
+    pub async fn route_masquerade(
+        &self,
+        datagram: &[u8],
+        from: SocketAddr,
+        now_us: u64,
+    ) -> Result<Outcome, Error> {
+        if let Some(hello) = masquerade::try_parse(datagram) {
+            let verdict = {
+                let table = self
+                    .tags
+                    .read()
+                    .map_err(|_| Error::Config("tag table poisoned".into()))?;
+                masquerade::classify(&hello, &table, unix_now_secs())
+            };
+            return match verdict {
+                masquerade::Verdict::Intercept(verified) => {
+                    let echo = hello.session_id_label().unwrap_or_default();
+                    self.open(verified, from, now_us, Reply::ServerHello, &echo)
+                        .await
+                }
+                masquerade::Verdict::RelayToDonor => self.relay_to_donor(datagram, from).await,
+            };
+        }
+        self.route(datagram, from, now_us).await
+    }
+
+    /// Forward bytes we do not recognise to the donor, untouched.
+    ///
+    /// This is the property the masquerade layer exists for: a prober completes
+    /// a real handshake with the donor and gets the donor's real certificate.
+    async fn relay_to_donor(&self, datagram: &[u8], from: SocketAddr) -> Result<Outcome, Error> {
+        let Some(relay) = &self.donor else {
+            return Err(Error::Config(
+                "masquerade listener has no donor configured".into(),
+            ));
+        };
+        relay.forward(&self.sock, from, datagram).await?;
+        self.counters.relayed.fetch_add(1, Ordering::Relaxed);
+        Ok(Outcome::Relayed)
+    }
+
     /// Answer a `HELLO` and open the session.
     async fn accept(
         &self,
@@ -240,6 +322,24 @@ impl Node {
             return Err(Error::BadLabel);
         };
 
+        self.open(verified, from, now_us, Reply::Native, &[])
+            .await
+    }
+
+    /// The shared tail of both handshake paths: lease an address, derive the
+    /// keys, install the session, answer.
+    ///
+    /// The two paths differ only in the envelope the answer is put in, and
+    /// deriving the reply once means they cannot drift apart.
+    #[allow(clippy::too_many_arguments)]
+    async fn open(
+        &self,
+        verified: VerifiedHello,
+        from: SocketAddr,
+        now_us: u64,
+        shape: Reply,
+        session_id_echo: &[u8],
+    ) -> Result<Outcome, Error> {
         // One session per user. Evict *before* leasing an address: a reconnect
         // that took a new address first would strand the old one in the pool
         // until the old session's idle timer fired.
@@ -256,12 +356,17 @@ impl Node {
         };
 
         let server_eph = KeyPair::generate();
-        let (reply, keys, session_tag) = handshake::respond(&verified, &server_eph, ip)?;
+        let reply = handshake::prepare(&verified, &server_eph, ip);
+        let session_tag = reply.session_tag;
+        let datagram = match shape {
+            Reply::Native => reply.encode_native(&verified),
+            Reply::ServerHello => reply.encode_masquerade(session_id_echo),
+        };
 
         self.sessions
             .insert(
                 session_tag,
-                vpn_rt::server_endpoint(keys, session_tag, self.mtu, now_us),
+                vpn_rt::server_endpoint(reply.keys, session_tag, self.mtu, now_us),
                 from,
                 Some(ip),
                 SessionMeta::new(verified.user_id, verified.tag, ip),
@@ -275,7 +380,7 @@ impl Node {
             t.bind_ip(&verified.tag, ip);
         }
 
-        udp::send(&self.sock, &reply, from).await?;
+        udp::send(&self.sock, &datagram, from).await?;
         self.counters.handshakes.fetch_add(1, Ordering::Relaxed);
         tracing::info!(user = verified.user_id, %ip, %from, "session established");
         Ok(Outcome::Handshaked {
