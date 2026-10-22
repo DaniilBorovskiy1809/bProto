@@ -28,7 +28,7 @@ decisions in this space come from assuming a property that was never there.
 | Confidentiality/integrity of tunneled data | ChaCha20-Poly1305 with per-direction keys, header as AAD |
 | Replay | 40-bit monotonic packet numbers + 4096-bit sliding window; `session_id` MAC over a 5-minute window |
 | Unauthorized use | PSK-derived label in `session_id`; nothing else is accepted |
-| Passive fingerprinting of the *handshake* | craftls browser fingerprint, unchanged ClientHello length |
+| Passive fingerprinting of the *handshake* | browser-shaped ClientHello (`HelloProfile`), unchanged ClientHello length |
 | Active probing (Aparecium-style), vector 1 | no HMAC over handshake frames, so `ServerFinished` keeps its real length |
 | Active probing (Aparecium-style), vector 2 | donor `NewSessionTicket` messages are forwarded or faithfully synthesized |
 | Unknown probes | any ClientHello that fails label verification is relayed to the donor, which then serves the prober the real site |

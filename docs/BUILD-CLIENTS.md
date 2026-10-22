@@ -118,7 +118,7 @@ discovers it in production.
 | DNS pushed by the server | ✗ | hardcoded `1.1.1.1` | hardcoded `1.1.1.1` |
 | Kill switch / always-on | ✗ | use Android's always-on VPN | ✗ |
 | GUI | ✗ CLI only | one screen | none (provider only) |
-| Stealth (mode B) | ✗ stage 2 | ✗ stage 2 | ✗ stage 2 |
+| Masquerade (donor `ClientHello` + relay) | ✓ via `vpn-client` | ✓ same | ✓ same |
 
 The transport is honest UDP in all three: a DPI box that fingerprints UDP
 traffic will see bProto for what it is. That is deliberate for v0.1 — see

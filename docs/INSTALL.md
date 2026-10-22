@@ -23,16 +23,16 @@ Read §0 before you start — it is the honest list of what works today.
 | Client: TUN, address, default-route takeover with rollback | **works** (needs root/CAP_NET_ADMIN) |
 | CUBIC + ACK ranges + RTT + keepalive | **works** |
 | Control panel: login, inbounds, keys, QR, subscriptions, stats | **works, 37 tests** |
-| Panel → server key push (admin API) | **not wired** — see §5.5, you copy the key once |
+| Server pulls keys from the panel and pushes traffic deltas | **works** — see §5.5 |
+| Masquerade: donor `ClientHello`, strangers relayed to the donor | **works, tested** — see §12 |
 | Automatic DNS configuration on the client | **not implemented** — see §4.6 |
 | Android app | **runs end to end on an emulator** (API 35): handshake, `tun0` lease, traffic through the tunnel; not yet run on a phone — see §6 |
 | iOS app | **scaffolded only** — Swift never compiled (no macOS) — see §7 |
-| Stealth / DPI evasion ("mode B": donor masquerade, craftls ClientHello) | **not implemented**, documented in §12 |
-| FEC, post-quantum rekey, live key update | **not implemented** (`Error::Unimplemented`) |
+| FEC, post-quantum rekey, live key update | **not implemented** |
 
-In one sentence: this is a working, encrypted, tested VPN **protocol and
-server**, with a working control panel. It is not yet a DPI-resistant product,
-and you have to wire the panel→server key sync by hand.
+In one sentence: this is a working, encrypted, tested VPN with a working control
+panel, and it can borrow a donor site's identity so that a censor probing the
+server gets the donor's answer instead of ours.
 
 ---
 
@@ -567,9 +567,10 @@ root.
 ```sh
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace                     # 121 tests, 1 ignored
+cargo test --workspace                     # 157 tests
 cargo test -p bproto --features jni        # + 6 (JNI tier + the Android pump)
-cargo test -p vpn-core --test tunnel_e2e   # real client vs real server over UDP
+cargo test -p vpn-server --test e2e        # real client vs real server over UDP,
+                                           # in both the plain and masquerade modes
 
 cd panel/backend && cargo test && cargo clippy --all-targets -- -D warnings
 cd panel/frontend && pnpm build
@@ -615,27 +616,47 @@ user, and that a prober with the wrong key never gets a session.
 
 ---
 
-## 12. About stealth (read before trusting this against a censor)
+## 12. Masquerade (read before trusting this against a censor)
 
-Today bProto is an **honest** protocol: a real handshake between two parties,
-with random-looking UDP payloads. There is no disguise. Any censor that
-fingerprints or blocks unknown UDP flows will classify it on sight. Use it
-where you already have a working path, not to *get* one.
+There are two modes, set in `server.toml` and the client's config, and they use
+the same session keys and the same data path.
 
-The design that fixes that is "mode B" and is specified but **not implemented**:
+**Plain** (the default) is an honest protocol: a real handshake, opaque UDP
+payloads, no disguise. A censor that fingerprints or blocks unknown UDP flows
+will classify it on sight. Use it where you already have a working path, not to
+*get* one.
 
-* authenticate inside the TLS `session_id` field, exactly 32 bytes, so no
-  handshake frame changes length (this closes the Aparecium `ServerFinished`
-  vector);
-* borrow a real donor site's certificate by relaying its handshake, and forward
-  or synthesize its `NewSessionTicket` instead of dropping it (the second
-  Aparecium vector);
-* send the ClientHello with `craftls`, patched as described in
-  `crates/craftls/PATCH.md` — a two-file change;
-* shape datagram sizes to the donor's distribution (the `FLAG_SPIN` / size-bucket
-  machinery is already in the packet format).
+**Masquerade** makes the server look like the donor site:
 
-The same 32-byte label the native handshake uses (§4 of `docs/PROTOCOL.md`) is
-what goes into `session_id`, so switching a client to mode B is a configuration
-change, not a protocol break. Until then, treat `stealth = "off"` as the truth on
-the wire.
+```toml
+[donor]
+sni  = "www.cloudflare.com"
+addr = "1.1.1.1:443"        # required: a pinned address survives DNS poisoning
+
+[masquerade]
+enabled     = true
+listen_addr = "0.0.0.0:443"
+```
+
+The client then sends a browser-shaped TLS `ClientHello` for the donor, with a
+32-byte authentication label in `session_id` — exactly the length a browser sends
+in middlebox compatibility mode, so no handshake frame changes length (this
+closes the Aparecium `ServerFinished` vector).
+
+The server reads that label and picks one of exactly two fates:
+
+* it verifies → the client is served, and answered with a TLS `ServerHello`;
+* it does not — absent, malformed, unknown, forged or stale → the bytes are
+  forwarded to the donor verbatim and the donor's answer is relayed back.
+
+The second fate is the whole point. A censor probing with a real TLS or QUIC
+stack completes a genuine handshake with **the donor** and receives **the
+donor's** certificate, including its `NewSessionTicket`s, because we relay the
+donor's bytes in both directions rather than synthesising anything.
+
+Both fates are covered by tests in `crates/vpn-server/tests/e2e.rs`.
+
+What masquerade does *not* do: it does not hide that a UDP flow exists between
+you and the server, and it does not shape your traffic to look like the donor's
+after the handshake. Traffic analysis on volume and timing is out of scope — see
+`docs/THREAT-MODEL.md`.
