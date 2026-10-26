@@ -163,9 +163,10 @@ impl Splicer {
         // TLS probes send — must get the same white-site visit as an empty
         // one, otherwise the server leaks "this port special-cases sid"
         // as a probing oracle.
-        let ours = self.tags.read().is_ok_and(|table| {
-            labeled_initial_is_ours(&hello, &table, unix_now_secs())
-        });
+        let ours = self
+            .tags
+            .read()
+            .is_ok_and(|table| labeled_initial_is_ours(&hello, &table, unix_now_secs()));
         if !ours {
             return self.open(peer, dgram).await;
         }
@@ -305,11 +306,19 @@ mod tests {
         let now = unix_now_secs();
 
         // Our own labeled Initial: intercept.
-        assert!(labeled_initial_is_ours(&mk(Some(good_sid)), &table.read().unwrap(), now));
+        assert!(labeled_initial_is_ours(
+            &mk(Some(good_sid)),
+            &table.read().unwrap(),
+            now
+        ));
 
         // A prober that stuffs 32 random bytes into session_id: not ours —
         // the donor visit, never silence.
-        assert!(!labeled_initial_is_ours(&mk(Some([0x77u8; 32])), &table.read().unwrap(), now));
+        assert!(!labeled_initial_is_ours(
+            &mk(Some([0x77u8; 32])),
+            &table.read().unwrap(),
+            now
+        ));
 
         // A valid tag with a *stale* label byte (e.g. a replay across window):
         // the MAC over it fails, so still not ours.
@@ -321,7 +330,11 @@ mod tests {
             unix_now_secs(),
         );
         stale[31] ^= 0x01;
-        assert!(!labeled_initial_is_ours(&mk(Some(stale)), &table.read().unwrap(), now));
+        assert!(!labeled_initial_is_ours(
+            &mk(Some(stale)),
+            &table.read().unwrap(),
+            now
+        ));
     }
 
     #[tokio::test]

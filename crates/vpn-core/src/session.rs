@@ -515,6 +515,17 @@ async fn client_loop(shared: Arc<ClientShared>) {
                 if from != shared.peer {
                     continue;
                 }
+                // Plaintext control datagrams have no place in an established
+                // session: what arrives here is the duplicate HELLO_ACK of the
+                // Firefox-shaped double first flight (the connect loop already
+                // consumed one). Consume silently instead of keeping it on
+                // the packet-reject counter, which would read as corruption.
+                if packet::Header::decode(&buf[..n])
+                    .map(|h| h.is_control())
+                    .unwrap_or(false)
+                {
+                    continue;
+                }
                 let Ok((pn, opened)) = shared.session.open(&buf[..n]).await else {
                     continue;
                 };
