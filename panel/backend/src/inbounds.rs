@@ -26,6 +26,23 @@ use crate::{ApiError, App, audit, hash_password, keys, now, random_token, subs};
 /// Fingerprint offered when the inbound does not name one.
 const DEFAULT_FINGERPRINT: &str = "chrome112";
 
+/// Fingerprints a `bproto` client can decode. `vpn_core::config` refuses any
+/// other `fp` value, so an unknown name here would silently produce configs
+/// every client rejects on import.
+const KNOWN_FINGERPRINTS: [&str; 4] = ["chrome108", "chrome112", "firefox105", "safari171"];
+
+fn validate_fingerprint(name: &str) -> Result<&str, ApiError> {
+    let name = name.trim();
+    if KNOWN_FINGERPRINTS.contains(&name) {
+        Ok(name)
+    } else {
+        Err(ApiError::bad_request(format!(
+            "fingerprint must be one of: {}",
+            KNOWN_FINGERPRINTS.join(", ")
+        )))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Inbound {
     pub(crate) id: i64,
@@ -199,10 +216,13 @@ pub(crate) async fn create_inbound(
     }
     validate_server(&body.server)?;
     validate_sni(&body.donor_sni)?;
-    let fingerprint = body
+    let requested = body
         .fingerprint
         .filter(|f| !f.trim().is_empty())
         .unwrap_or_else(|| DEFAULT_FINGERPRINT.to_string());
+    // Validated *before* the INSERT: an unknown name would land in every
+    // subsequent client config and break the import on the device.
+    let fingerprint = validate_fingerprint(&requested)?.to_string();
 
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO inbounds (remark, server, donor_sni, fingerprint, protocol, transport, \
@@ -261,6 +281,9 @@ pub(crate) async fn update_inbound(
     }
     if let Some(sni) = &body.donor_sni {
         validate_sni(sni)?;
+    }
+    if let Some(fp) = &body.fingerprint {
+        validate_fingerprint(fp)?;
     }
     if let Some(status) = &body.status
         && !["active", "disabled"].contains(&status.as_str())
@@ -694,6 +717,9 @@ pub(crate) async fn update_client(
             .await?;
     }
     if let Some(limit) = body.traffic_limit_bytes {
+        if limit < 0 {
+            return Err(ApiError::bad_request("traffic_limit_bytes cannot be negative"));
+        }
         sqlx::query("UPDATE users SET traffic_limit_bytes = ? WHERE id = ?")
             .bind((limit > 0).then_some(limit))
             .bind(id)
@@ -701,6 +727,9 @@ pub(crate) async fn update_client(
             .await?;
     }
     if let Some(expires) = body.expires_at {
+        if expires < 0 {
+            return Err(ApiError::bad_request("expires_at cannot be negative"));
+        }
         sqlx::query("UPDATE users SET expires_at = ? WHERE id = ?")
             .bind((expires > 0).then_some(expires))
             .bind(id)
@@ -853,6 +882,12 @@ pub(crate) async fn create_key(
     let inbound = load_inbound(&state.db, inbound_id).await?;
 
     let label = body.label.unwrap_or_else(|| "device".into());
+    // The label goes into the config URI, which becomes a QR code; a QR code
+    // has a hard payload limit, so keep the label from pushing the URI past
+    // it. Failing here keeps the 400 *before* the key row exists.
+    if label.trim().is_empty() || label.len() > 64 {
+        return Err(ApiError::bad_request("label must be 1-64 characters"));
+    }
     let psk = keys::generate_psk();
     let tag = keys::compute_tag(&state.tag_key, user_id as u64);
     let key_id: i64 = sqlx::query_scalar(
@@ -882,8 +917,9 @@ pub(crate) async fn create_key(
     Ok((StatusCode::CREATED, Json(resp)))
 }
 
-/// Re-issue a config for an existing key. Admin-only, and the only place the
-/// PSK leaves the database (docs/PLAN.md 6.4).
+/// Re-issue a config for an existing key. Admin-only. Note the PSK also leaves
+/// the database through the subscription URL (`/sub/<id>`), by design: the
+/// subscription URL *is* the client credential.
 pub(crate) async fn key_config(
     State(state): State<App>,
     Path(key_id): Path<i64>,

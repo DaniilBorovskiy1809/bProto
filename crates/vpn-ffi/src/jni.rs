@@ -136,7 +136,7 @@ pub extern "system" fn Java_dev_bproto_Bproto_assignedIp<'local>(
     handle: jlong,
 ) -> jstring {
     let mut octets = [0u8; 4];
-    // SAFETY: the caller passes a handle from `open`; `octets` is 4 bytes.
+    // SAFETY: the caller passes a handle from `connect`; `octets` is 4 bytes.
     let rc = unsafe { crate::bproto_assigned_ip(handle as *mut BprotoTunnel, octets.as_mut_ptr()) };
     if rc != 0 {
         return new_string(&mut env, "");
@@ -152,7 +152,7 @@ pub extern "system" fn Java_dev_bproto_Bproto_socketFd<'local>(
     _this: JObject<'local>,
     handle: jlong,
 ) -> jint {
-    // SAFETY: the caller passes a handle from `open`.
+    // SAFETY: the caller passes a handle from `connect`.
     unsafe { crate::bproto_socket_fd(handle as *mut BprotoTunnel) }
 }
 
@@ -173,13 +173,13 @@ pub extern "system" fn Java_dev_bproto_Bproto_pump<'local>(
     }
 }
 
-/// Ask a running `run` call to return. Safe to call from any thread.
+/// Ask a running `pump` call to return. Safe to call from any thread.
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_dev_bproto_Bproto_stop(_env: JNIEnv<'_>, _this: JObject<'_>) {
     current_stop().notify_one();
 }
 
-/// Release a handle from `open`. Does not stop a running `run` call.
+/// Release a handle from `connect`. Does not stop a running `pump` call.
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_dev_bproto_Bproto_close(
     _env: JNIEnv<'_>,
@@ -189,7 +189,7 @@ pub extern "system" fn Java_dev_bproto_Bproto_close(
     if handle == 0 {
         return;
     }
-    // SAFETY: the pointer came from `open` and is freed exactly once.
+    // SAFETY: the pointer came from `connect` and is freed exactly once.
     unsafe { crate::bproto_free(handle as *mut BprotoTunnel) };
 }
 

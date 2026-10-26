@@ -84,7 +84,7 @@ impl AckRanges {
             ));
         }
         let count = u16::from_be_bytes([buf[1], buf[2]]) as usize;
-        if buf.len() != 3 + count * 10 {
+        if buf.len() < 3 + count * 10 {
             return Err(crate::Error::ShortDatagram {
                 got: buf.len(),
                 need: 3 + count * 10,
@@ -274,9 +274,11 @@ mod tests {
     fn decode_rejects_garbage() {
         assert!(AckRanges::decode(&[0x03]).is_err());
         assert!(AckRanges::decode(&[0x04, 0, 0]).is_err());
-        let mut bad = AckRanges::new().encode();
-        bad.push(0); // extra byte
-        assert!(AckRanges::decode(&bad).is_err());
+        // Trailing bytes past the declared ranges are tolerated: control
+        // datagrams carry random shaping padding after the frame.
+        let mut padded = AckRanges::new().encode();
+        padded.push(0x5A);
+        assert_eq!(AckRanges::decode(&padded).unwrap().ranges.len(), 0);
     }
 
     #[test]

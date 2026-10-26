@@ -5,6 +5,7 @@
 //!
 //! * [`config`]      – `server.toml` and the derived [`config::TagTable`]
 //! * [`interceptor`] – ClientHello classification (the masquerade path)
+//! * [`splicer`]     – donor splice supervision (the probe path)
 //! * [`nst`]         – post-handshake (NewSessionTicket) policy guard
 //! * [`admin`]       – loopback-only admin API for the panel
 //!
@@ -15,3 +16,4 @@ pub mod admin;
 pub mod config;
 pub mod interceptor;
 pub mod nst;
+pub mod splicer;

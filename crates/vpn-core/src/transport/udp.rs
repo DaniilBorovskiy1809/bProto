@@ -13,16 +13,30 @@ use crate::error::{Error, Result};
 
 /// Bind a socket appropriate for talking to `peer`: any local port, matching
 /// address family.
+///
+/// IP options are pinned to the shape a real HTTP/3 client's socket has (the
+/// Firefox capture shows `tos 0x0, ttl 64, flags [DF]` on every datagram):
+/// DF is enabled via `IP_MTU_DISCOVER` on Linux, TTL is set to 64. Both steps
+/// are best-effort — failing option sets never break the tunnel itself.
 pub async fn bind_for(peer: SocketAddr) -> Result<UdpSocket> {
     let local: SocketAddr = if peer.is_ipv4() {
         "0.0.0.0:0".parse().expect("valid literal")
     } else {
         "[::]:0".parse().expect("valid literal")
     };
-    let sock = UdpSocket::bind(local)
-        .await
+    let bound = std::net::UdpSocket::bind(local)
         .map_err(|e| Error::Transport(format!("bind {local}: {e}")))?;
-    Ok(sock)
+    if peer.is_ipv4() {
+        // Browser-socket IP shape. FF keeps whole datagrams; TTL 64 is the
+        // Linux default, pinned so exotic boxes that ship another default
+        // still produce the familiar header.
+        let _ = bound.set_ttl(64);
+        let _ = ipopts::set_df_v4(&bound);
+    }
+    bound
+        .set_nonblocking(true)
+        .map_err(|e| Error::Transport(format!("nonblocking: {e}")))?;
+    UdpSocket::from_std(bound).map_err(|e| Error::Transport(format!("tokio socket: {e}")))
 }
 
 /// Send one datagram.

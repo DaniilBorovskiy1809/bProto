@@ -43,7 +43,7 @@ impl TryFrom<u8> for FrameType {
     }
 }
 
-/// Client handshake opening. 104 bytes.
+/// Client handshake opening. 105 bytes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Hello {
     /// Routing tag.
@@ -58,7 +58,7 @@ pub struct Hello {
     pub mac: [u8; MAC_LEN],
 }
 
-/// Server handshake response. 92 bytes.
+/// Server handshake response. 125 bytes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HelloAck {
     /// Echo of the client random, so the MAC is bound to this exchange.
@@ -88,9 +88,12 @@ impl Hello {
     }
 
     /// Parse from a control frame payload.
+    ///
+    /// Trailing bytes past the fixed frame length are tolerated: they are the
+    /// random padding we append to control datagrams for traffic shaping.
     pub fn decode(buf: &[u8]) -> Result<Self> {
         const LEN: usize = 1 + TAG_LEN + 32 + 32 + 8 + MAC_LEN;
-        if buf.len() != LEN {
+        if buf.len() < LEN {
             return Err(Error::ShortDatagram {
                 got: buf.len(),
                 need: LEN,
@@ -132,7 +135,7 @@ impl HelloAck {
     /// Parse from a control frame payload.
     pub fn decode(buf: &[u8]) -> Result<Self> {
         const LEN: usize = 1 + 32 + 32 + 32 + 4 + MAC_LEN;
-        if buf.len() != LEN {
+        if buf.len() < LEN {
             return Err(Error::ShortDatagram {
                 got: buf.len(),
                 need: LEN,

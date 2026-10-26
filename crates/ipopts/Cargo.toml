@@ -1,0 +1,16 @@
+[package]
+name = "ipopts"
+description = "Safe IPv4 socket-option helpers for the tunnel transport"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "ipopts"
+crate-type = ["rlib"]
+
+[dependencies]
+libc = { workspace = true }
+
+[lints.rust]
+unsafe_code = "allow"

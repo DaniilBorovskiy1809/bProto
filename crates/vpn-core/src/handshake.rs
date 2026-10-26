@@ -31,6 +31,10 @@ use crate::frame::{Hello, HelloAck};
 use crate::packet;
 use crate::tags::TagTable;
 
+/// Server flight size after the client's double-Initial: the real site answers
+/// with a datagram in the 1200-byte chunk band (measured).
+const ACK_FLIGHT_SIZE: usize = 1200;
+
 /// Client state kept between `HELLO` and `HELLO_ACK`.
 #[derive(Debug)]
 pub struct ClientHandshake {
@@ -84,7 +88,13 @@ pub fn start(cfg: &TunnelConfig, now_unix_secs: u64) -> Result<(ClientHandshake,
     };
     // The header's session_tag field is unused before the handshake completes;
     // the frame carries the routing tag.
-    let datagram = packet::encode_plaintext_control(0, 0, &hello.encode());
+    let mut datagram = packet::encode_plaintext_control(0, 0, &hello.encode());
+    // Firefox-shape the first flight: 1252 B like a real QUIC Initial, with
+    // OS-random filler so the padded region does not read as zero fill. Both
+    // retransmits use these exact bytes.
+    let old_len = datagram.len();
+    datagram.resize(packet::INITIAL_SIZE, 0);
+    crypto::fill_random(&mut datagram[old_len..]);
 
     Ok((
         ClientHandshake {
@@ -191,7 +201,12 @@ pub fn respond(
         assigned_ip: ip_bytes,
         mac,
     };
-    let datagram = packet::encode_plaintext_control(0, 0, &ack.encode());
+    // Server-side opening flight shaped like the real site's: one big
+    // datagram in the 1200 B chunk band, random filler past the fixed frame.
+    let mut datagram = packet::encode_plaintext_control(0, 0, &ack.encode());
+    let old_len = datagram.len();
+    datagram.resize(ACK_FLIGHT_SIZE, 0);
+    crypto::fill_random(&mut datagram[old_len..]);
 
     let shared = server_eph.diffie_hellman(&verified.x25519_pub);
     let keys = crypto::derive_session_keys(&shared, &verified.client_random, &server_random, false);
@@ -234,6 +249,8 @@ mod tests {
         assert_eq!(hello[0] >> 4, crate::PROTOCOL_VERSION);
         assert!(crate::packet::Header::decode(&hello).unwrap().is_control());
         assert_eq!(hello[0] & 0x0F, FLAG_CONTROL);
+        // Firefox-shape: the flight is one padded 1252 B datagram.
+        assert_eq!(hello.len(), crate::packet::INITIAL_SIZE);
 
         let verified = verify(&table(), &hello, NOW).unwrap();
         assert_eq!(verified.user_id, 42);

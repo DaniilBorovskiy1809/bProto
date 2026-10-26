@@ -157,7 +157,11 @@ async fn main() -> anyhow::Result<()> {
     let http = reqwest::Client::builder()
         .user_agent(concat!("bUI/", env!("CARGO_PKG_VERSION")))
         .timeout(std::time::Duration::from_secs(15))
-        .redirect(reqwest::redirect::Policy::limited(3))
+        // No redirects: `guard_url` validates the hostname the admin asked
+        // for, and reqwest cannot re-run a DNS-based SSRF check on every hop.
+        // Any 30x therefore surfaces as an error instead of silently fetching
+        // from whatever the redirect targets (e.g. a link-local address).
+        .redirect(reqwest::redirect::Policy::none())
         .build()?;
 
     let app = App {
@@ -316,12 +320,14 @@ async fn bootstrap_admin(db: &SqlitePool) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Every client needs a subscription id; rows created before the migration get
-/// one here, and the bootstrap admin is a client of nothing (inbound is NULL).
+/// Every *client* needs a subscription id; rows created before the migration
+/// get one here. Admins are not clients — they have no subscription — so they
+/// never receive one.
 async fn backfill_sub_ids(db: &SqlitePool) -> anyhow::Result<()> {
-    let ids: Vec<i64> = sqlx::query_scalar("SELECT id FROM users WHERE sub_id IS NULL")
-        .fetch_all(db)
-        .await?;
+    let ids: Vec<i64> =
+        sqlx::query_scalar("SELECT id FROM users WHERE sub_id IS NULL AND is_admin = 0")
+            .fetch_all(db)
+            .await?;
     for id in ids {
         sqlx::query("UPDATE users SET sub_id = ? WHERE id = ?")
             .bind(&random_token()[..32])
@@ -338,9 +344,9 @@ async fn backfill_sub_ids(db: &SqlitePool) -> anyhow::Result<()> {
 async fn sync_tags(db: &SqlitePool, tag_key: &[u8; 32]) -> anyhow::Result<()> {
     let fingerprint = hex::encode(&Sha256::digest(tag_key)[..8]);
     if subs::get_setting(db, TAG_FINGERPRINT_SETTING)
-        .await
+        .await?
         .as_deref()
-        == Some(&fingerprint)
+        == Some(fingerprint.as_str())
     {
         return Ok(());
     }

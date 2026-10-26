@@ -9,6 +9,7 @@
 use vpn_core::auth::{extract_tag, verify_session_id};
 use vpn_core::config::from_hex;
 use vpn_core::crypto::KEY_LEN;
+use vpn_core::masquerade::InspectedClientHello;
 
 use crate::config::TagTable;
 
@@ -31,6 +32,31 @@ pub struct ClientHelloView {
     pub client_random: [u8; 32],
     /// The client's X25519 key share (from the `key_share` extension).
     pub x25519_pub: [u8; 32],
+}
+
+/// Decide the fate of a ClientHello lifted out of a QUIC Initial flight.
+///
+/// This is the masquerade entry point: `hello` comes straight from
+/// [`vpn_core::masquerade::inspect_client_hello`]. Anything that does not
+/// parse — or does not carry a label, or carries one that fails the MAC —
+/// is relayed wholesale to the donor, exactly like a probe's traffic.
+pub fn classify_initial(hello: &InspectedClientHello, tags: &TagTable, now: u64) -> Verdict {
+    let (Some(sid), Some(cr), Some(kp)) = (
+        hello.session_id.as_ref(),
+        hello.client_random.as_ref(),
+        hello.x25519_share.as_ref(),
+    ) else {
+        return Verdict::RelayToDonor;
+    };
+    classify(
+        &ClientHelloView {
+            session_id: sid.to_vec(),
+            client_random: *cr,
+            x25519_pub: *kp,
+        },
+        tags,
+        now,
+    )
 }
 
 /// Decide the fate of a ClientHello. `now` is unix time in seconds.
@@ -68,6 +94,7 @@ mod tests {
     use super::*;
     use vpn_core::auth::{compute_tag, derive_session_id};
     use vpn_core::crypto::{KeyPair, derive_session_keys};
+    use vpn_core::masquerade::InspectedClientHello;
     use vpn_core::packet::{Header, InnerType};
 
     fn tags() -> ([u8; KEY_LEN], TagTable) {
@@ -93,6 +120,32 @@ mod tests {
             client_random: cr,
             x25519_pub: pubk,
         }
+    }
+
+    #[test]
+    fn interceptor_reads_masquerade_view() {
+        let (tag_key, t) = tags();
+        let now = 1_800_000_000;
+        let v = view_for(&[0x22u8; KEY_LEN], &tag_key, 7, now);
+        // Same fields, seen through the QUIC-layer boundary type.
+        let hello = InspectedClientHello {
+            dcid: vec![1; 8],
+            scid: vec![2; 8],
+            token: Vec::new(),
+            sni: Some("connector.cloudflare.com".into()),
+            session_id: Some(v.session_id.clone().try_into().expect("32")),
+            client_random: Some(v.client_random),
+            x25519_share: Some(v.x25519_pub),
+        };
+        assert_eq!(classify_initial(&hello, &t, now), Verdict::Intercept(7));
+
+        // Missing key share or label: relay, never crash, never leak.
+        let mut partial = hello.clone();
+        partial.x25519_share = None;
+        assert_eq!(classify_initial(&partial, &t, now), Verdict::RelayToDonor);
+        let mut labelless = hello;
+        labelless.session_id = None;
+        assert_eq!(classify_initial(&labelless, &t, now), Verdict::RelayToDonor);
     }
 
     #[test]

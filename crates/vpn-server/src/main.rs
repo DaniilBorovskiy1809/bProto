@@ -11,6 +11,7 @@
 //! The protocol half is [`vpn_core::ServerNode`]; this file is only I/O and
 //! lifecycle.
 
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
@@ -104,6 +105,27 @@ async fn main() -> anyhow::Result<()> {
     );
     tracing::info!(addr = %sock.local_addr()?, "listener up");
 
+    // The donor splice target: an explicit override wins, else resolve the
+    // SNI once here (no per-flow lookups). No donor, no masquerade.
+    let donor_addr = match cfg.donor.addr_override {
+        Some(a) => Some(a),
+        None => resolve_donor_v4(&cfg.donor.sni),
+    };
+    let splicer = match donor_addr {
+        Some(addr) => {
+            let s = vpn_server::splicer::Splicer::start(Arc::clone(&sock), addr, Arc::clone(&tags));
+            tracing::info!(donor = %addr, "donor splice ready");
+            Some(s)
+        }
+        None => {
+            tracing::warn!(
+                sni = %cfg.donor.sni,
+                "donor address unresolvable; masquerade is OFF (native bProto only)"
+            );
+            None
+        }
+    };
+
     let params = ServerParams {
         mtu: cfg.tun.mtu.min(packet::MAX_DATAGRAM as u16) as usize,
         ..ServerParams::default()
@@ -131,7 +153,7 @@ async fn main() -> anyhow::Result<()> {
         None
     };
 
-    serve(node, device).await
+    serve(node, splicer, device).await
 }
 
 fn bring_up_tun(
@@ -169,7 +191,19 @@ fn bring_up_tun(
     Ok(tun)
 }
 
-async fn serve(node: Arc<ServerNode>, device: Option<Arc<dev::TunDevice>>) -> anyhow::Result<()> {
+/// Resolve the donor hostname to its first IPv4 address for the splice.
+fn resolve_donor_v4(host: &str) -> Option<SocketAddr> {
+    // Startup-time resolution: one blocking lookup before the accept loop,
+    // not per flow. Overrides (`addr_override`) beat this precisely to dodge
+    // poisoning; see config docs.
+    (host, 443).to_socket_addrs().ok()?.find(|a| a.is_ipv4())
+}
+
+async fn serve(
+    node: Arc<ServerNode>,
+    splicer: Option<vpn_server::splicer::Splicer>,
+    device: Option<Arc<dev::TunDevice>>,
+) -> anyhow::Result<()> {
     let sock = node.socket();
     let start = Instant::now();
     let now_us = move || start.elapsed().as_micros() as u64;
@@ -206,6 +240,23 @@ async fn serve(node: Arc<ServerNode>, device: Option<Arc<dev::TunDevice>>) -> an
         tokio::select! {
             received = sock.recv_from(&mut datagram) => {
                 let Ok((n, from)) = received else { continue };
+                // Masquerade demux: QUIC Initial-shaped traffic is served by
+                // the donor splice or (label verified) the bProto half; only
+                // the native `0x1x` datagrams reach `node.handle` blindly.
+                if let Some(splicer) = &splicer {
+                    match splicer.on_datagram(from, &datagram[..n]).await {
+                        vpn_server::splicer::Action::Spliced => continue,
+                        vpn_server::splicer::Action::Drop => continue,
+                        vpn_server::splicer::Action::Tunnel => {
+                            // A labeled Initial is the masquerade handshake;
+                            // the native HELLO follows in `0x1x` datagrams.
+                            tracing::debug!(%from,
+                                "masquerade Initial seen; tunnel takes over on native datagrams");
+                            continue;
+                        }
+                        vpn_server::splicer::Action::Native => {}
+                    }
+                }
                 match node.handle(&datagram[..n], from, now_us()).await {
                     Ok(Some(pkt)) => {
                         if let Some(device) = &device

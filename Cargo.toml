@@ -6,6 +6,7 @@ members = [
     "crates/vpn-server",
     "crates/vpn-cli",
     "crates/vpn-ffi",
+    "crates/ipopts",
 ]
 default-members = ["crates/vpn-core"]
 
@@ -30,7 +31,14 @@ getrandom = "0.2"
 
 # --- transport ---
 tokio = { version = "1.44", features = ["rt-multi-thread", "net", "time", "sync", "macros", "io-util", "signal"] }
+# DF / path-MTU-discovery on the tunnel socket, mirroring a browser's IP shape.
+libc = "0.2"
 quinn = { version = "0.11", default-features = false, features = ["runtime-tokio", "rustls-ring"] }
+
+# QUIC Initial packets are always AEAD_AES_128_GCM (RFC 9001 §5.2) and use
+# AES-ECB block protection (§5.4.1). Needed for the masquerade's passive read.
+aes = "0.8"
+aes-gcm = "0.10"
 
 # --- tls / masquerade ---
 # craftls is a drop-in rustls replacement with ClientHello fingerprinting.

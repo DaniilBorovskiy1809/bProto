@@ -180,6 +180,12 @@ pub fn random_32() -> [u8; 32] {
     b
 }
 
+/// Fill `buf` with OS CSPRNG bytes. Used for padding that must look like
+/// ciphertext, never like zero fill.
+pub fn fill_random(buf: &mut [u8]) {
+    getrandom::getrandom(buf).expect("OS CSPRNG unavailable");
+}
+
 /// Build the 12-byte AEAD nonce from a direction prefix and the packet number.
 #[must_use]
 pub fn nonce(prefix: &[u8; NONCE_PREFIX_LEN], packet_number: u64) -> [u8; NONCE_LEN] {

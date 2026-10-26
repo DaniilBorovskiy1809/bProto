@@ -32,11 +32,14 @@ check-config:
     cargo run -p vpn-server -- --check-config --config crates/vpn-server/config/server.toml
 
 android:
-    cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 build -p bproto --release
-    cargo xtask android-aar
+    cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 build -p bproto \
+        --features jni --release
+    # step 2 (AAR packaging) is done by build_app.sh --android until xtask lands
 
 ios:
-    cargo xtask ios-xcframework
+    # the xcframework is built by build_app.sh --ios on macOS; there is no
+    # xtask crate in this workspace yet
+    ./build_app.sh --ios
 
 panel:
     cd panel/backend && cargo run --release

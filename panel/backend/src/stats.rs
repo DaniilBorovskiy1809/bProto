@@ -16,6 +16,12 @@
 //! * every byte also lands in `users.traffic_used_bytes`, which is what
 //!   limits and the "reset traffic" button work on.
 //!
+//! Reports carry deltas, so a retransmitted batch after a lost response would
+//! be counted twice. The report loop is therefore transactional for each
+//! session and a partial unique index (`0003`) keeps exactly one open row per
+//! (key, server); a server-side sender must not re-send a batch it saw an
+//! HTTP 2xx for.
+//!
 //! Rows that a server stops reporting are closed after
 //! [`STALE_SESSION_SECS`], so "online" cannot get stuck.
 
@@ -400,12 +406,22 @@ pub(crate) async fn report_sessions(
         };
 
         let start = s.started_at.unwrap_or_else(now);
+        // One transaction per reported session: the "is there an open row?"
+        // SELECT and the INSERT that follows it must not interleave with a
+        // concurrent report for the same (key, server), or two open rows are
+        // born for one logical session.
+        let mut tx = state
+            .db
+            .begin()
+            .await
+            .map_err(|e| ApiError::internal(format!("cannot begin report tx: {e}")))?;
+
         let open = sqlx::query(
             "SELECT id FROM sessions WHERE key_id = ? AND server_id = ? AND ended_at IS NULL",
         )
         .bind(key_id)
         .bind(&server_id)
-        .fetch_optional(&state.db)
+        .fetch_optional(&mut *tx)
         .await?
         .map(|r| r.get::<i64, _>("id"));
 
@@ -420,7 +436,7 @@ pub(crate) async fn report_sessions(
                 .bind(&s.peer_ip)
                 .bind(now())
                 .bind(id)
-                .execute(&state.db)
+                .execute(&mut *tx)
                 .await?;
             }
             (Some(id), Some(end)) => {
@@ -434,7 +450,7 @@ pub(crate) async fn report_sessions(
                 .bind(end)
                 .bind(now())
                 .bind(id)
-                .execute(&state.db)
+                .execute(&mut *tx)
                 .await?;
             }
             (None, ended) => {
@@ -450,7 +466,7 @@ pub(crate) async fn report_sessions(
                 .bind(s.bytes_tx)
                 .bind(&s.peer_ip)
                 .bind(now())
-                .execute(&state.db)
+                .execute(&mut *tx)
                 .await?;
             }
         }
@@ -458,15 +474,18 @@ pub(crate) async fn report_sessions(
         sqlx::query("UPDATE users SET traffic_used_bytes = traffic_used_bytes + ? WHERE id = ?")
             .bind(s.bytes_rx + s.bytes_tx)
             .bind(user_id)
-            .execute(&state.db)
+            .execute(&mut *tx)
             .await?;
         if let Some(ip) = &s.peer_ip {
             sqlx::query("UPDATE keys SET last_seen_ip = ? WHERE id = ?")
                 .bind(ip)
                 .bind(key_id)
-                .execute(&state.db)
+                .execute(&mut *tx)
                 .await?;
         }
+        tx.commit()
+            .await
+            .map_err(|e| ApiError::internal(format!("cannot commit report tx: {e}")))?;
         accepted += 1;
     }
 
@@ -474,26 +493,30 @@ pub(crate) async fn report_sessions(
 }
 
 /// Map a reported session to a key. The server knows routing tags, not user ids.
+///
+/// A report may carry a `tag`, a `key_id`, or both. Try the tag first — it is
+/// what live servers hold — and fall back to `key_id` when the tag is unknown
+/// (e.g. the panel recomputed tags after a `K_tag` change and the server's
+/// snapshot is stale).
 async fn resolve_key(db: &SqlitePool, s: &ReportedSession) -> Result<Option<(i64, i64)>, ApiError> {
     if let Some(tag) = &s.tag {
         let bytes = hex::decode(tag.trim()).unwrap_or_default();
         if bytes.len() == 8 {
-            let row = sqlx::query("SELECT id, user_id FROM keys WHERE tag = ?")
+            if let Some(row) = sqlx::query("SELECT id, user_id FROM keys WHERE tag = ?")
                 .bind(&bytes[..])
                 .fetch_optional(db)
-                .await?;
-            if let Some(row) = row {
+                .await?
+            {
                 return Ok(Some((row.get("id"), row.get("user_id"))));
             }
         }
-        return Ok(None);
     }
     if let Some(key_id) = s.key_id {
-        let row = sqlx::query("SELECT id, user_id FROM keys WHERE id = ?")
+        if let Some(row) = sqlx::query("SELECT id, user_id FROM keys WHERE id = ?")
             .bind(key_id)
             .fetch_optional(db)
-            .await?;
-        if let Some(row) = row {
+            .await?
+        {
             return Ok(Some((row.get("id"), row.get("user_id"))));
         }
     }

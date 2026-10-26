@@ -33,6 +33,11 @@ pub const MAX_DATAGRAM: usize = 1280;
 /// Usable IP payload inside one datagram.
 pub const TUNNEL_MTU: usize = MAX_DATAGRAM - HEADER_LEN - AEAD_TAG_LEN - INNER_HDR_LEN; // 1251
 
+/// Firefox-shaped QUIC Initial flight size: the very first datagram of a
+/// connection is 1252 B on the wire and is sent twice, ~0.2 ms apart.
+/// (Measured from a real Firefox ↔ site HTTP/3 capture.)
+pub const INITIAL_SIZE: usize = 1252;
+
 // Header flag bits.
 /// Reserved for FEC (stage 3). Always zero in MVP.
 pub const FLAG_FEC_RESERVED: u8 = 1 << 0;

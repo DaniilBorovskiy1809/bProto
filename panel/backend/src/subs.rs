@@ -19,7 +19,7 @@ use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::{Extension, Json};
 use base64::Engine;
-use base64::engine::general_purpose::{STANDARD, STANDARD_NO_PAD, URL_SAFE_NO_PAD};
+use base64::engine::general_purpose::{STANDARD, STANDARD_NO_PAD, URL_SAFE, URL_SAFE_NO_PAD};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sqlx::{Row, SqlitePool};
@@ -39,13 +39,11 @@ const MAX_SUB_BYTES: usize = 1024 * 1024;
 const SETTING_SUB_BASE_URL: &str = "sub_base_url";
 const SETTING_SUB_TITLE: &str = "sub_title";
 
-pub(crate) async fn get_setting(db: &SqlitePool, key: &str) -> Option<String> {
+pub(crate) async fn get_setting(db: &SqlitePool, key: &str) -> sqlx::Result<Option<String>> {
     sqlx::query_scalar::<_, String>("SELECT value FROM settings WHERE key = ?")
         .bind(key)
         .fetch_optional(db)
         .await
-        .ok()
-        .flatten()
 }
 
 pub(crate) async fn set_setting(db: &SqlitePool, key: &str, value: &str) -> Result<(), ApiError> {
@@ -61,13 +59,18 @@ pub(crate) async fn set_setting(db: &SqlitePool, key: &str, value: &str) -> Resu
 }
 
 /// Public base URL of the panel: the configured one, else the request's
-/// (Caddy sets `X-Forwarded-*`).
+/// (Caddy sets `X-Forwarded-*`). A database error falls back to the request
+/// headers too, but is logged instead of being silently treated as "unset".
 pub(crate) async fn sub_base_url(state: &App, headers: &HeaderMap) -> String {
-    if let Some(url) = get_setting(&state.db, SETTING_SUB_BASE_URL).await {
+    let configured = get_setting(&state.db, SETTING_SUB_BASE_URL).await;
+    if let Ok(Some(url)) = &configured {
         let url = url.trim().trim_end_matches('/').to_string();
         if !url.is_empty() {
             return url;
         }
+    }
+    if let Err(e) = configured {
+        tracing::warn!(error = %e, "cannot read sub_base_url; using request host");
     }
     let host = headers
         .get("x-forwarded-host")
@@ -103,6 +106,8 @@ pub(crate) struct SubEntry {
     pub(crate) sni: Option<String>,
     pub(crate) uid: Option<i64>,
     pub(crate) label: Option<String>,
+    /// ClientHello fingerprint carried by the URI payload (`fp`).
+    pub(crate) fingerprint: Option<String>,
 }
 
 /// Decode a `bproto://import/<base64url(json)>` payload.
@@ -112,29 +117,19 @@ pub(crate) fn decode_uri(uri: &str) -> Option<Value> {
     serde_json::from_slice(&bytes).ok()
 }
 
+fn opt_str(v: &Value, key: &str) -> Option<String> {
+    v.get(key)?.as_str().filter(|s| !s.is_empty()).map(str::to_owned)
+}
+
 fn entry_from_uri(uri: &str) -> SubEntry {
     let parsed = decode_uri(uri);
     SubEntry {
         uri: uri.to_string(),
-        server: parsed
-            .as_ref()
-            .and_then(|v| v.get("server"))
-            .and_then(|v| v.as_str())
-            .map(str::to_string),
-        sni: parsed
-            .as_ref()
-            .and_then(|v| v.get("sni"))
-            .and_then(|v| v.as_str())
-            .map(str::to_string),
-        uid: parsed
-            .as_ref()
-            .and_then(|v| v.get("uid"))
-            .and_then(|v| v.as_i64()),
-        label: parsed
-            .as_ref()
-            .and_then(|v| v.get("label"))
-            .and_then(|v| v.as_str())
-            .map(str::to_string),
+        server: parsed.as_ref().and_then(|v| v.get("server").and_then(Value::as_str).map(str::to_owned)),
+        sni: parsed.as_ref().and_then(|v| v.get("sni").and_then(Value::as_str).map(str::to_owned)),
+        uid: parsed.as_ref().and_then(|v| v.get("uid")).and_then(Value::as_i64),
+        label: parsed.as_ref().and_then(|v| v.get("label")).and_then(Value::as_str).map(str::to_owned),
+        fingerprint: parsed.as_ref().and_then(|v| opt_str(v, "fp")),
     }
 }
 
@@ -200,6 +195,7 @@ pub(crate) fn parse_subscription(body: &str) -> Vec<SubEntry> {
         .decode(&stripped)
         .ok()
         .or_else(|| STANDARD_NO_PAD.decode(&stripped).ok())
+        .or_else(|| URL_SAFE.decode(&stripped).ok())
         .or_else(|| URL_SAFE_NO_PAD.decode(&stripped).ok());
     if let Some(bytes) = decoded
         && let Ok(text) = String::from_utf8(bytes)
@@ -258,6 +254,7 @@ async fn local_entries(state: &App, user_id: i64) -> Result<Vec<SubEntry>, ApiEr
             sni: Some(inbound.donor_sni.clone()),
             uid: Some(user_id),
             label: Some(label),
+            fingerprint: Some(inbound.fingerprint.clone()),
         });
     }
     Ok(out)
@@ -282,6 +279,7 @@ async fn remote_entries(state: &App, user_id: i64) -> Result<Vec<SubEntry>, ApiE
             sni: r.get("sni"),
             uid: r.get("uid"),
             label: r.get("label"),
+            fingerprint: r.get("fingerprint"),
         })
         .collect())
 }
@@ -347,6 +345,7 @@ pub(crate) async fn serve_sub(
 
     let title = get_setting(&state.db, SETTING_SUB_TITLE)
         .await
+        .map_err(ApiError::internal)?
         .filter(|t| !t.trim().is_empty())
         .unwrap_or_else(|| format!("{PANEL_NAME} · {username}"));
 
@@ -369,7 +368,9 @@ pub(crate) async fn serve_sub(
                     "uri": e.uri,
                     "server": e.server,
                     "sni": e.sni,
+                    "uid": e.uid,
                     "label": e.label,
+                    "fingerprint": e.fingerprint,
                 })).collect::<Vec<_>>(),
             })
             .to_string(),
@@ -468,9 +469,18 @@ pub(crate) async fn list_subscriptions(
 }
 
 pub(crate) async fn get_sub_settings(State(state): State<App>) -> Result<Json<Value>, ApiError> {
+    // A failing settings read is reported, not shown as blank defaults.
+    let base = get_setting(&state.db, SETTING_SUB_BASE_URL)
+        .await
+        .map_err(ApiError::internal)?
+        .unwrap_or_default();
+    let title = get_setting(&state.db, SETTING_SUB_TITLE)
+        .await
+        .map_err(ApiError::internal)?
+        .unwrap_or_default();
     Ok(Json(json!({
-        "sub_base_url": get_setting(&state.db, SETTING_SUB_BASE_URL).await.unwrap_or_default(),
-        "sub_title": get_setting(&state.db, SETTING_SUB_TITLE).await.unwrap_or_default(),
+        "sub_base_url": base,
+        "sub_title": title,
         "panel": PANEL_NAME,
     })))
 }
@@ -511,7 +521,10 @@ pub(crate) async fn update_sub_settings(
 // ---------------------------------------------------------------------------
 
 /// Reject a URL that points into our own network. DNS is resolved here, so a
-/// hostname that resolves to a private address is refused too. A rebinding race
+/// hostname that resolves to a private address is refused too. Redirects are
+/// not followed (the fetch client is built with `Policy::none()`), so the
+/// check cannot be bypassed by a hop — a remote host that answers 3xx is
+/// simply reported as an error. A rebinding race
 /// remains possible; the lab flag `BPROTO_ALLOW_PRIVATE_SUBS=1` disables this.
 pub(crate) async fn guard_url(state: &App, raw: &str) -> Result<Url, ApiError> {
     let url = Url::parse(raw.trim()).map_err(|_| {
@@ -557,9 +570,14 @@ fn is_disallowed_ip(ip: &std::net::IpAddr) -> bool {
                 || v4.is_unspecified()
                 || v4.is_multicast()
                 || v4.is_documentation()
+                // "this host" /24 (0.0.0.0/8) -- on Linux connecting to an
+                // address like 0.1.2.3 is treated as the local host
+                || v4.octets()[0] == 0
                 // 100.64.0.0/10 (CGNAT) and 198.18.0.0/15 (benchmarking)
                 || (v4.octets()[0] == 100 && (64..128).contains(&v4.octets()[1]))
                 || (v4.octets()[0] == 198 && (18..20).contains(&v4.octets()[1]))
+                // 240.0.0.0/4 reserved
+                || (v4.octets()[0] & 0xf0) == 0xf0
         }
         IpAddr::V6(v6) => {
             v6.is_loopback()
@@ -569,6 +587,11 @@ fn is_disallowed_ip(ip: &std::net::IpAddr) -> bool {
                 || (v6.segments()[0] & 0xfe00) == 0xfc00
                 // fe80::/10 link local
                 || (v6.segments()[0] & 0xffc0) == 0xfe80
+                // 64:ff9b::/96 NAT64: the embedded IPv4 address may be private
+                // (segments 6 and 7 hold the v4 octets)
+                || (v6.segments()[0] == 0x0064
+                    && v6.segments()[1] == 0xff9b
+                    && v6.segments()[2..6].iter().all(|&s| s == 0))
                 || v6
                     .to_ipv4_mapped()
                     .is_some_and(|v4| is_disallowed_ip(&IpAddr::V4(v4)))
@@ -625,8 +648,8 @@ async fn fetch_remote(state: &App, sub_id: i64) -> Result<usize, ApiError> {
             .map_err(|e| e.to_string())?;
         for e in &entries {
             sqlx::query(
-                "INSERT INTO remote_sub_entries (sub_id, uri, server, sni, uid, label, fetched_at) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO remote_sub_entries (sub_id, uri, server, sni, uid, label, fingerprint, fetched_at) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             )
             .bind(sub_id)
             .bind(&e.uri)
@@ -634,6 +657,7 @@ async fn fetch_remote(state: &App, sub_id: i64) -> Result<usize, ApiError> {
             .bind(&e.sni)
             .bind(e.uid)
             .bind(&e.label)
+            .bind(&e.fingerprint)
             .bind(now())
             .execute(&mut *tx)
             .await

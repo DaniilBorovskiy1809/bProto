@@ -94,6 +94,13 @@ struct ServerSession {
     ack: AckRanges,
     pending: u64,
     last_rx_us: u64,
+    /// When the next keepalive probe may go out (µs, same clock as `now_us`).
+    /// Zero means "armed as soon as the keepalive threshold is crossed".
+    next_ping_us: u64,
+    /// Current probe spacing, doubling after every unanswered probe. Firefox's
+    /// server side effectively probes with exponential backoff, not a fixed
+    /// period — this mirrors that and kills the 20 ms probe storm we had.
+    ping_backoff_us: u64,
     rtt: RttEstimator,
     cc: Cubic,
     sent: SentPackets,
@@ -103,7 +110,32 @@ struct ServerSession {
 struct Inner {
     sessions: HashMap<u32, ServerSession>,
     routes: HashMap<Ipv4Addr, u32>,
+    /// Dedup of verified CLEAN HELLOs: the Firefox-shaped opening sends the
+    /// same datagram twice ~0.2 ms apart (and retransmits every 500 ms when
+    /// unacked). All copies must complete into ONE session; without the cache
+    /// each copy would mint a fresh key set and rotate the previous one away
+    /// under the client.
+    handshakes: HashMap<([u8; TAG_LEN], [u8; 32]), CachedHello>,
 }
+
+/// A completed handshake kept for repeat deliveries of the same HELLO.
+#[derive(Debug)]
+struct CachedHello {
+    /// The exact HELLO_ACK datagram to resend (byte-identical).
+    ack: Vec<u8>,
+    /// Absolute micros after which the entry is stale.
+    expires_us: u64,
+}
+
+/// First keepalive probe spacing.
+const PING_BACKOFF_BASE_US: u64 = 1_000_000;
+/// Probe spacing never exceeds this; also an implicit upper probe rate.
+const PING_BACKOFF_MAX_US: u64 = 30_000_000;
+/// How long a completed handshake may be re-delivered: ±1 time window skew on
+/// top of the label window means replays stay valid for the client's retries.
+const HELLO_CACHE_TTL_US: u64 = 600_000_000;
+/// Upper bound of remembered completed handshakes (memory guard).
+const HELLO_CACHE_MAX: usize = 1024;
 
 /// The server protocol node.
 #[derive(Debug)]
@@ -179,32 +211,64 @@ impl ServerNode {
 
         let tag = header.session_tag;
         let mut inner = self.inner.lock().await;
-        let Some(s) = inner.sessions.get_mut(&tag) else {
-            self.counters.unknown_tags.fetch_add(1, Ordering::Relaxed);
-            return Ok(None);
-        };
-        // Refresh the return path on every valid datagram: NAT rebinding and
-        // client roaming both show up here.
-        s.peer = from;
-        s.last_rx_us = now_us;
+        let close_requested;
+        {
+            let Some(s) = inner.sessions.get_mut(&tag) else {
+                // Borrow ends here so `flush_ack`/removal below cannot double-lock.
+                drop(inner);
+                self.counters.unknown_tags.fetch_add(1, Ordering::Relaxed);
+                return Ok(None);
+            };
+            // Refresh the return path on every valid datagram: NAT rebinding and
+            // client roaming both show up here. Any inbound datagram also
+            // restarts the probe backoff schedule, Firefox-style — the server
+            // goes quiet while the client is talking.
+            s.peer = from;
+            s.last_rx_us = now_us;
+            s.ping_backoff_us = PING_BACKOFF_BASE_US;
+            s.next_ping_us = 0;
 
-        let Ok((pn, opened)) = s.sess.open(datagram).await else {
-            return Ok(None);
-        };
-        s.ack.insert(pn);
-        s.pending += 1;
-        if s.pending >= ACK_EVERY {
-            flush_ack(s, &self.sock).await;
-        }
-
-        match opened {
-            Opened::Ip(pkt) => Ok(Some(pkt)),
-            Opened::Control(frame_bytes) => {
-                handle_control(s, &frame_bytes, now_us, &self.sock).await;
-                Ok(None)
+            let Ok((pn, opened)) = s.sess.open(datagram).await else {
+                return Ok(None);
+            };
+            s.ack.insert(pn);
+            s.pending += 1;
+            if s.pending >= ACK_EVERY {
+                flush_ack(s, &self.sock).await;
             }
-            Opened::Keepalive => Ok(None),
+
+            match opened {
+                Opened::Ip(pkt) => return Ok(Some(pkt)),
+                Opened::Control(frame_bytes) => {
+                    close_requested = handle_control(s, &frame_bytes, now_us, &self.sock).await;
+                }
+                Opened::Keepalive => close_requested = false,
+            }
         }
+
+        if close_requested {
+            // The client said goodbye: acknowledge the Close and tear the
+            // session down immediately instead of waiting for the idle
+            // timeout. No further keepalive storm after the client left.
+            let (ip, table_tag);
+            {
+                let Some(s) = inner.sessions.get_mut(&tag) else {
+                    return Ok(None);
+                };
+                flush_ack(s, &self.sock).await;
+                ip = s.ip;
+                table_tag = s.tag;
+            }
+            inner.sessions.remove(&tag);
+            inner.routes.remove(&ip);
+            let mut pool = self.pool.lock().await;
+            pool.release(ip);
+            if let Ok(mut t) = self.tags.write() {
+                t.release_ip(&table_tag);
+            }
+            tracing::debug!(session_tag = tag, %ip, "client closed session");
+        }
+        Ok(None)
     }
 
     /// Seal and send one outbound IP packet, routing on its destination address.
@@ -263,9 +327,21 @@ impl ServerNode {
                 expired.push((tag, s.ip, s.tag));
                 continue;
             }
-            if idle >= keepalive_us {
-                let (_, datagram) = s.sess.seal_control(&frame::simple(FrameType::Ping))?;
-                let _ = udp::send(&self.sock, &datagram, s.peer).await;
+            // Probe an idle session with exponential backoff: the first probe
+            // goes out after `params.keepalive` of silence, then the spacing
+            // doubles 1 s → 2 s → 4 s … capped at 30 s. Any inbound datagram
+            // (client ACKs included) resets the schedule. The probe is padded
+            // into the Firefox control-size band, so the keepalive cannot be
+            // picked out of the traffic by its 30-byte footprint either.
+            if idle >= keepalive_us && now_us >= s.next_ping_us {
+                if let Ok((_, datagram)) = s
+                    .sess
+                    .seal_control_padded(&frame::simple(FrameType::Ping), control_size())
+                {
+                    let _ = udp::send(&self.sock, &datagram, s.peer).await;
+                }
+                s.ping_backoff_us = (s.ping_backoff_us * 2).min(PING_BACKOFF_MAX_US);
+                s.next_ping_us = now_us + s.ping_backoff_us;
             }
             let pto = s.rtt.pto();
             if !s.sent.timed_out(now_us, pto).is_empty() {
@@ -312,6 +388,24 @@ impl ServerNode {
         let mut inner = self.inner.lock().await;
         let mut pool = self.pool.lock().await;
 
+        // Repeat delivery of an already-completed handshake: answer with the
+        // byte-identical HELLO_ACK and create nothing.
+        let key = (verified.tag, verified.client_random);
+        let mut replay = None;
+        if let Some(cached) = inner.handshakes.get(&key) {
+            if now_us < cached.expires_us {
+                replay = Some(cached.ack.clone());
+            } else {
+                inner.handshakes.remove(&key);
+            }
+        }
+        if let Some(ack) = replay {
+            drop(pool);
+            drop(inner);
+            udp::send(&self.sock, &ack, from).await?;
+            return Ok(None);
+        }
+
         // Replacing a user's session is the normal reconnect path: reuse nothing
         // but release the old address so the pool does not leak.
         let stale: Vec<u32> = inner
@@ -356,6 +450,8 @@ impl ServerNode {
                 ack: AckRanges::new(),
                 pending: 0,
                 last_rx_us: now_us,
+                next_ping_us: 0,
+                ping_backoff_us: PING_BACKOFF_BASE_US,
                 rtt: RttEstimator::default(),
                 cc: Cubic::new(self.params.mtu as u32),
                 sent: SentPackets::default(),
@@ -366,6 +462,26 @@ impl ServerNode {
         }
         drop(pool);
         drop(inner);
+
+        // Remember this HelloAck so duplicate HELLOs (the anti-loss double
+        // Initial and 500 ms retransmits) get the same answer, not a key
+        // rotation. Cap the cache to bound memory.
+        {
+            let mut inner = self.inner.lock().await;
+            while inner.handshakes.len() >= HELLO_CACHE_MAX {
+                let Some(&victim) = inner.handshakes.keys().next() else {
+                    break;
+                };
+                inner.handshakes.remove(&victim);
+            }
+            inner.handshakes.insert(
+                (verified.tag, verified.client_random),
+                CachedHello {
+                    ack: ack_datagram.clone(),
+                    expires_us: now_us + HELLO_CACHE_TTL_US,
+                },
+            );
+        }
 
         udp::send(&self.sock, &ack_datagram, from).await?;
         self.counters.handshakes.fetch_add(1, Ordering::Relaxed);
@@ -380,16 +496,23 @@ async fn flush_ack(s: &mut ServerSession, sock: &UdpSocket) {
     }
     let ranges = std::mem::take(&mut s.ack);
     s.pending = 0;
-    if let Ok((_, datagram)) = s.sess.seal_control(&ranges.encode()) {
+    if let Ok((_, datagram)) = s.sess.seal_control_padded(&ranges.encode(), control_size()) {
         let _ = udp::send(sock, &datagram, s.peer).await;
     }
 }
 
-async fn handle_control(s: &mut ServerSession, frame_bytes: &[u8], now_us: u64, sock: &UdpSocket) {
+/// Process one in-session control frame. Returns `true` when the client
+/// requested a graceful teardown (`Close`); the caller must evict the session.
+async fn handle_control(
+    s: &mut ServerSession,
+    frame_bytes: &[u8],
+    now_us: u64,
+    sock: &UdpSocket,
+) -> bool {
     match frame::peek_type(frame_bytes) {
         Ok(FrameType::Ack) => {
             let Ok(ranges) = AckRanges::decode(frame_bytes) else {
-                return;
+                return false;
             };
             let srtt = s.rtt.smoothed();
             let mut acked_bytes = 0u64;
@@ -411,12 +534,23 @@ async fn handle_control(s: &mut ServerSession, frame_bytes: &[u8], now_us: u64, 
             }
         }
         Ok(FrameType::Ping) => {
-            if let Ok((_, datagram)) = s.sess.seal_control(&frame::simple(FrameType::Pong)) {
+            if let Ok((_, datagram)) = s
+                .sess
+                .seal_control_padded(&frame::simple(FrameType::Pong), control_size())
+            {
                 let _ = udp::send(sock, &datagram, s.peer).await;
             }
         }
+        Ok(FrameType::Close) => return true,
         _ => {}
     }
+    false
+}
+
+/// Jittered control-flight size for server-sent frames (same Firefox band as
+/// the client: 43–51 B). Kept in sync with `session::control_size`.
+fn control_size() -> usize {
+    43 + (crate::crypto::random_32()[0] as usize % 9)
 }
 
 #[cfg(test)]

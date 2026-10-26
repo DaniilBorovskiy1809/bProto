@@ -16,7 +16,6 @@ use axum::response::Response;
 use axum::{Extension, Json};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
-use subtle::ConstantTimeEq;
 
 use crate::{ApiError, App, audit, hash_password, now, random_token, verify_password};
 
@@ -42,6 +41,10 @@ pub(crate) struct Bucket {
 pub(crate) type Limiter = Arc<Mutex<HashMap<String, Bucket>>>;
 
 /// Take one token from `key`'s bucket, refilling at `per_sec` up to `burst`.
+///
+/// Buckets for idle keys are swept out once the map grows past
+/// [`PRUNE_LIMITER_AT`], so a flood of distinct keys cannot grow the process
+/// without bound.
 pub(crate) fn allow_with(
     limiter: &Mutex<HashMap<String, Bucket>>,
     key: &str,
@@ -49,6 +52,11 @@ pub(crate) fn allow_with(
     per_sec: f64,
 ) -> bool {
     let mut map = limiter.lock().expect("limiter lock");
+    if map.len() >= PRUNE_LIMITER_AT {
+        // A bucket may return once its tokens are back at `burst`, i.e. after
+        // `burst / per_sec` seconds of silence. Keep refreshed tokens.
+        map.retain(|_, b| b.tokens + b.updated.elapsed().as_secs_f64() * per_sec < burst);
+    }
     let b = map.entry(key.to_string()).or_insert(Bucket {
         tokens: burst,
         updated: Instant::now(),
@@ -64,18 +72,27 @@ pub(crate) fn allow_with(
     }
 }
 
-/// Best-effort client address. The panel runs behind Caddy, so the forwarded
-/// headers are the only truth available.
+/// Sweep the limiter when this many keys accumulate. Large enough that sweeping
+/// is amortised, small enough that a million fake keys never exist.
+const PRUNE_LIMITER_AT: usize = 4096;
+
+/// Best-effort client address for the audit log and the rate-limit key.
+///
+/// The panel runs behind Caddy, so use the **last** entry of
+/// `X-Forwarded-For`: that is the hop our own reverse proxy appended. The first
+/// entry is chosen by the client and is trivially spoofable — relying on it
+/// would give every request a fresh, attacker-chosen rate-limit bucket.
 pub(crate) fn client_ip(headers: &HeaderMap) -> String {
     for name in ["x-forwarded-for", "x-real-ip"] {
         let candidate = headers
             .get(name)
             .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.split(',').next())
+            // last XFF entry = appended by our own trusted proxy
+            .and_then(|v| v.rsplit(',').next())
             .map(str::trim)
-            .filter(|first| !first.is_empty());
-        if let Some(first) = candidate {
-            return first.to_string();
+            .filter(|last| !last.is_empty());
+        if let Some(last) = candidate {
+            return last.to_string();
         }
     }
     "unknown".into()
@@ -163,6 +180,12 @@ pub(crate) async fn login(
     .bind(expires_at)
     .execute(&state.db)
     .await?;
+    // Housekeeping: throw out expired sessions so the table does not grow
+    // forever with one row per login.
+    sqlx::query("DELETE FROM admin_sessions WHERE expires_at < ?")
+        .bind(now())
+        .execute(&state.db)
+        .await?;
     audit(&state.db, user_id, "login", "", &ip).await;
 
     Ok(Json(LoginResp { token, expires_at }))
@@ -177,7 +200,7 @@ pub(crate) async fn require_admin(
         .ok_or_else(|| ApiError::new(StatusCode::UNAUTHORIZED, "missing bearer token"))?;
 
     let row = sqlx::query(
-        "SELECT s.token, s.expires_at, u.id AS uid, u.username, u.is_admin \
+        "SELECT s.expires_at, u.id AS uid, u.username, u.is_admin \
          FROM admin_sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?",
     )
     .bind(&token)
@@ -186,8 +209,9 @@ pub(crate) async fn require_admin(
     .ok_or_else(|| ApiError::new(StatusCode::UNAUTHORIZED, "invalid token"))?;
 
     let expires_at: i64 = row.get("expires_at");
-    let stored: String = row.get("token");
-    if expires_at < now() || !bool::from(stored.as_bytes().ct_eq(token.as_bytes())) {
+    // No ct_eq here: the session row was found by the token itself, so the
+    // query already established byte equality.
+    if expires_at < now() {
         return Err(ApiError::new(StatusCode::UNAUTHORIZED, "expired token"));
     }
     let is_admin: i64 = row.get("is_admin");
@@ -332,14 +356,14 @@ pub(crate) async fn create_admin(
         )));
     }
     let hash = hash_password(&body.password).map_err(ApiError::internal)?;
+    // Admins are not clients: no sub_id, no subscription URL.
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO users (username, password_hash, is_admin, status, created_at, sub_id) \
-         VALUES (?, ?, 1, 'active', ?, ?) RETURNING id",
+        "INSERT INTO users (username, password_hash, is_admin, status, created_at) \
+         VALUES (?, ?, 1, 'active', ?) RETURNING id",
     )
     .bind(body.username.trim())
     .bind(&hash)
     .bind(now())
-    .bind(&random_token()[..32])
     .fetch_one(&state.db)
     .await
     .map_err(|e| ApiError::new(StatusCode::CONFLICT, format!("cannot create admin: {e}")))?;
@@ -370,11 +394,16 @@ pub(crate) async fn delete_admin(
     if admins <= 1 {
         return Err(ApiError::bad_request("refusing to delete the last admin"));
     }
-    let n = sqlx::query("DELETE FROM users WHERE id = ? AND is_admin = 1")
-        .bind(id)
-        .execute(&state.db)
-        .await?
-        .rows_affected();
+    // The count guard is re-checked *inside* the delete, so two concurrent
+    // deletes cannot both pass the check and drop the panel to zero admins.
+    let n = sqlx::query(
+        "DELETE FROM users WHERE id = ? AND is_admin = 1 \
+         AND (SELECT COUNT(*) FROM users WHERE is_admin = 1) > 1",
+    )
+    .bind(id)
+    .execute(&state.db)
+    .await?
+    .rows_affected();
     if n == 0 {
         return Err(ApiError::not_found("admin not found"));
     }
@@ -460,10 +489,15 @@ mod tests {
     }
 
     #[test]
-    fn client_ip_prefers_forwarded_for() {
+    fn client_ip_takes_the_proxy_appended_hop() {
         let mut h = HeaderMap::new();
+        // spoofable chain, then the entry our reverse proxy appended last
         h.insert("x-forwarded-for", "203.0.113.7, 10.0.0.1".parse().unwrap());
-        assert_eq!(client_ip(&h), "203.0.113.7");
+        assert_eq!(client_ip(&h), "10.0.0.1");
+        // single-entry header (the usual Caddy shape) works too
+        h.insert("x-real-ip", "198.51.100.9".parse().unwrap());
+        h.remove("x-forwarded-for");
+        assert_eq!(client_ip(&h), "198.51.100.9");
         assert_eq!(client_ip(&HeaderMap::new()), "unknown");
     }
 
