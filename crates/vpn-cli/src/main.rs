@@ -189,6 +189,16 @@ fn render_client_toml(cfg: &TunnelConfig) -> String {
 }
 
 async fn up(cfg: TunnelConfig, iface: String, no_default_route: bool) -> anyhow::Result<()> {
+    // The route takeover must pin the *public* server endpoint, not the
+    // tunnel-internal 10.66.0.1: otherwise the host route misses and the
+    // tunnel's own carrier traffic is swallowed by the new default route.
+    let server_ip = match cfg.server.ip() {
+        std::net::IpAddr::V4(v4) => v4,
+        std::net::IpAddr::V6(_) => {
+            anyhow::bail!("IPv6 server endpoints are not supported by the route takeover yet")
+        }
+    };
+
     if !vpn_tun::can_configure_network() {
         anyhow::bail!("`up` needs root or CAP_NET_ADMIN to create a TUN device and change routes");
     }
@@ -210,7 +220,7 @@ async fn up(cfg: TunnelConfig, iface: String, no_default_route: bool) -> anyhow:
     let _guard = if no_default_route {
         None
     } else {
-        let g = route::FullTunnelGuard::install(&iface, cfg_server_ip(&tunnel))
+        let g = route::FullTunnelGuard::install(&iface, server_ip)
             .context("install full-tunnel routes")?;
         if let Some(w) = g.warning() {
             tracing::warn!(warning = w, "route setup");
@@ -278,12 +288,6 @@ async fn up(cfg: TunnelConfig, iface: String, no_default_route: bool) -> anyhow:
         anyhow::bail!("session ended");
     }
     Ok(())
-}
-
-/// The server's tunnel-side address: the first host of the client's /24.
-fn cfg_server_ip(tunnel: &Tunnel) -> std::net::Ipv4Addr {
-    let o = tunnel.assigned_ip().octets();
-    std::net::Ipv4Addr::new(o[0], o[1], o[2], 1)
 }
 
 fn report(tunnel: &Tunnel) {
