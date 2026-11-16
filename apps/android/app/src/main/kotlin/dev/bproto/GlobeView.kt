@@ -21,6 +21,20 @@ class GlobeView @JvmOverloads constructor(context: Context, attrs: AttributeSet?
         contentDescription = "Connect selected server"
     }
 
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
+
+    override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
+        if (!isEnabled) return false
+        if (event.action == android.view.MotionEvent.ACTION_UP) {
+            performClick()
+            return true
+        }
+        return event.action == android.view.MotionEvent.ACTION_DOWN
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val radius = min(width, height) * .36f
