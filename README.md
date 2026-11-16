@@ -1042,3 +1042,29 @@ Browser ── HTTPS ── Caddy ── panel backend ── SQLite
 по себе не загружает ключ в запущенный сервер.
 **EN.** The panel is the control plane; the server is the datapath. A SQLite
 record alone does not load a key into a running server.
+
+<a id="protocol"></a>
+## Протокол без маркетинговых обещаний / Protocol without marketing claims
+
+**RU.** Транспорт использует UDP. В ядре есть трёхдатаграммное рукопожатие,
+X25519/HKDF, аутентификация с PSK и routing tag, ChaCha20-Poly1305 для data path,
+защита от повторов, ACK/RTT/loss tracking и CUBIC. Заголовок аутентифицируется
+как AEAD associated data. Синхронизация времени важна для time-windowed MAC.
+
+**EN.** Transport uses UDP. The core includes a three-datagram handshake,
+X25519/HKDF, PSK/routing-tag authentication, ChaCha20-Poly1305 data protection,
+replay handling, ACK/RTT/loss tracking and CUBIC. The header is authenticated
+as AEAD associated data. Clock synchronization matters for the time-windowed MAC.
+
+**RU.** Наличие `donor_sni`, browser fingerprint или порта 443 не доказывает
+маскировку под реальный HTTPS/HTTP3. Некоторые enum/модули — точки расширения,
+а не обещание готового режима. Проверяйте runtime-путь и документацию, а не
+только названия полей в панели.
+
+**EN.** A `donor_sni`, browser fingerprint or port 443 does not prove genuine
+HTTPS/HTTP3 disguise. Some enums/modules are extension points rather than
+finished transport modes. Check the runtime path and documentation, not just
+field names in the panel.
+
+Подробности / Details: [PROTOCOL.md](docs/PROTOCOL.md),
+[THREAT-MODEL.md](docs/THREAT-MODEL.md), [PLAN.md](docs/PLAN.md).
