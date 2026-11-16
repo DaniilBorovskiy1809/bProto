@@ -1094,3 +1094,29 @@ field names in the panel.
 лучше остановить развёртывание, чем предполагать её существование по имени проекта.
 **EN.** Do not treat a stub as success. If a required feature is absent, pause
 deployment rather than inferring support from the project name.
+
+<a id="security"></a>
+## Безопасность и блокировки / Security and blocking
+
+**RU.** Нельзя гарантировать, что РКН или другой оператор не обнаружит или не
+заблокирует VPN. Возможны блокировка IP, запрет UDP, DPI и активное зондирование.
+Белый список допускает только выбранные сетью адреса/сервисы; смена порта,
+имени SNI или серверов внутри полностью заблокированного набора не создаёт
+доступный транспорт. Этот проект не содержит переключателя с ложной гарантией
+обхода таких ограничений.
+
+**EN.** There is no guarantee against detection or blocking by RKN or another
+network operator. IP blocking, UDP restrictions, DPI and active probing remain
+possible. An allowlist permits only selected destinations/services. Changing
+ports, SNI labels or endpoints within a fully blocked set does not create a
+usable transport. This project does not present a switch promising such bypass.
+
+**RU.** Перед эксплуатацией оцените VPS, хранение ключей, отзыв доступа,
+обновления ОС, TLS панели, резервные копии и поведение клиента при обрыве.
+Версия релиза и прохождение unit-тестов не заменяют независимый аудит.
+Сохраняйте TLS, package signatures и checksum verification при диагностике.
+
+**EN.** Assess your VPS, key storage, access revocation, OS updates, panel TLS,
+backups and disconnection behavior before deployment. Release numbering and
+passing unit tests do not replace an independent audit. Retain TLS, package
+signatures and checksum verification during troubleshooting.
