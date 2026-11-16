@@ -43,7 +43,7 @@ data class RoutingPolicy(
         private fun ipv4(value: String): Boolean {
             val parts = value.split('.')
             return parts.size == 4 && parts.all {
-                it.isNotEmpty() && it.all(Char::isDigit) && it.toIntOrNull() in 0..255 && (it == "0" || !it.startsWith("0"))
+                it.isNotEmpty() && it.all(Char::isDigit) && (it.toIntOrNull() ?: -1) in 0..255 && (it == "0" || !it.startsWith("0"))
             }
         }
     }

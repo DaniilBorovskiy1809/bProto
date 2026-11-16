@@ -14,7 +14,7 @@ object SubscriptionParser {
             require(entries.length() <= 128) { "Too many servers" }
             (0 until entries.length()).map { index ->
                 val entry = entries.getJSONObject(index)
-                ServerProfile.fromUri(entry.getString("uri"), entry.optString("label", "Server ${index + 1}"), routing)
+                ServerProfile.fromUri(entry.getString("uri"), entry.optString("label").takeIf { it.isNotBlank() && it != "null" } ?: "Server ${index + 1}", routing)
             }
         } else {
             val decoded = if (text.startsWith("bproto://")) text else
