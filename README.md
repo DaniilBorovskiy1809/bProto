@@ -1068,3 +1068,29 @@ field names in the panel.
 
 Подробности / Details: [PROTOCOL.md](docs/PROTOCOL.md),
 [THREAT-MODEL.md](docs/THREAT-MODEL.md), [PLAN.md](docs/PLAN.md).
+
+<a id="capabilities"></a>
+## Матрица возможностей / Capability matrix
+
+| Возможность / Feature | Статус / Status |
+| --- | --- |
+| Linux server + native authenticated handshake | Реализовано / Implemented |
+| Linux TUN/NAT datapath | Требует сетевых прав / Requires network privileges |
+| Linux CLI `check`, `connect`, `up`, `import` | Реализовано / Implemented |
+| Android globe and profile picker | Реализовано / Implemented |
+| Ordered authenticated server fallback | Реализовано / Implemented |
+| JSON subscription IPv4/DNS/app rules | Реализовано для Android / Implemented for Android |
+| Panel login, clients, subscriptions | Реализовано / Implemented |
+| Automatic panel-to-server key push | Не подключено / Not wired |
+| Minimum-latency automatic ranking | Не реализовано / Not implemented |
+| Active-session migration/live failover | Не реализовано / Not implemented |
+| Native IPv6 forwarding | Не реализовано / Not implemented |
+| Domain-rule routing engine | Не реализовано / Not implemented |
+| Guaranteed allowlist/censorship bypass | Не заявляется / Not claimed |
+| Release-signed Android distribution | Нет в v1.0.0 / Not in v1.0.0 |
+| iOS compiled release / desktop Windows/macOS UI | Не поставляется / Not shipped |
+
+**RU.** Не считайте заглушку успешным результатом. Если нужная функция отсутствует,
+лучше остановить развёртывание, чем предполагать её существование по имени проекта.
+**EN.** Do not treat a stub as success. If a required feature is absent, pause
+deployment rather than inferring support from the project name.
