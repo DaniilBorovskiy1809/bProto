@@ -9,6 +9,12 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  installers:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash -n bootstrap.sh install.sh build_app.sh run.sh
+      - run: python3 -m unittest discover -s tests -p test_installers.py -v
   linux-panel:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -90,7 +96,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux-panel, android]
+    needs: [linux-panel, android, installers]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

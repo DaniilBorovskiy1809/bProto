@@ -25,3 +25,7 @@ apps/ios/DerivedData/
 
 # Kotlin incremental compiler state
 apps/android/.kotlin/
+
+# Python installer contract tests
+__pycache__/
+*.pyc
