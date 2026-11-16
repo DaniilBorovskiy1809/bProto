@@ -375,6 +375,7 @@ pub(crate) async fn serve_sub(
         "json" => (
             "application/json; charset=utf-8",
             json!({
+                "schema_version": 1,
                 "routing": routing,
                 "title": title,
                 "sub_id": sub_id,
