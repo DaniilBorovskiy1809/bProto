@@ -17,4 +17,8 @@ class SubscriptionParserTest {
         assertEquals(2, profiles.size)
         assertEquals(uri(2), profiles[1].uri)
     }
+    @Test fun base64SubscriptionKeys() {
+        val encoded = Base64.getEncoder().encodeToString((uri(1) + "\n" + uri(2)).toByteArray())
+        assertEquals(2, SubscriptionParser.parse(encoded).size)
+    }
 }
