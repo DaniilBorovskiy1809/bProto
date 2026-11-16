@@ -729,3 +729,31 @@ change IPs or use CDNs; a plain CIDR list does not track those changes.
 otherwise covered by VPN routes. Excluding bProto itself is rejected. Android
 Always-on VPN with blocking outside VPN can also block deliberately excluded
 traffic; test that combination on your device.
+
+<a id="dns-ipv6"></a>
+## DNS и IPv6 / DNS and IPv6
+
+**RU.** Android добавляет DNS-резолверы в VPN interface и отдельные маршруты
+`/32` к ним. Поэтому выбранный DNS проходит через туннель даже при выборочной
+маршрутизации. Это не DNS-over-HTTPS внутри bProto: пакет до указанного резолвера
+просто передаётся через зашифрованный VPN. Учитывайте отдельные браузерные DoH
+настройки и приложения из `bypass_apps`.
+
+**EN.** Android configures DNS on the VPN interface and adds `/32` routes to
+resolvers. This keeps chosen DNS traffic inside the tunnel even with selective
+routes. It is not a built-in DNS-over-HTTPS implementation: DNS packets travel
+through the encrypted VPN. Browser DoH settings and bypassed applications are
+separate considerations.
+
+**RU.** Datapath в текущем клиенте переносит IPv4. IPv6 перехватывается и
+отбрасывается. Если Android отказывается создать IPv6 capture, подключение
+останавливается: fallback на потенциально протекающий IPv4-only interface
+не выполняется. IPv6-only сайты могут оказаться недоступны.
+
+**EN.** The current datapath transports IPv4. IPv6 is captured and dropped.
+If Android refuses IPv6 capture, connection establishment fails rather than
+falling back to a potentially leaking IPv4-only interface. IPv6-only sites
+may therefore be unreachable.
+
+**RU:** в Linux DNS остаётся задачей оператора; `up` не является полной настройкой resolver.
+**EN:** Linux DNS remains operator-managed; `up` is not complete resolver configuration.
