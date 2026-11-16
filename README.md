@@ -549,3 +549,34 @@ a new `--domain` argument alone does not overwrite it.
 
 **RU:** не переносите Compose-проект в случайный новый каталог без проверки имён volumes.
 **EN:** do not move the Compose project to an arbitrary new directory without checking volume names.
+
+<a id="https"></a>
+## DNS, HTTPS и Caddy / DNS, HTTPS and Caddy
+
+**RU.** Создайте A-запись домена панели на публичный IPv4 VPS. Если добавляете
+AAAA, убедитесь, что IPv6 действительно доходит до Caddy; неверная AAAA часто
+ломает выдачу сертификата. Дождитесь обновления DNS. Порты TCP 80 и 443 должны
+доходить до контейнера Caddy, а не до старого nginx или другой панели.
+
+**EN.** Point the panel domain’s A record at the VPS public IPv4. If you add
+AAAA, verify that IPv6 actually reaches Caddy; an incorrect AAAA record often
+breaks certificate issuance. Allow DNS changes to propagate. TCP 80 and 443
+must reach Caddy rather than an older nginx installation or another panel.
+
+```bash
+getent ahosts panel.example.com
+sudo ss -lntup
+cd /opt/bproto/panel
+sudo docker compose logs --tail 100 caddy
+curl --fail --show-error https://panel.example.com/api/health
+```
+
+**RU.** Caddy проксирует `/api/*` и `/sub/*` к backend внутри Compose network;
+frontend обслуживается как статические файлы. Backend не должен публиковать
+8080 на весь интернет. При использовании внешнего reverse proxy самостоятельно
+согласуйте TLS, `Host` и forwarded-заголовки; не открывайте API без HTTPS.
+
+**EN.** Caddy forwards `/api/*` and `/sub/*` to the backend inside the Compose
+network and serves the frontend statically. Do not expose backend port 8080
+to the Internet. If using an external proxy, configure TLS, `Host` and forwarded
+headers deliberately; do not expose the API without HTTPS.
