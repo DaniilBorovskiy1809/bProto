@@ -54,6 +54,16 @@ class MainActivity : AppCompatActivity() {
         binding.globe.setOnClickListener {
             if (BprotoVpnService.running || BprotoVpnService.connecting) send(BprotoVpnService.ACTION_DISCONNECT, null) else connect()
         }
+        binding.routingButton.setOnClickListener {
+            val profile = selected ?: runCatching { ServerProfile.fromUri(binding.configUri.text.toString().trim()) }.getOrNull()
+            if (profile == null) toast("Select or import a server first") else {
+                RoutingDialog.show(this, profile.routing) { policy ->
+                    selected = profile.copy(routing = policy)
+                    profiles = if (profiles.any { it.uri == profile.uri }) profiles.map { if (it.uri == profile.uri) selected!! else it } else profiles + selected!!
+                    runCatching { ProfileStore(this).save(profiles) }.onFailure { toast("Could not save routing") }
+                }
+            }
+        }
         binding.serverButton.setOnClickListener { showServers() }
         runCatching { ProfileStore(this).load() }.onSuccess {
             profiles = it
@@ -158,6 +168,7 @@ class MainActivity : AppCompatActivity() {
         binding.disconnectButton.isEnabled = BprotoVpnService.running || BprotoVpnService.connecting
         binding.connectButton.isEnabled = !BprotoVpnService.running && !BprotoVpnService.connecting
         binding.serverButton.isEnabled = !BprotoVpnService.running && !BprotoVpnService.connecting
+        binding.routingButton.isEnabled = binding.serverButton.isEnabled
     }
 
     private fun toast(message: String) {
