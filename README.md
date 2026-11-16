@@ -851,3 +851,34 @@ cd /opt/bproto/panel
 sudo docker compose up -d --build
 sudo docker compose ps -a
 ```
+
+<a id="rollback"></a>
+## Откат / Rollback
+
+**RU.** До обновления сохраните рабочие бинарники, конфиги и согласованную копию
+базы. Откат только бинарника не отменяет миграции базы или изменения формата
+конфига. Читайте release notes двух версий. Не понижайте версию поверх новой
+базы без подтверждённой совместимости; восстановите полный согласованный backup.
+
+**EN.** Before upgrading, preserve working binaries, configuration and a
+consistent database backup. Rolling back an executable does not undo database
+migrations or configuration-format changes. Read both releases’ notes. Do not
+run an older backend on a newer database without confirmed compatibility;
+restore a complete, consistent backup instead.
+
+**RU.** Bootstrap позволяет выбрать существующий `--release vX.Y.Z`, но не
+обещает откат данных и использует текущие установочные скрипты. Для ручного
+контроля скачайте предыдущий архив, проверьте его SHA256 и установите бинарник
+в окно обслуживания. Проверяйте адреса, ключи и права после восстановления.
+
+**EN.** Bootstrap can select an existing `--release vX.Y.Z`, but does not roll
+back data and still uses current installation scripts. For manual control,
+download the earlier archive, verify its SHA256 and replace the executable
+during maintenance. Check endpoints, keys and permissions after restoration.
+
+```bash
+sudo systemctl stop bproto-server
+# Restore your verified binary and compatible configuration here.
+sudo /usr/local/bin/vpn-server --check-config --config /etc/bproto/server.toml
+sudo systemctl start bproto-server
+```
