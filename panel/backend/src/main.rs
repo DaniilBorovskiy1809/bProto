@@ -18,6 +18,7 @@
 
 #![forbid(unsafe_code)]
 
+mod routing;
 mod auth;
 mod inbounds;
 mod keys;
