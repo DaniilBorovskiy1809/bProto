@@ -68,7 +68,11 @@ class MainActivity : AppCompatActivity() {
         binding.serverButton.setOnClickListener { showServers() }
         runCatching { ProfileStore(this).load() }.onSuccess {
             profiles = it
-            selected = it.firstOrNull()
+            val preferences = getPreferences(Context.MODE_PRIVATE)
+            val index = preferences.getInt("selectedIndex", 0).coerceIn(0, (it.size - 1).coerceAtLeast(0))
+            selected = it.getOrNull(index)
+            automatic = preferences.getBoolean("automatic", false)
+            binding.serverButton.text = if (automatic && it.isNotEmpty()) "Automatic" else selected?.name ?: getString(R.string.choose_server)
             selected?.let { profile -> binding.configUri.setText(profile.uri) }
         }.onFailure { toast("Saved profiles could not be decrypted. Import your subscription again.") }
         binding.connectButton.setOnClickListener { connect() }
@@ -142,6 +146,8 @@ class MainActivity : AppCompatActivity() {
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Select server")
             .setItems((listOf("Automatic · first reachable") + profiles.map { it.name }).toTypedArray()) { _, index ->
+                getPreferences(Context.MODE_PRIVATE).edit().putInt("selectedIndex", if (index == 0) 0 else index - 1)
+                    .putBoolean("automatic", index == 0).apply()
                 automatic = index == 0
                 selected = profiles[if (automatic) 0 else index - 1]
                 binding.configUri.setText(selected!!.uri)
