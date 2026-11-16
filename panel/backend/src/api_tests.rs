@@ -687,3 +687,12 @@ async fn assert_routing_patch_rejected(policy: Value, expected: StatusCode) {
         "Rejected policy must not alter stored settings"
     );
 }
+
+#[tokio::test]
+async fn routing_rejects_empty_route_set() {
+    assert_routing_patch_rejected(
+        serde_json::from_str(r#"{"routes":[],"dns":["1.1.1.1"],"bypass_apps":[]}"#).unwrap(),
+        StatusCode::from_u16(400).unwrap(),
+    )
+    .await;
+}
