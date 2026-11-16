@@ -885,7 +885,14 @@ async fn routing_rejects_unknown_transport_disguise() {
 async fn json_subscription_exports_saved_routing_and_schema() {
     let app = test_app().await;
     let token = login(&app).await;
-    let (_, _, _, sub_id) = seed_key(&app, "route-client").await;
+    let (user_id, _, _, sub_id) = seed_key(&app, "route-client").await;
+    let inbound = create_inbound(&app, &token).await;
+    sqlx::query("UPDATE users SET inbound_id = ? WHERE id = ?")
+        .bind(inbound)
+        .bind(user_id)
+        .execute(&app.db)
+        .await
+        .unwrap();
     let policy = json!({"routes":["192.168.0.0/16"],"dns":["9.9.9.9"],"bypass_apps":[]});
     let (status, _) = call(
         &app,
