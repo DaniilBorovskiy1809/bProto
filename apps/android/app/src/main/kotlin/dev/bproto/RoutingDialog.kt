@@ -22,7 +22,8 @@ object RoutingDialog {
         val dns = input("DNS IPv4 addresses", original.dns)
         val bypass = input("Applications outside VPN, package names", original.bypassApps)
         val dialog = AlertDialog.Builder(context).setTitle("Routing · this server")
-            .setView(container).setNegativeButton("Cancel", null).setPositiveButton("Save", null).create()
+            .setView(container).setNeutralButton("Reset to full tunnel") { _, _ -> save(RoutingPolicy()) }
+            .setNegativeButton("Cancel", null).setPositiveButton("Save", null).create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 fun entries(field: EditText) = JSONArray(field.text.toString().lines().map { it.trim() }.filter { it.isNotEmpty() })
