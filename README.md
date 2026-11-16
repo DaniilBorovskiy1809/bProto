@@ -402,3 +402,36 @@ PYCODE
 секретному конфигу, а QR-код — визуальное представление этого же секрета.
 **EN.** Correct `server` to the public IP:port before converting. The URI is
 secret configuration material; its QR code contains the same secret.
+
+<a id="linux-client"></a>
+## Linux CLI / Linux client
+
+**RU.** Серверный bootstrap с `--target all` ставит CLI на VPS для обслуживания;
+для использования VPN установите CLI на отдельное Linux-устройство. Режим
+`connect` проверяет рукопожатие, но не меняет маршруты. `up` создаёт TUN и
+меняет default route, поэтому требует root. При удалённой проверке полный
+туннель может изменить маршрут вашего SSH-соединения.
+
+**EN.** Server bootstrap with `--target all` installs the CLI for maintenance;
+install it on a separate Linux device to use the VPN. `connect` tests the
+handshake without changing routes. `up` creates TUN and changes the default
+route, requiring root. A full tunnel on a remote machine can change the route
+used by your SSH session.
+
+```bash
+bproto --version
+bproto import 'bproto://import/REPLACE_WITH_YOUR_KEY' --out client.toml
+chmod 600 client.toml
+bproto --config client.toml check
+bproto --config client.toml connect --seconds 5
+sudo bproto --config client.toml up
+# Configure TUN without moving the default route:
+sudo bproto --config client.toml up --no-default-route
+```
+
+**RU.** CLI не предоставляет Android package exclusions и не импортирует JSON
+подписку как список серверов. DNS в Linux настраивает оператор. Подробности
+отката маршрутов и DNS находятся в [INSTALL.md](docs/INSTALL.md).
+**EN.** The CLI does not implement Android package exclusions or import a JSON
+subscription as a server list. Linux DNS remains operator-managed. See
+[INSTALL.md](docs/INSTALL.md) for route rollback and DNS details.
