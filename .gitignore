@@ -22,3 +22,6 @@ apps/android/.idea/
 apps/ios/build/
 apps/ios/*.xcworkspace/xcuserdata/
 apps/ios/DerivedData/
+
+# Kotlin incremental compiler state
+apps/android/.kotlin/
