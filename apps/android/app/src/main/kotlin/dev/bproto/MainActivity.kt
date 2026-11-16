@@ -111,6 +111,8 @@ class MainActivity : AppCompatActivity() {
             }.start()
             return
         }
+        val validation = runCatching { ServerProfile.fromUri(config) }
+        if (validation.isFailure) { toast(validation.exceptionOrNull()?.message ?: "Invalid key"); return }
         val consent = VpnService.prepare(this)
         if (consent != null) {
             pendingConfig = config
