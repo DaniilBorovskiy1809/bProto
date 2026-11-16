@@ -757,3 +757,30 @@ may therefore be unreachable.
 
 **RU:** в Linux DNS остаётся задачей оператора; `up` не является полной настройкой resolver.
 **EN:** Linux DNS remains operator-managed; `up` is not complete resolver configuration.
+
+<a id="privacy"></a>
+## Приватность и защита устройства / Privacy and device protection
+
+**RU.** VPN защищает участок между устройством и сервером; он не превращает
+обычный HTTP-сайт в HTTPS и не устраняет доверие к владельцу VPS. У сервера есть
+метаданные соединений и исходящий трафик. Избегайте логирования URI, PSK,
+содержимого `.env` и полных subscription URL. QR-код содержит те же секреты.
+
+**EN.** A VPN protects the device-to-server path; it does not turn an HTTP site
+into HTTPS or eliminate trust in the VPS operator. The server can observe
+connection metadata and egress traffic. Do not log key URIs, PSKs, `.env`
+contents or full subscription URLs. QR codes contain the same secrets.
+
+**RU.** Android защищает экран от обычных скриншотов и снимков recent apps,
+а профили — Keystore-шифрованием. Это не защита от полностью скомпрометированного
+устройства. Встроенного универсального kill switch нет. Для строгой политики
+используйте системный Always-on VPN и «Блокировать подключения без VPN»,
+проверив совместимость с вашими исключениями и прошивкой.
+
+**EN.** Android uses screenshot/recents protection and Keystore-encrypted
+profiles. This does not protect a fully compromised device. There is no universal
+built-in kill switch. Use system Always-on VPN and “Block connections without
+VPN” for stricter policy, checking compatibility with exclusions and firmware.
+
+**RU:** отсутствие ошибок в UI не доказывает отсутствие DNS/IPv6-утечек.
+**EN:** a clean UI status alone does not prove absence of DNS/IPv6 leaks.
