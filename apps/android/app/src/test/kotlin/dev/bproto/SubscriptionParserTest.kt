@@ -48,4 +48,9 @@ class SubscriptionParserTest {
     @Test(expected = IllegalArgumentException::class) fun foreignUriRejected() {
         ServerProfile.fromUri("https://example.org/key")
     }
+    @Test(expected = IllegalArgumentException::class) fun shortSecretRejected() {
+        val body = JSONObject().put("v", 1).put("server", "203.0.113.10:443").put("uid", 1)
+            .put("sni", "example.org").put("psk", "ab").put("tag_key", "cd".repeat(32))
+        ServerProfile.fromUri("bproto://import/" + Base64.getUrlEncoder().encodeToString(body.toString().toByteArray()))
+    }
 }
