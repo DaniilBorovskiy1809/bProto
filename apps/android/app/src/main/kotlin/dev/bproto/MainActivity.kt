@@ -25,6 +25,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private var pendingConfig: String? = null
+    private var profiles: List<ServerProfile> = emptyList()
+    private var selected: ServerProfile? = null
 
     private val vpnPermission =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -86,6 +88,26 @@ class MainActivity : AppCompatActivity() {
             toast("paste a bproto:// key first")
             return
         }
+        if (config.startsWith("https://")) {
+            binding.connectButton.isEnabled = false
+            Thread {
+                val result = runCatching { SubscriptionFetcher.fetch(config) }
+                runOnUiThread {
+                    binding.connectButton.isEnabled = true
+                    result.onSuccess { servers ->
+                        profiles = servers
+                        androidx.appcompat.app.AlertDialog.Builder(this)
+                            .setTitle("Select server")
+                            .setItems(servers.map { it.name }.toTypedArray()) { _, index ->
+                                selected = servers[index]
+                                binding.configUri.setText(servers[index].uri)
+                                connect()
+                            }.show()
+                    }.onFailure { toast(it.message ?: "Subscription failed") }
+                }
+            }.start()
+            return
+        }
         val consent = VpnService.prepare(this)
         if (consent != null) {
             pendingConfig = config
@@ -99,6 +121,13 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, BprotoVpnService::class.java).setAction(action)
         if (config != null) {
             intent.putExtra(BprotoVpnService.EXTRA_CONFIG, config)
+            selected?.takeIf { it.uri == config }?.let { profile ->
+                val policy = org.json.JSONObject()
+                    .put("routes", org.json.JSONArray(profile.routing.routes))
+                    .put("dns", org.json.JSONArray(profile.routing.dns))
+                    .put("bypass_apps", org.json.JSONArray(profile.routing.bypassApps))
+                intent.putExtra(BprotoVpnService.EXTRA_ROUTING, policy.toString())
+            }
         }
         startService(intent)
     }
