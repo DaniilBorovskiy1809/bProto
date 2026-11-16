@@ -607,3 +607,28 @@ not reset an existing account’s password. Change it through Settings.
 
 **RU:** сначала создайте inbound с публичным IP:port, затем клиента и ключ.
 **EN:** create an inbound with a public IP:port, then a client and device key.
+
+<a id="key-sync"></a>
+## Панель и сервер: обязательная синхронизация / Required panel-to-server synchronization
+
+**RU.** Панель **пока не отправляет новые ключи серверу автоматически**. Ключ,
+созданный в UI, не начинает работать только потому, что его QR-код отображается.
+Для соединения сервер должен знать соответствующие `id` и `psk`, а `tag_key`
+сервера должен совпадать с `BPROTO_TAG_KEY` панели.
+
+**EN.** The panel **does not automatically push new keys to the server yet**.
+A newly displayed QR code does not mean the server already accepts it. The
+server must know the matching user `id` and `psk`, and its `tag_key` must match
+the panel’s `BPROTO_TAG_KEY`.
+
+1. **RU:** создайте inbound с адресом сервера. **EN:** create the inbound with the server endpoint.
+2. **RU:** создайте клиента и ключ; импортируйте URI в приватном окружении. **EN:** create client/key and inspect the imported configuration privately.
+3. **RU:** перенесите ID и PSK в `[[users]]` в `server.toml`. **EN:** add matching ID and PSK under `[[users]]` in `server.toml`.
+4. **RU:** проверьте совпадение tag key, валидируйте конфиг и перезапустите службу. **EN:** verify tag-key equality, validate and restart the server.
+5. **RU:** выполните реальное рукопожатие с клиента. **EN:** test an actual client handshake.
+
+**RU.** Отзыв ключа в панели не следует считать мгновенным отзывом на сервере,
+если старый PSK остаётся в серверном конфиге. Обновляйте сервер при отзыве.
+**EN.** Revoking a key in the panel is not immediate server-side revocation if
+the old PSK remains in server configuration. Update the server when revoking.
+Подробный процесс / Detailed procedure: [INSTALL.md §5.5](docs/INSTALL.md).
