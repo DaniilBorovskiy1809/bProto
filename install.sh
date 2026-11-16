@@ -381,33 +381,29 @@ install_panel() {
 
     [ -n "$DOMAIN" ] || die "set the panel hostname:  ./install.sh panel --domain panel.example.com"
 
-    local tag
-    tag="$(existing_tag_key)"
-    if [ -n "$tag" ]; then
-        ok "reusing tag_key from $SERVER_CFG (panel and server will agree)"
+    if [ ! -f "$REPO_ROOT/panel/.env" ]; then
+        local tag admin_pw
+        tag="$(existing_tag_key)"
+        if [ -z "$tag" ]; then
+            tag="$(rand_hex 32)"
+            warn "No server config found: synchronize BPROTO_TAG_KEY with server.toml before creating clients"
+        fi
+        admin_pw="$(rand_hex 24)"
+        (
+            cd "$REPO_ROOT/panel"
+            umask 077
+            set -o noclobber
+            printf 'BPROTO_DOMAIN=%s\nBPROTO_TAG_KEY=%s\nBPROTO_ADMIN_PASSWORD=%s\n' "$DOMAIN" "$tag" "$admin_pw" > .env
+        )
     else
-        tag="$(rand_hex 32)"
-        warn "no $SERVER_CFG found; generating a tag_key."
-        warn "put this in server.toml and every client:  tag_key = \"$tag\""
+        warn "Keeping existing panel/.env, domain and credentials"
     fi
-
-    local admin_pw
-    admin_pw="$(rand_hex 24)"
-
-    ( cd "$REPO_ROOT/panel"
-      umask 077
-      cat > .env <<EOF
-BPROTO_DOMAIN=${DOMAIN}
-BPROTO_TAG_KEY=${tag}
-BPROTO_ADMIN_PASSWORD=${admin_pw}
-EOF
-      step "docker compose up -d --build"
-      docker compose up -d --build
-    )
+    chmod 0600 "$REPO_ROOT/panel/.env"
+    (cd "$REPO_ROOT/panel" && docker compose up -d --build)
 
     printf '\n%spanel installed%s\n' "$C_BOLD" "$C_RESET" >&2
-    printf '  url       https://%s\n' "$DOMAIN" >&2
-    printf '  login     admin / %s\n' "$admin_pw" >&2
+    printf '  url       use BPROTO_DOMAIN from panel/.env\n' >&2
+    printf '  login     admin; initial password is in panel/.env (used only for first admin creation)\n' >&2
     printf '  secrets   %s/panel/.env\n' "$REPO_ROOT" >&2
     printf '  logs      cd panel && docker compose logs -f\n' >&2
     printf '\npoint %s DNS at this host BEFORE the first request (Caddy needs port 80/443).\n' "$DOMAIN" >&2
