@@ -145,6 +145,17 @@ class MainActivity : AppCompatActivity() {
         if (profiles.isEmpty()) { toast("Import an HTTPS subscription first"); return }
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Select server")
+            .setNeutralButton("Forget profiles") { _, _ ->
+                androidx.appcompat.app.AlertDialog.Builder(this).setTitle("Forget all imported profiles?")
+                    .setMessage("You will need your subscription URL or keys to import them again.")
+                    .setNegativeButton("Cancel", null).setPositiveButton("Forget") { _, _ ->
+                        runCatching { ProfileStore(this).save(emptyList()) }.onSuccess {
+                            profiles = emptyList(); selected = null; automatic = false
+                            binding.configUri.setText("")
+                            binding.serverButton.setText(R.string.choose_server)
+                        }.onFailure { toast("Could not remove saved profiles") }
+                    }.show()
+            }
             .setItems((listOf("Automatic · first reachable") + profiles.map { it.name }).toTypedArray()) { _, index ->
                 getPreferences(Context.MODE_PRIVATE).edit().putInt("selectedIndex", if (index == 0) 0 else index - 1)
                     .putBoolean("automatic", index == 0).apply()
