@@ -928,3 +928,38 @@ async fn subscription_routing_settings_require_administrator() {
         }
     }
 }
+
+#[tokio::test]
+async fn subscription_base_url_credentials_are_rejected_atomically() {
+    let app = test_app().await;
+    let token = login(&app).await;
+    let (_, before) = call(
+        &app,
+        "GET",
+        "/api/subscriptions/settings",
+        Some(&token),
+        None,
+    )
+    .await;
+    let (status, _) = call(
+        &app,
+        "PATCH",
+        "/api/subscriptions/settings",
+        Some(&token),
+        Some(json!({
+            "sub_base_url":"https://user:password@example.org", "sub_title":"must not persist",
+            "routing":{"routes":["10.0.0.0/8"],"dns":["9.9.9.9"],"bypass_apps":[]}
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    let (_, after) = call(
+        &app,
+        "GET",
+        "/api/subscriptions/settings",
+        Some(&token),
+        None,
+    )
+    .await;
+    assert_eq!(before, after);
+}
