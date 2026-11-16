@@ -1120,3 +1120,30 @@ usable transport. This project does not present a switch promising such bypass.
 backups and disconnection behavior before deployment. Release numbering and
 passing unit tests do not replace an independent audit. Retain TLS, package
 signatures and checksum verification during troubleshooting.
+
+<a id="contributing"></a>
+## Участие в разработке / Contributing
+
+**RU.** Для исправления создайте ветку и небольшой PR с описанием проблемы,
+нового поведения и реально выполненных проверок. Для сетевых изменений укажите
+платформу, capabilities и то, проверялся ли реальный datapath. Для UI проверяйте
+ошибки, загрузку, пустые состояния, маленький экран и клавиатурную навигацию.
+Не изменяйте lockfiles без причины и не отключайте падающие assertions ради CI.
+
+**EN.** Use a branch and a focused PR describing the problem, new behavior and
+checks actually run. For networking changes, report platform, capabilities
+and whether the real datapath was exercised. For UI changes, check errors,
+loading, empty states, small screens and keyboard navigation. Avoid unrelated
+lockfile changes and do not disable failing assertions to make CI green.
+
+**RU.** Установщик проверяется без root: тесты аргументов и process substitution
+не меняют хост; тест панели использует mock Docker и временный каталог.
+Реальный systemd/TUN smoke test проводите в отдельной подходящей VM, не на
+рабочем сервере пользователя без согласованного окна обслуживания.
+
+**EN.** Installer contracts run without root: argument/process-substitution
+tests do not change the host; panel tests use mock Docker and a temporary
+folder. Run actual systemd/TUN smoke tests in a suitable isolated VM rather
+than on a user’s production server without a maintenance window.
+
+Лицензия проекта / Project license: **AGPL-3.0-or-later**; see Cargo manifests.
