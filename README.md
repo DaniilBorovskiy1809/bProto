@@ -943,3 +943,34 @@ sudo ss -lntup
 маршруты → DNS. Не меняйте все уровни одновременно: теряется причина ошибки.
 **EN.** Locate the failing layer first: download → service → handshake → TUN →
 routes → DNS. Changing all layers at once hides the original cause.
+
+<a id="faq"></a>
+## Частые вопросы / Frequently asked questions
+
+**Нужен ли Rust на VPS? / Does the VPS need Rust?**
+RU: нет для bootstrap с готовыми x86_64-бинарниками; да для сборки из исходников.
+EN: not for prebuilt x86_64 bootstrap installation; yes for source builds.
+
+**Почему `all` не установил панель? / Why did `all` not install the panel?**
+RU: это сервер + CLI. Панель требует Docker, домен и отдельную команду.
+EN: it means server + CLI. The panel needs Docker, a domain and a separate command.
+
+**Можно ли использовать один порт 443? / Can everything use port 443?**
+RU: VPN UDP и панель TCP могут сосуществовать; второй UDP listener конфликтует.
+EN: VPN UDP and panel TCP can coexist; another UDP listener conflicts.
+
+**Почему `--port` не изменил работающий сервер? / Why did `--port` not change my existing server?**
+RU: существующий конфиг сохраняется. Измените `listen_addr`, firewall и endpoint клиента.
+EN: existing configuration is preserved. Change `listen_addr`, firewall and client endpoint.
+
+**Почему нет карты городов? / Why is there no city map?**
+RU: глобус — кнопка. Клиент не придумывает координаты по имени сервера.
+EN: the globe is a button; the client does not invent server coordinates.
+
+**Это незаметный VPN? / Is this an undetectable VPN?**
+RU: нет такой гарантии. UDP/IP/DPI-блокировки остаются возможными.
+EN: no such guarantee is made. UDP, IP and DPI blocking remain possible.
+
+**Что означает версия 1.0.0? / What does 1.0.0 mean?**
+RU: опубликованный набор артефактов, а не сертификация или обещание всех будущих функций.
+EN: a published artifact version, not certification or a promise of future features.
