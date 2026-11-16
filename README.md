@@ -177,3 +177,34 @@ sudo bash bootstrap.sh --skip-deps --directory /opt/bproto
 separately after setting up Docker and DNS. `--port` does not rewrite an existing
 `server.toml`; edit it and restart the service. `--release` selects published
 binaries, while installation scripts come from `main`.
+
+<a id="download-only"></a>
+## Только скачивание и ручная установка / Download-only and manual installation
+
+**RU.** Этот режим не требует root, не запускает apt, не создаёт службу и не
+меняет маршруты. Укажите ещё не существующий каталог. Он скачивает Linux-архив,
+проверяет SHA256 по манифесту релиза и проверяет наличие серверного и клиентского
+бинарников в архиве.
+
+**EN.** This mode needs no root, does not run apt, and does not create services
+or change routes. Choose a directory that does not exist yet. It downloads the
+Linux archive, checks its release-manifest SHA256 and confirms that server and
+client binaries are present.
+
+```bash
+bash bootstrap.sh --download-only "$PWD/bproto-download"
+cd bproto-download
+sha256sum --check bproto-linux-x86_64.tar.gz.sha256
+tar -tzf bproto-linux-x86_64.tar.gz
+```
+
+**RU.** Для ручного развёртывания разместите `dist/` из архива в checkout проекта
+и вызовите `sudo ./install.sh all --no-build`. Один архив бинарников не содержит
+полного окружения установки: нужны скрипт и systemd unit из исходников. Для
+офлайн-сервера заранее перенесите исходники, бинарники и системные зависимости.
+
+**EN.** For manual deployment, extract `dist/` into the source checkout and run
+`sudo ./install.sh all --no-build`. A binary archive alone is not the complete
+installation environment: use the installer and systemd unit from the source
+checkout. For an offline host, transfer sources, binaries and OS dependencies
+in advance.
