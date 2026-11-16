@@ -94,6 +94,10 @@ class BprotoVpnService : VpnService() {
                     if (policy.isFailure) publish("Invalid routing policy") else {
                         candidates = intent.getStringArrayListExtra(EXTRA_CANDIDATES)?.take(128).orEmpty()
                         routing = policy.getOrThrow()
+                        if (packageName in routing.bypassApps) {
+                            publish("The VPN application cannot bypass its own tunnel")
+                            return START_NOT_STICKY
+                        }
                         start(config)
                     }
                 }
