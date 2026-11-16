@@ -833,3 +833,13 @@ async fn routing_rejects_package_shell_characters() {
     )
     .await;
 }
+
+#[tokio::test]
+async fn routing_rejects_route_ipv6() {
+    assert_routing_patch_rejected(
+        serde_json::from_str(r#"{"routes":["2001:db8::/32"],"dns":["1.1.1.1"],"bypass_apps":[]}"#)
+            .unwrap(),
+        StatusCode::from_u16(400).unwrap(),
+    )
+    .await;
+}
