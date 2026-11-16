@@ -974,3 +974,39 @@ EN: no such guarantee is made. UDP, IP and DPI blocking remain possible.
 **Что означает версия 1.0.0? / What does 1.0.0 mean?**
 RU: опубликованный набор артефактов, а не сертификация или обещание всех будущих функций.
 EN: a published artifact version, not certification or a promise of future features.
+
+<a id="development"></a>
+## Разработка и тесты / Development and tests
+
+**RU.** Используйте существующий checkout задачи. Для стандартной разработки
+достаточно Rust workspace; панель — отдельный Cargo-проект. Команды ниже
+не требуют установки production systemd-службы. `demo` выполняет настоящее
+локальное рукопожатие без TUN/NAT и root.
+
+**EN.** Use the task’s existing checkout. The Rust workspace is the standard
+protocol development workflow; the panel is a separate Cargo project. These
+commands do not install a production systemd service. `demo` performs a real
+local handshake without TUN/NAT or root.
+
+```bash
+cargo test --locked --workspace
+cargo fmt --all --check
+cargo clippy --locked --workspace --all-targets -- -D warnings
+cargo test --locked -p bproto --features jni
+cargo test --locked --manifest-path panel/backend/Cargo.toml
+python3 -m unittest discover -s tests -p test_installers.py -v
+./run.sh demo 3
+```
+
+```bash
+cd panel/frontend
+pnpm install --frozen-lockfile
+pnpm build
+```
+
+**RU.** Не заменяйте lockfile при ошибке установки. Сначала проверьте версию
+pnpm из `packageManager`, доступ к registry и TLS. Полная сборка артефактов:
+`./build_app.sh`; Android: `./build_app.sh --android --no-panel`.
+**EN.** Do not replace the lockfile to work around installation failures.
+Check pinned pnpm, registry access and TLS first. Build artifacts using
+`./build_app.sh`; Android using `./build_app.sh --android --no-panel`.
