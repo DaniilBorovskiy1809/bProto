@@ -35,6 +35,13 @@ class GlobeView @JvmOverloads constructor(context: Context, attrs: AttributeSet?
         return event.action == android.view.MotionEvent.ACTION_DOWN
     }
 
+    override fun onInitializeAccessibilityNodeInfo(info: android.view.accessibility.AccessibilityNodeInfo) {
+        super.onInitializeAccessibilityNodeInfo(info)
+        info.className = android.widget.Button::class.java.name
+        info.isClickable = true
+        info.isEnabled = isEnabled
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val radius = min(width, height) * .36f
