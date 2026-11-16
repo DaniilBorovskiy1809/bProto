@@ -882,3 +882,35 @@ sudo systemctl stop bproto-server
 sudo /usr/local/bin/vpn-server --check-config --config /etc/bproto/server.toml
 sudo systemctl start bproto-server
 ```
+
+<a id="uninstall"></a>
+## Удаление / Uninstall
+
+```bash
+cd /opt/bproto
+sudo ./install.sh uninstall
+```
+
+**RU.** Команда удаляет бинарники сервера/CLI, systemd unit, файл sysctl и
+системного пользователя. `/etc/bproto` сохраняется намеренно. Сам checkout,
+Docker-панель, её `.env` и volumes автоматически не удаляются. Удаление sysctl
+файла не означает немедленного сброса runtime forwarding; на хосте могут быть
+другие VPN и маршрутизирующие сервисы, поэтому решайте это отдельно.
+
+**EN.** The command removes server/CLI binaries, the systemd unit, sysctl file
+and service user. `/etc/bproto` is intentionally retained. The checkout, Docker
+panel, `.env` and volumes are not automatically deleted. Removing the sysctl
+file does not immediately reset runtime forwarding; other VPN/routing services
+may depend on it, so handle that separately.
+
+```bash
+cd /opt/bproto/panel
+sudo docker compose down
+# Destructive: only after a verified backup and an explicit decision:
+# sudo docker compose down -v
+```
+
+**RU.** Перед окончательным удалением ключей отзовите доступ устройств,
+сохраните нужный backup и закройте ненужные firewall rules/security groups.
+**EN.** Before permanently deleting keys, revoke device access, preserve any
+required backup and remove obsolete firewall/security-group rules.
