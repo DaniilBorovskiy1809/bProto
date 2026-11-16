@@ -145,14 +145,15 @@ install_server() {
         ok "created system user '$SVC_USER'"
     fi
 
-    install -d -m0750 "$ETC_DIR"
+    install -d -m0750 -o root -g "$SVC_USER" "$ETC_DIR"
 
     if [ -f "$SERVER_CFG" ] && [ "$FORCE_CONFIG" = 0 ]; then
         warn "$SERVER_CFG exists; keeping it (use --force-config to replace)"
     else
         generate_config
     fi
-    chmod 0600 "$SERVER_CFG"
+    chown root:"$SVC_USER" "$SERVER_CFG"
+    chmod 0640 "$SERVER_CFG"
 
     # Never hand over a config the server itself rejects.
     if ! "$PREFIX/bin/vpn-server" --check-config --config "$SERVER_CFG" >/dev/null 2>"$ETC_DIR/.check.log"; then
