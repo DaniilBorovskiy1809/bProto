@@ -208,3 +208,30 @@ tar -tzf bproto-linux-x86_64.tar.gz
 installation environment: use the installer and systemd unit from the source
 checkout. For an offline host, transfer sources, binaries and OS dependencies
 in advance.
+
+<a id="files"></a>
+## Что появляется на сервере / Installed files
+
+| Путь / Path | Содержимое / Contents |
+| --- | --- |
+| `/opt/bproto` | Checkout текущих скриптов / Current installation source checkout |
+| `/opt/bproto/dist/bin` | Проверенные скачанные бинарники / Verified downloaded binaries |
+| `/usr/local/bin/vpn-server` | Исполняемый файл сервера / Server executable |
+| `/usr/local/bin/bproto` | Linux CLI |
+| `/etc/bproto/server.toml` | Ключи и настройки сервера / Server settings and keys |
+| `/etc/bproto/user1.client.toml` | Начальный клиент / Initial client configuration |
+| `/etc/systemd/system/bproto-server.service` | Служба / Service unit |
+| `/etc/sysctl.d/99-bproto.conf` | IPv4 forwarding |
+| `/opt/bproto/panel/.env` | Домен и секреты панели / Panel domain and secrets |
+
+**RU.** Каталог `/etc/bproto` имеет `0750`, владелец `root`, группа `bproto`.
+Конфиг сервера — `root:bproto`, `0640`: сервис может его прочитать, обычные
+пользователи — нет. Клиентский файл остаётся `0600`. Не выдавайте группе `bproto`
+чужие учётные записи. Данные Docker-панели находятся в named volumes; они не
+исчезают при обычном `docker compose down`, но удаляются с `down -v`.
+
+**EN.** `/etc/bproto` is `0750`, owned by `root:bproto`. The server configuration
+is `0640`, owned by `root:bproto`, so the service can read it but ordinary users
+cannot. The client file remains `0600`. Do not add unrelated accounts to the
+`bproto` group. Docker panel data lives in named volumes: ordinary
+`docker compose down` preserves them; `down -v` removes them.
