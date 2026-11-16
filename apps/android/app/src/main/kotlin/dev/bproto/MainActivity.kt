@@ -79,7 +79,7 @@ class MainActivity : AppCompatActivity() {
         binding.disconnectButton.setOnClickListener {
             send(BprotoVpnService.ACTION_DISCONNECT, null)
         }
-        savedInstanceState?.getString("config")?.let { binding.configUri.setText(it) }
+
         render(BprotoVpnService.lastStatus)
     }
 
@@ -203,8 +203,5 @@ class MainActivity : AppCompatActivity() {
         render(BprotoVpnService.lastStatus)
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putString("config", binding.configUri.text?.toString())
-    }
+
 }
