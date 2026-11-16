@@ -821,3 +821,15 @@ async fn routing_rejects_package_wildcard() {
     )
     .await;
 }
+
+#[tokio::test]
+async fn routing_rejects_package_shell_characters() {
+    assert_routing_patch_rejected(
+        serde_json::from_str(
+            r#"{"routes":["0.0.0.0/0"],"dns":["1.1.1.1"],"bypass_apps":["org.example;command"]}"#,
+        )
+        .unwrap(),
+        StatusCode::from_u16(400).unwrap(),
+    )
+    .await;
+}
