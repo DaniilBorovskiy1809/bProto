@@ -880,3 +880,32 @@ async fn routing_rejects_unknown_transport_disguise() {
     )
     .await;
 }
+
+#[tokio::test]
+async fn json_subscription_exports_saved_routing_and_schema() {
+    let app = test_app().await;
+    let token = login(&app).await;
+    let (_, _, _, sub_id) = seed_key(&app, "route-client").await;
+    let policy = json!({"routes":["192.168.0.0/16"],"dns":["9.9.9.9"],"bypass_apps":[]});
+    let (status, _) = call(
+        &app,
+        "PATCH",
+        "/api/subscriptions/settings",
+        Some(&token),
+        Some(json!({"routing":policy})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, document) = call(
+        &app,
+        "GET",
+        &format!("/sub/{sub_id}?format=json"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(document["schema_version"], 1);
+    assert_eq!(document["routing"], policy);
+    assert_eq!(document["clients"].as_array().unwrap().len(), 1);
+}
