@@ -663,3 +663,36 @@ versions fail explicitly rather than silently ignoring configuration.
 
 **RU:** subscription URL — секрет доступа, не публичная ссылка.
 **EN:** a subscription URL is an access secret, not a public link.
+
+<a id="routing"></a>
+## Настройки маршрутизации / Routing settings
+
+**RU.** Откройте Subscriptions → Subscription routing. Значения применяются
+к JSON-подпискам панели. В Android можно переопределить правила выбранного
+сервера. Сохранение в панели не изменяет уже поднятый туннель: обновите подписку
+и переподключитесь. UI предпросмотра показывает экспортируемые маршруты и DNS.
+
+**EN.** Open Subscriptions → Subscription routing. Values apply to the panel’s
+JSON subscriptions. Android can override rules for its selected profile.
+Saving panel settings does not reconfigure a running tunnel: refresh the
+subscription and reconnect. Subscription preview shows exported routes and DNS.
+
+```json
+{
+  "routes": ["0.0.0.0/0"],
+  "dns": ["1.1.1.1"],
+  "bypass_apps": []
+}
+```
+
+**RU.** IPv4-маршруты должны содержать адрес **сети**: `10.0.0.0/8`, а не
+`10.1.2.3/8`. DNS задаётся IPv4-литералом, без URL или порта. Исключения Android —
+имена пакетов, например `org.example.browser`, не отображаемые названия.
+Списки маршрутов и DNS не могут быть пустыми. Максимум — 128 элементов на список.
+Неизвестные поля, доменные правила и обещания `stealth` не принимаются.
+
+**EN.** IPv4 routes use **network** addresses, e.g. `10.0.0.0/8`, not
+`10.1.2.3/8`. DNS must be an IPv4 literal without URL or port. Android exclusions
+are package names such as `org.example.browser`, not display names. Route and
+DNS lists must be nonempty, with at most 128 entries per list. Unknown fields,
+domain rules and unsupported `stealth` settings are rejected.
