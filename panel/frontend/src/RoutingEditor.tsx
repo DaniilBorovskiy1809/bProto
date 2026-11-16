@@ -25,7 +25,10 @@ export default function RoutingEditor() {
           value={policy[key].join("\n")} disabled={!settings.data || action.busy}
           onChange={event => { setSaved(false); setDraft({ ...policy, [key]: lines(event.target.value) }); }} />
       </Field>)}
-      <div className="flex items-center gap-3"><Button type="submit" variant="primary" disabled={!settings.data || action.busy}>{action.busy ? "Saving…" : "Save routing"}</Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" disabled={!settings.data || action.busy} onClick={() => { setDraft(defaults); setSaved(false); }}>Full tunnel preset</Button>
+        <Button type="button" disabled={!draft || action.busy} onClick={() => { setDraft(null); setSaved(false); }}>Discard edits</Button>
+        <Button type="submit" variant="primary" disabled={!settings.data || action.busy}>{action.busy ? "Saving…" : "Save routing"}</Button>
         {saved && <span role="status" className="text-sm text-emerald-700">Saved. Refresh the subscription in your client.</span>}</div>
     </form>
   </Card>;
