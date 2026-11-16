@@ -201,11 +201,10 @@ install_server() {
                 if systemctl is-active --quiet bproto-server 2>/dev/null; then
                     ok "bproto-server is running"
                 else
-                    warn "bproto-server failed to start; see: journalctl -u bproto-server -n 50"
+                    die "bproto-server failed to start; see: journalctl -u bproto-server -n 50"
                 fi
             else
-                warn "could not start bproto-server; start it by hand:"
-                warn "  $PREFIX/bin/vpn-server --config $SERVER_CFG --datapath"
+                die "could not start bproto-server; see: journalctl -u bproto-server -n 50"
             fi
         else
             systemctl enable bproto-server 2>/dev/null || true
