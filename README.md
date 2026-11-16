@@ -517,3 +517,35 @@ further attempts, though an in-flight handshake may run until its timeout.
 
 **RU:** IP- или UDP-блокировка всех записей не обходится перебором.
 **EN:** trying different entries cannot bypass blocking of every available IP or UDP path.
+
+<a id="panel-install"></a>
+## Установка панели / Installing the panel
+
+**RU.** Панель не входит в bootstrap `all`. Сначала установите Docker Engine и
+Compose v2 по [официальной инструкции](https://docs.docker.com/engine/install/).
+Назначьте домен VPS, проверьте TCP 80/443, затем из checkout выполните:
+
+**EN.** The panel is not included in bootstrap `all`. Install Docker Engine and
+Compose v2 using the [official guide](https://docs.docker.com/engine/install/).
+Point a domain at the VPS, check TCP 80/443, then run from the checkout:
+
+```bash
+cd /opt/bproto
+sudo ./install.sh panel --domain panel.example.com
+cd panel
+sudo docker compose ps -a
+sudo docker compose logs --tail 100 caddy panel
+```
+
+**RU.** Замените `panel.example.com` своим доменом. Установка собирает backend и
+frontend в Docker, создаёт HTTPS через Caddy и сохраняет данные в volumes.
+При существующем `panel/.env` установщик сохраняет его, включая прежний домен
+и пароль: новый `--domain` сам по себе их не перезаписывает.
+
+**EN.** Replace `panel.example.com` with your hostname. Installation builds the
+backend and frontend in Docker, sets up Caddy HTTPS and persists data in volumes.
+An existing `panel/.env` is preserved, including its domain and credentials;
+a new `--domain` argument alone does not overwrite it.
+
+**RU:** не переносите Compose-проект в случайный новый каталог без проверки имён volumes.
+**EN:** do not move the Compose project to an arbitrary new directory without checking volume names.
