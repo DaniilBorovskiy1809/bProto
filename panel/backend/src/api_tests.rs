@@ -732,3 +732,12 @@ async fn routing_rejects_dns_hostname() {
     )
     .await;
 }
+
+#[tokio::test]
+async fn routing_rejects_dns_ipv6() {
+    assert_routing_patch_rejected(
+        serde_json::from_str(r#"{"routes":["0.0.0.0/0"],"dns":["::1"],"bypass_apps":[]}"#).unwrap(),
+        StatusCode::from_u16(400).unwrap(),
+    )
+    .await;
+}
