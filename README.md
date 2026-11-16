@@ -580,3 +580,30 @@ frontend обслуживается как статические файлы. Ba
 network and serves the frontend statically. Do not expose backend port 8080
 to the Internet. If using an external proxy, configure TLS, `Host` and forwarded
 headers deliberately; do not expose the API without HTTPS.
+
+<a id="panel-first-login"></a>
+## Первый вход и объекты панели / First login and panel concepts
+
+**RU.** Начальное имя администратора — `admin`. Сгенерированный пароль находится
+в `/opt/bproto/panel/.env`; смотрите файл в приватном терминале с root-доступом,
+не вставляя его содержимое в чат или issue. Пароль окружения используется при
+создании **первого** администратора. Изменение переменной позднее не сбрасывает
+пароль уже существующей учётной записи. Меняйте пароль через Settings.
+
+**EN.** The initial administrator username is `admin`. The generated password
+is in `/opt/bproto/panel/.env`; inspect it in a private root terminal rather
+than pasting it into chat or an issue. The environment password is used only
+when creating the **first** administrator. Changing the variable later does
+not reset an existing account’s password. Change it through Settings.
+
+| Объект / Object | Смысл / Meaning |
+| --- | --- |
+| Inbound | Адрес сервера и параметры endpoint / Server endpoint configuration |
+| Client | Пользователь, лимиты, срок / User, limits and expiry |
+| Key | Ключ отдельного устройства / Individual device credential |
+| Subscription | Список ключей пользователя / User’s importable configuration list |
+| Remote source | Подписка другой панели / Another panel’s subscription |
+| Audit | История административных действий / Administrative action history |
+
+**RU:** сначала создайте inbound с публичным IP:port, затем клиента и ключ.
+**EN:** create an inbound with a public IP:port, then a client and device key.
