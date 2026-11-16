@@ -146,3 +146,34 @@ uname -m
 getconf GNU_LIBC_VERSION
 test -c /dev/net/tun && echo 'TUN available'
 ```
+
+<a id="bootstrap-options"></a>
+## Параметры bootstrap / Bootstrap options
+
+| Флаг / Flag | Значение по умолчанию / Default | Назначение / Purpose |
+| --- | --- | --- |
+| `--release TAG` | `v1.0.0` | Версия бинарников / Binary release tag |
+| `--directory PATH` | `/opt/bproto` | Постоянный checkout / Persistent checkout |
+| `--target TARGET` | `all` | `server`, `client`, `all` |
+| `--port PORT` | `443` | UDP-порт **нового** конфига / UDP port for a **new** config |
+| `--no-start` | off | Не запускать службу / Do not start service |
+| `--skip-deps` | off | Не выполнять apt-get / Do not run apt-get |
+| `--download-only DIR` | off | Только проверенное скачивание / Verified download only |
+| `--dry-run` | off | План без сети и изменений / Plan without network or host changes |
+| `--help` | — | Справка / Help |
+
+```bash
+bash bootstrap.sh --dry-run --target server --port 8443
+sudo bash bootstrap.sh --target all --port 8443 --no-start
+sudo bash bootstrap.sh --skip-deps --directory /opt/bproto
+```
+
+**RU.** `all` означает сервер + Linux CLI, не панель. Панель устанавливается
+отдельно после Docker и DNS. `--port` не меняет уже существующий `server.toml`:
+измените конфигурацию вручную и перезапустите службу. `--release` выбирает
+бинарники опубликованного релиза; установочные скрипты берутся из `main`.
+
+**EN.** `all` means server + Linux CLI, not the panel. Install the panel
+separately after setting up Docker and DNS. `--port` does not rewrite an existing
+`server.toml`; edit it and restart the service. `--release` selects published
+binaries, while installation scripts come from `main`.
