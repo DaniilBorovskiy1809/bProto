@@ -39,6 +39,7 @@ class BprotoVpnService : VpnService() {
         const val ACTION_CONNECT = "dev.bproto.client.CONNECT"
         const val ACTION_DISCONNECT = "dev.bproto.client.DISCONNECT"
         const val EXTRA_CONFIG = "config"
+        const val EXTRA_ROUTING = "routing"
 
         /** Broadcast the activity listens to for status updates. */
         const val ACTION_STATUS = "dev.bproto.client.STATUS"
@@ -71,6 +72,7 @@ class BprotoVpnService : VpnService() {
     // Touched from the main thread (start) and the tunnel thread (finally).
     @Volatile
     private var worker: Thread? = null
+    private var routing = RoutingPolicy()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -79,7 +81,13 @@ class BprotoVpnService : VpnService() {
                 if (config.isNullOrBlank()) {
                     publish("no key: nothing to connect with")
                 } else {
-                    start(config)
+                    val policy = runCatching {
+                        RoutingPolicy.parse(intent.getStringExtra(EXTRA_ROUTING)?.let { org.json.JSONObject(it) })
+                    }
+                    if (policy.isFailure) publish("Invalid routing policy") else {
+                        routing = policy.getOrThrow()
+                        start(config)
+                    }
                 }
             }
             ACTION_DISCONNECT -> stopTunnel()
@@ -215,8 +223,12 @@ class BprotoVpnService : VpnService() {
             .setSession("bProto")
             .setMtu(MTU)
             .addAddress(address, PREFIX)
-            .addRoute("0.0.0.0", 0)
-            .addDnsServer(DNS)
+        routing.routes.forEach {
+            val parts = it.split('/')
+            builder.addRoute(parts[0], parts[1].toInt())
+        }
+        routing.dns.forEach { builder.addDnsServer(it) }
+        routing.bypassApps.forEach { builder.addDisallowedApplication(it) }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             builder.setMetered(false)
         }
