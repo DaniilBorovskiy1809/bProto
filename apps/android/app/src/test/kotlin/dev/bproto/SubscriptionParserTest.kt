@@ -45,4 +45,7 @@ class SubscriptionParserTest {
         val body = JSONObject().put("clients", JSONArray().put(JSONObject().put("uri", uri()).put("label", JSONObject.NULL)))
         assertEquals("Server 1", SubscriptionParser.parse(body.toString()).single().name)
     }
+    @Test(expected = IllegalArgumentException::class) fun foreignUriRejected() {
+        ServerProfile.fromUri("https://example.org/key")
+    }
 }
