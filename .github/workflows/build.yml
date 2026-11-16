@@ -71,6 +71,7 @@ jobs:
         run: |
           export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
           ./build_app.sh --android --no-panel
+          gradle -p apps/android testDebugUnitTest
           test -s dist/apk/bproto-0.1.0-debug.apk
           unzip -l dist/apk/*.apk | grep lib/arm64-v8a/libbproto.so
           unzip -l dist/apk/*.apk | grep lib/armeabi-v7a/libbproto.so
