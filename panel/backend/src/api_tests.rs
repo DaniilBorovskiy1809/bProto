@@ -863,3 +863,8 @@ async fn routing_rejects_route_negative_prefix() {
     )
     .await;
 }
+
+#[tokio::test]
+async fn routing_rejects_unknown_domain_rules() {
+    assert_routing_patch_rejected(serde_json::from_str(r#"{"routes":["0.0.0.0/0"],"dns":["1.1.1.1"],"bypass_apps":[],"domains":["example.org"]}"#).unwrap(), StatusCode::from_u16(422).unwrap()).await;
+}
