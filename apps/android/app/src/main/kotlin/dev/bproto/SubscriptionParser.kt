@@ -1,6 +1,6 @@
 package dev.bproto
 
-import android.util.Base64
+import java.util.Base64
 import org.json.JSONObject
 
 object SubscriptionParser {
@@ -18,7 +18,7 @@ object SubscriptionParser {
             }
         } else {
             val decoded = if (text.startsWith("bproto://")) text else
-                String(Base64.decode(text, Base64.DEFAULT), Charsets.UTF_8)
+                String(Base64.getDecoder().decode(text.filterNot { it.isWhitespace() }), Charsets.UTF_8)
             val lines = decoded.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
             require(lines.size <= 128) { "Too many servers" }
             lines.mapIndexed { index, uri -> ServerProfile.fromUri(uri, "Server ${index + 1}") }
