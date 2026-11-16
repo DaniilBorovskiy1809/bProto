@@ -35,4 +35,7 @@ class SubscriptionParserTest {
     @Test(expected = IllegalArgumentException::class) fun emptySubscriptionRejected() {
         SubscriptionParser.parse("{\"clients\":[]}")
     }
+    @Test(expected = IllegalArgumentException::class) fun profileLimitEnforced() {
+        SubscriptionParser.parse((1..129).joinToString("\n") { uri(it) })
+    }
 }
