@@ -33,6 +33,7 @@ interface PreviewItem {
 }
 
 interface PreviewData {
+  routing?: { routes: string[]; dns: string[]; bypass_apps: string[] };
   title: string;
   sub_id: string;
   username: string;
@@ -345,6 +346,10 @@ function SubPreview({ item, onClose }: { item: SubItem; onClose: () => void }) {
             {load.data.count} config{load.data.count === 1 ? "" : "s"} — profile title{" "}
             <span className="font-medium">{load.data.title}</span>
           </p>
+          {load.data.routing && <Notice>
+            Tunnel routes: {load.data.routing.routes.join(", ")} · DNS: {load.data.routing.dns.join(", ")}
+            {load.data.routing.bypass_apps.length > 0 && <> · Outside VPN: {load.data.routing.bypass_apps.join(", ")}</>}
+          </Notice>}
           {load.data.count === 0 ? (
             <Empty>Nothing to import yet: no active devices and no attached sources.</Empty>
           ) : (
