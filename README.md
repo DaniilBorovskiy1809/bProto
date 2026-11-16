@@ -460,3 +460,31 @@ be necessary. Keep your subscription before doing so; device profiles are remove
 Проверки сборки не заменяют испытания на вашем физическом устройстве.
 **EN.** The globe is a connection control, not a map of verified server locations.
 Build validation does not replace testing on your physical device.
+
+<a id="profiles"></a>
+## Профили Android / Android profiles
+
+**RU.** Импортированные серверы сохраняются зашифрованными AES-GCM с ключом
+Android Keystore. Секреты не записываются в обычные preferences и исключены из
+backup storage. Выбор сервера и режим Automatic запоминаются отдельно без
+сохранения URI в открытом виде. Кнопка сервера повторно открывает список.
+
+**EN.** Imported servers are stored using AES-GCM with an Android Keystore key.
+Secrets are not stored in ordinary preferences and are excluded from backup
+storage. Selected server and Automatic mode are remembered separately without
+storing a plaintext URI. The server button reopens the imported list.
+
+**RU.** `Routing settings` меняет маршрутизацию выбранного профиля. `Reset to
+full tunnel` возвращает маршрут по умолчанию. `Forget profiles` удаляет список
+после подтверждения. Повторный импорт заменяет профили и локальные overrides:
+сохраните нужные правила в панели, если они должны переживать обновление подписки.
+
+**EN.** `Routing settings` changes the selected profile’s routing policy.
+`Reset to full tunnel` restores defaults. `Forget profiles` removes the list
+after confirmation. Reimporting replaces profiles and local overrides; store
+rules in the panel if they must survive subscription refreshes.
+
+**RU.** Скопировать файл профилей на другой телефон недостаточно: ключ Keystore
+не переносится вместе с файлом. При сбросе/потере ключа импортируйте подписку заново.
+**EN.** Copying the encrypted file to another phone is insufficient: its Keystore
+key does not move with it. Reimport after a reset or loss of the local key.
