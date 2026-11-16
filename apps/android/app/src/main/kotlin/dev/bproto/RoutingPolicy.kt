@@ -11,6 +11,8 @@ data class RoutingPolicy(
     companion object {
         fun parse(value: JSONObject?): RoutingPolicy {
             if (value == null) return RoutingPolicy()
+            val allowed = setOf("routes", "dns", "bypass_apps")
+            require(value.keys().asSequence().all { it in allowed }) { "Unsupported routing field" }
             fun strings(key: String, defaults: List<String>): List<String> {
                 val array = value.optJSONArray(key) ?: return defaults
                 require(array.length() <= 128) { "Too many $key entries" }
