@@ -38,4 +38,7 @@ class SubscriptionParserTest {
     @Test(expected = IllegalArgumentException::class) fun profileLimitEnforced() {
         SubscriptionParser.parse((1..129).joinToString("\n") { uri(it) })
     }
+    @Test(expected = IllegalArgumentException::class) fun subscriptionByteLimit() {
+        SubscriptionParser.parse("A".repeat(1048577))
+    }
 }
