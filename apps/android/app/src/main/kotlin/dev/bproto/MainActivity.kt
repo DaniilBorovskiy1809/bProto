@@ -27,6 +27,7 @@ class MainActivity : AppCompatActivity() {
     private var pendingConfig: String? = null
     private var profiles: List<ServerProfile> = emptyList()
     private var selected: ServerProfile? = null
+    private var automatic = false
 
     private val vpnPermission =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -98,9 +99,10 @@ class MainActivity : AppCompatActivity() {
                         profiles = servers
                         androidx.appcompat.app.AlertDialog.Builder(this)
                             .setTitle("Select server")
-                            .setItems(servers.map { it.name }.toTypedArray()) { _, index ->
-                                selected = servers[index]
-                                binding.configUri.setText(servers[index].uri)
+                            .setItems((listOf("Automatic · first reachable") + servers.map { it.name }).toTypedArray()) { _, index ->
+                                automatic = index == 0
+                                selected = servers[if (automatic) 0 else index - 1]
+                                binding.configUri.setText(selected!!.uri)
                                 connect()
                             }.show()
                     }.onFailure { toast(it.message ?: "Subscription failed") }
@@ -121,6 +123,9 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, BprotoVpnService::class.java).setAction(action)
         if (config != null) {
             intent.putExtra(BprotoVpnService.EXTRA_CONFIG, config)
+            if (automatic && selected?.uri == config) {
+                intent.putStringArrayListExtra(BprotoVpnService.EXTRA_CANDIDATES, ArrayList(profiles.map { it.uri }))
+            }
             selected?.takeIf { it.uri == config }?.let { profile ->
                 val policy = org.json.JSONObject()
                     .put("routes", org.json.JSONArray(profile.routing.routes))
