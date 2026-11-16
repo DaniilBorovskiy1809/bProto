@@ -435,3 +435,28 @@ sudo bproto --config client.toml up --no-default-route
 **EN.** The CLI does not implement Android package exclusions or import a JSON
 subscription as a server list. Linux DNS remains operator-managed. See
 [INSTALL.md](docs/INSTALL.md) for route rollback and DNS details.
+
+<a id="android"></a>
+## Android: установка и глобус / Android installation and globe
+
+**RU.** Скачайте APK только из [релиза проекта](https://github.com/dr-lexus-dr/bProto/releases).
+Устройство должно разрешать установку из выбранного источника. В релизе 1.0.0
+APK подписан debug-ключом. Если Android сообщает о несовместимой подписи при
+обновлении, потребуется удаление старого приложения; сначала сохраните свою
+подписку, поскольку профили устройства будут удалены.
+
+**EN.** Download the APK from the [project release](https://github.com/dr-lexus-dr/bProto/releases).
+Allow installation from your selected source. Release 1.0.0 is debug-signed.
+If an update fails because the signatures differ, uninstalling the old app may
+be necessary. Keep your subscription before doing so; device profiles are removed.
+
+1. **RU:** вставьте `bproto://import/...` или HTTPS-подписку. **EN:** paste a key URI or HTTPS subscription.
+2. **RU:** импортируйте подписку и выберите сервер. **EN:** import the subscription and choose a server.
+3. **RU:** нажмите глобус и разрешите создание VPN. **EN:** tap the globe and grant VPN consent.
+4. **RU:** дождитесь подтверждения соединения. **EN:** wait for connected status.
+5. **RU:** повторное нажатие отключает VPN. **EN:** tap again to disconnect.
+
+**RU.** Рисунок глобуса — кнопка подключения, не карта реальных координат серверов.
+Проверки сборки не заменяют испытания на вашем физическом устройстве.
+**EN.** The globe is a connection control, not a map of verified server locations.
+Build validation does not replace testing on your physical device.
