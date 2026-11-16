@@ -815,3 +815,39 @@ docker compose start panel
 Проверьте восстановление на отдельной машине, не заменяя вслепую рабочую базу.
 **EN.** If copying fails, restart the backend explicitly. Test restoration on
 a separate machine rather than blindly overwriting the production database.
+
+<a id="upgrade"></a>
+## Обновление / Upgrade
+
+**RU.** Сначала сделайте backup и прочитайте release notes. Bootstrap использует
+проверенный опубликованный бинарный релиз и обновляет checkout `main` только
+fast-forward. При локальных изменениях он остановится, сохраняя ваши файлы.
+`server.toml` и существующий `panel/.env` не перезаписываются. Старые бинарники
+в `target/` не должны подменять staged release из `dist/bin/`.
+
+**EN.** Back up first and read release notes. Bootstrap uses verified published
+binaries and only fast-forwards its `main` checkout. It stops on local changes
+rather than discarding them. Existing `server.toml` and `panel/.env` are retained.
+Stale `target/` builds must not override a staged release in `dist/bin/`.
+
+```bash
+sudo bash bootstrap.sh --release v1.0.0
+sudo systemctl status bproto-server --no-pager
+sudo journalctl -u bproto-server -n 50 --no-pager
+```
+
+**RU.** Установка сервера перезапускает службу, чтобы новый бинарник действительно
+использовался. Для окна обслуживания добавьте `--no-start`, а после проверки
+выполните restart вручную. Панель обновляется отдельно из сохранённого Compose
+каталога; её volumes не удаляйте.
+
+**EN.** Server installation restarts the service so that the new executable is
+actually used. Use `--no-start` for a maintenance window, then restart manually
+after inspection. Update the panel separately from its persistent Compose
+location; do not delete its volumes.
+
+```bash
+cd /opt/bproto/panel
+sudo docker compose up -d --build
+sudo docker compose ps -a
+```

@@ -196,7 +196,7 @@ install_server() {
     if command -v systemctl >/dev/null 2>&1; then
         systemctl daemon-reload 2>/dev/null || warn "systemctl daemon-reload failed (not a systemd host?)"
         if [ "$NO_START" = 0 ]; then
-            if systemctl enable --now bproto-server 2>/dev/null; then
+            if systemctl enable bproto-server 2>/dev/null && systemctl restart bproto-server 2>/dev/null; then
                 sleep 1
                 if systemctl is-active --quiet bproto-server 2>/dev/null; then
                     ok "bproto-server is running"
