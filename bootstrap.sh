@@ -60,7 +60,12 @@ if [ "$DOWNLOAD_ONLY" = 0 ]; then
     if [ "$SKIP_DEPS" = 0 ]; then
         command -v apt-get >/dev/null || fail "Automatic dependencies need apt-get; use --skip-deps with prerequisites installed"
         apt-get update
-        DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl git tar gzip coreutils iproute2 nftables
+        DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl git tar gzip coreutils iproute2 nftables passwd kmod
+    fi
+    if [ "$TARGET" != client ]; then
+        if [ ! -c /dev/net/tun ] && command -v modprobe >/dev/null; then modprobe tun || true; fi
+        [ -c /dev/net/tun ] || fail "TUN device missing; enable /dev/net/tun on the host or in VPS settings"
+        for tool in ip nft systemctl useradd sysctl; do command -v "$tool" >/dev/null || fail "Missing prerequisite: $tool"; done
     fi
     for tool in git install getconf; do command -v "$tool" >/dev/null || fail "Missing prerequisite: $tool"; done
     glibc="$(getconf GNU_LIBC_VERSION)"
