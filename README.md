@@ -11,6 +11,11 @@ is authenticated as AEAD associated data and never carries plaintext payload.
 **Start here: [`docs/INSTALL.md`](docs/INSTALL.md)** — the tested install guide
 for the server, the client and the panel.
 
+Инструкции на русском:
+
+* [Сборка и установка сервера и панели](docs/DEPLOY-RU.md)
+* [Маршрутизация, подписки и клиент с глобусом](docs/ROUTING-RU.md)
+
 Other reading:
 
 * [`docs/PLAN.md`](docs/PLAN.md) — the full engineering plan and phase breakdown;
