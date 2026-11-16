@@ -115,3 +115,34 @@ bash -n bootstrap.sh
 bash bootstrap.sh --dry-run
 sudo bash bootstrap.sh
 ```
+
+<a id="requirements"></a>
+## Требования / Requirements
+
+| Компонент / Component | Требования / Requirements |
+| --- | --- |
+| Готовый Linux-пакет / Prebuilt Linux package | x86_64, glibc ≥ 2.39; Ubuntu 24.04+ / Debian 13+ |
+| Сервер / Server | Linux TUN, systemd для установщика / for installer; `ip`, `nft`, root during installation |
+| Сборка Rust / Rust build | Rust ≥ 1.88, C compiler/linker, Cargo lockfiles |
+| Панель / Panel | Docker Engine + Compose v2; DNS hostname; TCP 80/443 |
+| Панель из исходников / Panel from source | Rust + Node 20+; pnpm 9.15.9 |
+| Android | Android 8 / API 26 or newer; arm64-v8a, armeabi-v7a, x86_64 |
+| Сборка Android / Android build | JDK 17, Gradle 8.11.1, SDK 35, NDK 27.2.12479018, cargo-ndk 3.5.4 |
+
+**RU.** Виртуальный сервер должен разрешать `/dev/net/tun` и сетевые capabilities.
+Обычный контейнер без этих прав не подходит для серверного datapath. Ubuntu 22.04
+может использоваться для самостоятельной совместимой сборки, но bootstrap
+откажется устанавливать на него бинарник, собранный с более новой glibc.
+Alpine/musl и готовый Linux ARM64-пакет текущим bootstrap не поддерживаются.
+
+**EN.** Your VPS must expose `/dev/net/tun` and permit network capabilities.
+An ordinary container without them cannot run the server datapath. Ubuntu 22.04
+can be used for a compatible source build, but bootstrap rejects the prebuilt
+binary on its older glibc. Alpine/musl and prebuilt Linux ARM64 installation
+are not supported by the current bootstrap.
+
+```bash
+uname -m
+getconf GNU_LIBC_VERSION
+test -c /dev/net/tun && echo 'TUN available'
+```
