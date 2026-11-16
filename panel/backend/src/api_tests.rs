@@ -843,3 +843,13 @@ async fn routing_rejects_route_ipv6() {
     )
     .await;
 }
+
+#[tokio::test]
+async fn routing_rejects_route_host_bits() {
+    assert_routing_patch_rejected(
+        serde_json::from_str(r#"{"routes":["192.168.1.1/24"],"dns":["1.1.1.1"],"bypass_apps":[]}"#)
+            .unwrap(),
+        StatusCode::from_u16(400).unwrap(),
+    )
+    .await;
+}
