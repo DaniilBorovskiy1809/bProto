@@ -82,6 +82,12 @@ while [ $# -gt 0 ]; do
     esac
 done
 [ -n "$TARGET" ] || usage 1
+[[ "$PORT" =~ ^[0-9]{1,5}$ ]] && (( 10#$PORT >= 1 && 10#$PORT <= 65535 )) || die "--port must be 1..65535"
+[[ "$PREFIX" =~ ^/[A-Za-z0-9_./-]+$ && "$PREFIX" != *'/../'* && "$PREFIX" != */.. ]] || die "--prefix must be an absolute path without spaces or parent traversal"
+[[ "$DONOR" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$ && "$DONOR" != *..* ]] || die "--donor must be a hostname"
+if [ -n "$DOMAIN" ]; then
+    [[ "$DOMAIN" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$ && "$DOMAIN" != *..* ]] || die "--domain must be a hostname without scheme, port or path"
+fi
 
 # ---------------------------------------------------------------------------
 # helpers
