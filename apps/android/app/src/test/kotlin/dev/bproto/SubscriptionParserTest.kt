@@ -29,4 +29,7 @@ class SubscriptionParserTest {
         assertEquals(listOf("10.0.0.0/8"), profile.routing.routes)
         assertEquals(listOf("9.9.9.9"), profile.routing.dns)
     }
+    @Test fun duplicateKeyDeduplication() {
+        assertEquals(1, SubscriptionParser.parse(uri() + "\n" + uri()).size)
+    }
 }
