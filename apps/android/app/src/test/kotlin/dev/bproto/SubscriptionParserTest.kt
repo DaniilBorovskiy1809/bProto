@@ -32,4 +32,7 @@ class SubscriptionParserTest {
     @Test fun duplicateKeyDeduplication() {
         assertEquals(1, SubscriptionParser.parse(uri() + "\n" + uri()).size)
     }
+    @Test(expected = IllegalArgumentException::class) fun emptySubscriptionRejected() {
+        SubscriptionParser.parse("{\"clients\":[]}")
+    }
 }
