@@ -488,3 +488,32 @@ rules in the panel if they must survive subscription refreshes.
 не переносится вместе с файлом. При сбросе/потере ключа импортируйте подписку заново.
 **EN.** Copying the encrypted file to another phone is insufficient: its Keystore
 key does not move with it. Reimport after a reset or loss of the local key.
+
+<a id="automatic"></a>
+## Автовыбор сервера / Automatic server selection
+
+**RU.** `Automatic · first reachable` перебирает записи подписки **по порядку**.
+Сервер выбирается после успешного аутентифицированного рукопожатия: один открытый
+порт или ответ на ping не считается успехом. Это удобно для резервных адресов
+при временной недоступности части серверов.
+
+**EN.** `Automatic · first reachable` tries subscription entries **in order**.
+A server is selected after a successful authenticated handshake; an open port
+or ping response is insufficient. This supports backup endpoints when some
+servers are temporarily unreachable.
+
+**RU.** Это не выбор минимального RTT, балансировщик или автоматическая миграция
+живой сессии. После обрыва установленного туннеля может понадобиться новое
+подключение. При нескольких недоступных серверах складываются таймауты.
+Во время перебора применяется политика выбранного профиля. Нажатие глобуса
+или кнопки отключения отменяет дальнейшие попытки, но текущий вызов рукопожатия
+может завершаться до своего таймаута.
+
+**EN.** This is not minimum-RTT selection, load balancing or migration of an
+active session. An established tunnel may need a new connection after failure.
+Timeouts accumulate across unreachable endpoints. The selected profile’s
+routing policy applies during fallback. Tapping the globe or disconnect stops
+further attempts, though an in-flight handshake may run until its timeout.
+
+**RU:** IP- или UDP-блокировка всех записей не обходится перебором.
+**EN:** trying different entries cannot bypass blocking of every available IP or UDP path.
