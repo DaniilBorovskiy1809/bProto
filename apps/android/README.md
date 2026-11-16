@@ -116,19 +116,13 @@ connects and carries nothing:
 
 ## Known limitations (MVP)
 
-* **IPv4 only.** The tunnel carries IPv4; native IPv6 routing is stage 2. IPv6 is
-  *captured and dropped* (`fd00:6270:726f:746f::2` plus a `::/0` route — the ULA
-  spells "bproto" in hex) so that v6 traffic cannot leave the device in the clear
-  while the user believes they are tunnelled; IPv6-only destinations are
-  therefore unreachable. Capturing it is **best effort**, because some Android
-  builds refuse an IPv6 address in their native address-config path (logcat
-  `VpnJni: Invalid address: …`). If the framework refuses it, the service
-  re-establishes IPv4-only and says so in the status line —
-  `connected as 10.66.0.2 — warning: IPv6 not captured (…)`. A loud warning beats
-  a dead tunnel, but it is a real leak and the status text is there so it cannot
-  be missed.
-* **One DNS server, hardcoded** (`BprotoVpnService.DNS`). The key URI does not
-  carry DNS yet; point it at your resolver if you run one.
+* **IPv4 only.** IPv6 is captured and dropped. If Android refuses IPv6
+  capture, connection establishment fails instead of falling back to an
+  interface that could leak IPv6.
+* **Routing from subscriptions.** JSON subscriptions can carry IPv4 network
+  routes, IPv4 DNS resolver addresses and Android package exclusions. Base64
+  subscriptions use the default full IPv4 route and resolver `1.1.1.1`.
+  Excluded applications deliberately use the ordinary network.
 * **No kill switch.** If the service dies, traffic follows the system default
   route again. Use `Builder.addDisallowedApplication` for split tunneling or
   Android's always-on VPN with block-connections for a hard guarantee.
@@ -167,3 +161,16 @@ carries nothing" from "the tunnel was never established".
 
 First RTT reading is ~333 ms: that is RFC 9002's initial estimate and settles
 after the first ACK exchange. It is not a bug.
+
+## Orbit client workflow
+
+Paste an HTTPS subscription URL into the configuration field and press Connect
+or tap the globe to import it. Choose a server using the server picker, then tap
+the globe to connect. Tap again to disconnect. Imported profiles are encrypted
+with an Android Keystore key and saved outside backup storage. TLS verification
+is enabled; redirects and responses larger than 1 MiB are rejected.
+
+Automatic selection tries subscription entries in order and uses the first
+server that completes the authenticated protocol handshake. It does not rank
+latency, change transport or defeat an IP/UDP allowlist. Use JSON subscriptions
+(`?format=json`) to receive routing policy. Refresh by importing the URL again.
