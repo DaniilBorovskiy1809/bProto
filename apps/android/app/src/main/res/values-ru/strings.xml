@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">bProto</string>
+    <string name="config_label">Ключ bproto:// или HTTPS-подписка</string>
+    <string name="connect">Подключить</string>
+    <string name="disconnect">Отключить</string>
+    <string name="status_idle">Не подключено</string>
+    <string name="permission_needed">Для подключения нужно разрешение VPN</string>
+    <string name="notification_channel">VPN-туннель</string>
+    <string name="notification_title">bProto работает</string>
+    <string name="orbit_title">bProto · Твоя приватная орбита</string>
+    <string name="choose_server">Выбрать сервер</string>
+    <string name="routing_settings">Настройки маршрутизации</string>
+    <string name="globe_connect">Подключить выбранный сервер</string>
+    <string name="globe_disconnect">Отключить VPN</string>
+</resources>
