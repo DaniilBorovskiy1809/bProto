@@ -76,6 +76,11 @@ jobs:
           unzip -l dist/apk/*.apk | grep lib/arm64-v8a/libbproto.so
           unzip -l dist/apk/*.apk | grep lib/armeabi-v7a/libbproto.so
           unzip -l dist/apk/*.apk | grep lib/x86_64/libbproto.so
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            for symbol in connect assignedIp socketFd pump stop close lastError version; do
+              "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm" -D --defined-only "dist/android/jniLibs/$abi/libbproto.so" | grep "Java_dev_bproto_Bproto_$symbol$" > /dev/null
+            done
+          done
           sha256sum dist/apk/*.apk > dist/apk/SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
