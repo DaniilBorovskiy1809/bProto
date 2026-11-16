@@ -75,10 +75,12 @@ class BprotoVpnService : VpnService() {
     private var worker: Thread? = null
     private var routing = RoutingPolicy()
     private var candidates: List<String> = emptyList()
+    @Volatile private var cancelled = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_CONNECT -> {
+                if (worker != null) return START_NOT_STICKY
                 val config = intent.getStringExtra(EXTRA_CONFIG)
                 if (config.isNullOrBlank()) {
                     publish("no key: nothing to connect with")
@@ -104,11 +106,13 @@ class BprotoVpnService : VpnService() {
         if (worker != null) {
             return
         }
+        cancelled = false
         goForeground()
         worker = Thread({ pump(config) }, "bproto-vpn").apply { start() }
     }
 
     fun stopTunnel() {
+        cancelled = true
         Bproto.stop()
     }
 
@@ -130,6 +134,7 @@ class BprotoVpnService : VpnService() {
         try {
             val choices = candidates.ifEmpty { listOf(config) }
             for ((index, candidate) in choices.withIndex()) {
+                if (cancelled) return
                 publish("Connecting to server ${index + 1}/${choices.size}")
                 handle = Bproto.connect(candidate)
                 if (handle != 0L) break
@@ -139,6 +144,7 @@ class BprotoVpnService : VpnService() {
                 return
             }
 
+            if (cancelled) return
             val address = Bproto.assignedIp(handle)
             if (address.isEmpty()) {
                 publish("server leased no address: ${Bproto.lastError()}")
