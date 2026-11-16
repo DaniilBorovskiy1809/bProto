@@ -1,1 +1,38 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
+  --color-neutral-50: #f4f7fc;
+  --color-neutral-100: #edf2fa;
+  --color-neutral-200: #dce5f1;
+  --color-neutral-900: #172a46;
+}
+
+:root { color-scheme: light; font-synthesis: none; }
+body { margin: 0; background: #f4f7fc; }
+button, input, select, textarea { font: inherit; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 3px solid #3c83f6; outline-offset: 3px; }
+::selection { background: #cce0ff; color: #172a46; }
+.panel-shell { background: radial-gradient(ellipse at top right, #dfebff 0, transparent 45%), #f4f7fc; }
+.panel-sidebar { background: #101e35; color: #eef5ff; }
+.panel-sidebar nav button { color: #adbfda; border-radius: 12px; padding: 13px 16px; }
+.panel-sidebar nav button:hover { background: #203551; color: white; }
+.panel-sidebar nav button[aria-current="page"] { background: #3478f6; color: white; box-shadow: 0 6px 18px #0002; }
+.panel-sidebar nav button span:last-child { color: #adbfda; }
+.panel-sidebar nav button[aria-current="page"] span:last-child { color: #e1ecff; }
+.panel-sidebar > div:last-child { border-color: #29405e; }
+.panel-sidebar > div:last-child span, .panel-sidebar > div:last-child button { color: #b9cbe3; }
+.panel-content { width: 100%; max-width: 1560px; margin-inline: auto; }
+.panel-content h1 { font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -.045em; margin-bottom: 1.5rem; }
+.panel-content section { border-radius: 18px; box-shadow: 0 4px 24px #173b7010; }
+.panel-content table { font-variant-numeric: tabular-nums; }
+.panel-content tbody tr:hover { background: #f3f7ff; }
+.panel-content input, .panel-content select { border-radius: 9px; }
+@media (min-width: 768px) {
+  .panel-sidebar { position: sticky; top: 0; height: 100dvh; width: 270px; }
+  .panel-content { padding: 36px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}

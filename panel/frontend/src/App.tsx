@@ -62,12 +62,12 @@ export default function App() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-neutral-50 text-neutral-900 md:flex-row">
-      <aside className="border-b border-neutral-200 bg-white md:w-60 md:shrink-0 md:border-b-0 md:border-r">
+    <div className="panel-shell flex min-h-screen flex-col bg-neutral-50 text-neutral-900 md:flex-row">
+      <aside className="panel-sidebar border-b border-neutral-200 md:w-60 md:shrink-0 md:border-b-0 md:border-r">
         <div className="flex items-center justify-between px-4 py-4">
           <div>
-            <p className="text-xl font-semibold tracking-tight">bUI</p>
-            <p className="text-xs text-neutral-500">bProto control panel</p>
+            <p className="text-xl font-semibold tracking-tight">◉ bProto</p>
+            <p className="text-xs text-neutral-500">NETWORK CONTROL</p>
           </div>
           <span className="text-xs text-neutral-400 md:hidden">{me.username}</span>
         </div>
@@ -115,7 +115,7 @@ export default function App() {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 p-4 md:p-6">
+      <main className="panel-content min-w-0 flex-1 p-4 md:p-6">
         {page === "dashboard" && <Dashboard />}
         {page === "inbounds" && <Inbounds />}
         {page === "clients" && <Clients />}
