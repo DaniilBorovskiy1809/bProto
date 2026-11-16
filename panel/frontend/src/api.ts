@@ -217,7 +217,14 @@ export interface SubItem {
   remote_subs: number;
 }
 
+export interface RoutingPolicy {
+  routes: string[];
+  dns: string[];
+  bypass_apps: string[];
+}
+
 export interface SubSettings {
+  routing: RoutingPolicy;
   sub_base_url: string;
   sub_title: string;
   panel: string;
@@ -331,7 +338,7 @@ export const api = {
   subscriptions: () =>
     req<{ sub_base_url: string; items: SubItem[] }>("/api/subscriptions"),
   subSettings: () => req<SubSettings>("/api/subscriptions/settings"),
-  updateSubSettings: (payload: { sub_base_url?: string; sub_title?: string }) =>
+  updateSubSettings: (payload: { sub_base_url?: string; sub_title?: string; routing?: RoutingPolicy }) =>
     patch<SubSettings>("/api/subscriptions/settings", payload),
 
   remoteSubs: () => req<{ items: RemoteSub[] }>("/api/remote-subs").then((r) => r.items),
