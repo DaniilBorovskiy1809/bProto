@@ -84,3 +84,34 @@ an error status.
 systemctl status bproto-server --no-pager
 journalctl -u bproto-server -n 50 --no-pager
 ```
+
+<a id="script-trust"></a>
+## Что выполняет curl-команда / Understanding the curl command
+
+**RU.** `bash <(...)` — синтаксис Bash, не обычного `sh`. `curl -f` возвращает
+ошибку при HTTP 404/500, `-sS` скрывает прогресс, но показывает ошибки, `-L`
+следует перенаправлениям. Не используйте `curl -k`: проверка HTTPS должна оставаться
+включённой. Загружаемый скрипт с ветки `main` может меняться. Проверка SHA256
+архива защищает от повреждения скачивания, но не является независимой подписью
+издателя: сам манифест приходит из того же GitHub-релиза.
+
+**EN.** `bash <(...)` is Bash syntax, not portable `sh` syntax. `curl -f` fails
+on HTTP 404/500, `-sS` hides progress while keeping errors visible, and `-L`
+follows redirects. Do not use `curl -k`; retain HTTPS verification. The script
+on `main` can change. Archive SHA256 verification detects download corruption,
+but is not an independent publisher signature: the manifest comes from the same release.
+
+**RU.** Для просмотра до запуска скачайте файл отдельно. Это также удобнее,
+если `sudo bash /dev/fd/...` не видит файловый дескриптор process substitution.
+**EN.** Download first if you want to inspect the script, or if `sudo bash
+/dev/fd/...` cannot access a process-substitution descriptor.
+
+```bash
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://raw.githubusercontent.com/dr-lexus-dr/bProto/main/bootstrap.sh \
+  -o bootstrap.sh
+less bootstrap.sh
+bash -n bootstrap.sh
+bash bootstrap.sh --dry-run
+sudo bash bootstrap.sh
+```
