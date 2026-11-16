@@ -47,7 +47,8 @@ impl RoutingPolicy {
         }
         for package in &self.bypass_apps {
             let parts: Vec<_> = package.split('.').collect();
-            if parts.len() < 2
+            if package.len() > 255
+                || parts.len() < 2
                 || parts.iter().any(|part| {
                     part.is_empty()
                         || !part.as_bytes()[0].is_ascii_alphabetic()

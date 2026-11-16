@@ -37,7 +37,7 @@ data class RoutingPolicy(
             }
             policy.dns.forEach { require(ipv4(it)) { "DNS must be an IPv4 literal" } }
             policy.bypassApps.forEach {
-                require(it.matches(Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+"))) { "Invalid application package" }
+                require(it.length <= 255 && it.matches(Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+"))) { "Invalid application package" }
             }
             return policy
         }
