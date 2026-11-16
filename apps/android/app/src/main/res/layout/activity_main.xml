@@ -3,7 +3,21 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="24dp"
+    android:background="#F4F7FC">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="bProto · Your private orbit"
+        android:textColor="#172A46"
+        android:textSize="24sp"
+        android:paddingBottom="12dp" />
+
+    <dev.bproto.GlobeView
+        android:id="@+id/globe"
+        android:layout_width="match_parent"
+        android:layout_height="240dp" />
 
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"

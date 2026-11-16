@@ -48,6 +48,9 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        binding.globe.setOnClickListener {
+            if (BprotoVpnService.running) send(BprotoVpnService.ACTION_DISCONNECT, null) else connect()
+        }
         binding.connectButton.setOnClickListener { connect() }
         binding.disconnectButton.setOnClickListener {
             send(BprotoVpnService.ACTION_DISCONNECT, null)
@@ -101,6 +104,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun render(status: String) {
+        binding.globe.connected = BprotoVpnService.running
         binding.status.text = status
         binding.disconnectButton.isEnabled = BprotoVpnService.running
         binding.connectButton.isEnabled = !BprotoVpnService.running
