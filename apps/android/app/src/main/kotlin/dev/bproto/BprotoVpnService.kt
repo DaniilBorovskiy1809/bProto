@@ -40,6 +40,7 @@ class BprotoVpnService : VpnService() {
         const val ACTION_DISCONNECT = "dev.bproto.client.DISCONNECT"
         const val EXTRA_CONFIG = "config"
         const val EXTRA_ROUTING = "routing"
+        const val EXTRA_CANDIDATES = "candidates"
 
         /** Broadcast the activity listens to for status updates. */
         const val ACTION_STATUS = "dev.bproto.client.STATUS"
@@ -73,6 +74,7 @@ class BprotoVpnService : VpnService() {
     @Volatile
     private var worker: Thread? = null
     private var routing = RoutingPolicy()
+    private var candidates: List<String> = emptyList()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -85,6 +87,7 @@ class BprotoVpnService : VpnService() {
                         RoutingPolicy.parse(intent.getStringExtra(EXTRA_ROUTING)?.let { org.json.JSONObject(it) })
                     }
                     if (policy.isFailure) publish("Invalid routing policy") else {
+                        candidates = intent.getStringArrayListExtra(EXTRA_CANDIDATES)?.take(128).orEmpty()
                         routing = policy.getOrThrow()
                         start(config)
                     }
@@ -125,7 +128,12 @@ class BprotoVpnService : VpnService() {
         var handle = 0L
         var tun: ParcelFileDescriptor? = null
         try {
-            handle = Bproto.connect(config)
+            val choices = candidates.ifEmpty { listOf(config) }
+            for ((index, candidate) in choices.withIndex()) {
+                publish("Connecting to server ${index + 1}/${choices.size}")
+                handle = Bproto.connect(candidate)
+                if (handle != 0L) break
+            }
             if (handle == 0L) {
                 publish("handshake failed: ${Bproto.lastError()}")
                 return
