@@ -24,15 +24,15 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
-      <div className="w-full max-w-sm">
+    <main className="panel-shell flex min-h-screen items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-neutral-900">bUI</h1>
-          <p className="mt-1 text-sm text-neutral-500">bProto control panel</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-neutral-900">◉ bProto</h1>
+          <p className="mt-1 text-sm text-neutral-500">Your network. One orbit.</p>
         </div>
         <form
           onSubmit={submit}
-          className="space-y-3 rounded-lg border border-neutral-200 bg-white p-5"
+          className="space-y-5 rounded-3xl border border-white bg-white/90 p-8 shadow-xl shadow-blue-950/5"
         >
           <ErrorBanner error={error} onDismiss={() => setError(null)} />
           <Field label="Username">
