@@ -185,7 +185,8 @@ sni = "www.cloudflare.com"
 EOF
 
         step "starting a local server on 127.0.0.1:$PORT (no --datapath, no root)"
-        "$SERVER_BIN" --config "$TMP/server.toml" > "$TMP/server.log" 2>&1 &
+        # Readiness uses the listener info event, including when the caller filters logs.
+        RUST_LOG="${RUST_LOG:-info},vpn_server=info" "$SERVER_BIN" --config "$TMP/server.toml" > "$TMP/server.log" 2>&1 &
         SERVER_PID=$!
         cleanup() {
             kill "$SERVER_PID" 2>/dev/null || true
