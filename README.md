@@ -235,3 +235,34 @@ is `0640`, owned by `root:bproto`, so the service can read it but ordinary users
 cannot. The client file remains `0600`. Do not add unrelated accounts to the
 `bproto` group. Docker panel data lives in named volumes: ordinary
 `docker compose down` preserves them; `down -v` removes them.
+
+<a id="service"></a>
+## Служба systemd / systemd service
+
+```bash
+sudo systemctl status bproto-server --no-pager
+sudo systemctl restart bproto-server
+sudo systemctl stop bproto-server
+sudo systemctl start bproto-server
+sudo systemctl enable bproto-server
+sudo journalctl -u bproto-server -n 100 --no-pager
+```
+
+**RU.** Сервер запускается от системного пользователя `bproto`. `CAP_NET_ADMIN`
+нужен для TUN/NAT, `CAP_NET_BIND_SERVICE` — для портов ниже 1024, включая UDP 443.
+Служба не запускается целиком от root. Установщик добавляет `--datapath`: без него
+сервер отвечает на рукопожатия, но не пересылает IP-пакеты. `active` доказывает
+только работу процесса; интернет через VPN проверяйте отдельно с клиента.
+
+**EN.** The service runs as the system account `bproto`. `CAP_NET_ADMIN` permits
+TUN/NAT; `CAP_NET_BIND_SERVICE` permits low ports including UDP 443. The process
+does not run entirely as root. The installer sets `--datapath`: without it the
+server answers handshakes but drops IP packets. An `active` service proves only
+that the process is running; test Internet forwarding from a client separately.
+
+**RU.** Проверка файла до перезапуска / **EN.** Validate before restarting:
+
+```bash
+sudo /usr/local/bin/vpn-server --check-config --config /etc/bproto/server.toml
+sudo systemctl cat bproto-server
+```
