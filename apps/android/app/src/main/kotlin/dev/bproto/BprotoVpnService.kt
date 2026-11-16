@@ -221,14 +221,7 @@ class BprotoVpnService : VpnService() {
                 .addRoute("::", 0)
                 .establish() to null
         } catch (refused: IllegalArgumentException) {
-            val reason = refused.message ?: "the framework refused the IPv6 address"
-            Log.w(TAG, "IPv6 capture refused ($reason); retrying IPv4-only")
-            try {
-                val warning = "IPv6 not captured ($reason): v6 traffic is not tunnelled"
-                vpnBuilder(address).establish() to warning
-            } catch (failed: IllegalArgumentException) {
-                null to (failed.message ?: failed.javaClass.simpleName)
-            }
+            null to "IPv6 capture refused; connection stopped to prevent unprotected IPv6 traffic"
         }
     }
 
