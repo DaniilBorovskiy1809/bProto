@@ -349,11 +349,16 @@ pub(crate) async fn serve_sub(
         .filter(|t| !t.trim().is_empty())
         .unwrap_or_else(|| format!("{PANEL_NAME} · {username}"));
 
+    let routing: crate::routing::RoutingPolicy = match get_setting(&state.db, "sub_routing").await.map_err(ApiError::internal)? {
+        Some(value) => serde_json::from_str(&value).map_err(ApiError::internal)?,
+        None => Default::default(),
+    };
     let format = q.format.as_deref().unwrap_or("base64");
     let (content_type, body) = match format {
         "json" => (
             "application/json; charset=utf-8",
             json!({
+                "routing": routing,
                 "title": title,
                 "sub_id": sub_id,
                 "username": username,
@@ -478,7 +483,12 @@ pub(crate) async fn get_sub_settings(State(state): State<App>) -> Result<Json<Va
         .await
         .map_err(ApiError::internal)?
         .unwrap_or_default();
+    let routing: crate::routing::RoutingPolicy = match get_setting(&state.db, "sub_routing").await.map_err(ApiError::internal)? {
+        Some(value) => serde_json::from_str(&value).map_err(ApiError::internal)?,
+        None => Default::default(),
+    };
     Ok(Json(json!({
+        "routing": routing,
         "sub_base_url": base,
         "sub_title": title,
         "panel": PANEL_NAME,
@@ -487,6 +497,8 @@ pub(crate) async fn get_sub_settings(State(state): State<App>) -> Result<Json<Va
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct SubSettingsReq {
+    #[serde(default)]
+    routing: Option<crate::routing::RoutingPolicy>,
     #[serde(default)]
     sub_base_url: Option<String>,
     #[serde(default)]
@@ -498,6 +510,9 @@ pub(crate) async fn update_sub_settings(
     Extension(admin): Extension<Admin>,
     Json(body): Json<SubSettingsReq>,
 ) -> Result<Json<Value>, ApiError> {
+    if let Some(policy) = &body.routing {
+        policy.validate().map_err(ApiError::bad_request)?;
+    }
     if let Some(url) = &body.sub_base_url {
         let url = url.trim().trim_end_matches('/');
         if !url.is_empty() {
@@ -511,6 +526,10 @@ pub(crate) async fn update_sub_settings(
     }
     if let Some(title) = &body.sub_title {
         set_setting(&state.db, SETTING_SUB_TITLE, title.trim()).await?;
+    }
+    if let Some(policy) = &body.routing {
+        let encoded = serde_json::to_string(policy).map_err(ApiError::internal)?;
+        set_setting(&state.db, "sub_routing", &encoded).await?;
     }
     audit(&state.db, admin.user_id, "update_sub_settings", "", "").await;
     get_sub_settings(State(state)).await
