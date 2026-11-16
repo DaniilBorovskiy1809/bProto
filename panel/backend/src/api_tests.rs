@@ -741,3 +741,13 @@ async fn routing_rejects_dns_ipv6() {
     )
     .await;
 }
+
+#[tokio::test]
+async fn routing_rejects_dns_with_port() {
+    assert_routing_patch_rejected(
+        serde_json::from_str(r#"{"routes":["0.0.0.0/0"],"dns":["1.1.1.1:53"],"bypass_apps":[]}"#)
+            .unwrap(),
+        StatusCode::from_u16(400).unwrap(),
+    )
+    .await;
+}
