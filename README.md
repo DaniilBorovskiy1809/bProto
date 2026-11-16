@@ -370,3 +370,35 @@ psk = "<64 hex characters for this user>"
 field does not make current UDP traffic indistinguishable from HTTPS. Changing
 keys without updating clients breaks compatibility. Run `--check-config`
 after changes, then restart the service.
+
+<a id="keys"></a>
+## Ключи и первый клиент / Keys and the first client
+
+**RU.** Начальный файл `/etc/bproto/user1.client.toml` уже содержит PSK и tag key.
+Скопируйте его на Linux-клиент защищённым способом и исправьте публичный endpoint.
+Не публикуйте файл в issue. Для Android обычно удобнее URI из панели. Если панель
+ещё не установлена, URI для начального клиента можно создать из TOML:
+
+**EN.** `/etc/bproto/user1.client.toml` already contains a PSK and tag key.
+Transfer it securely to a Linux client and correct its public endpoint. Never
+attach it to an issue. Android normally imports a URI from the panel. Before
+installing a panel, you can convert the initial TOML file into a URI:
+
+```bash
+# Python 3.11+. Output is SECRET: do not record or publish it.
+sudo python3 - <<'PYCODE'
+import base64, json, tomllib
+with open('/etc/bproto/user1.client.toml', 'rb') as file:
+    config = tomllib.load(file)
+body = dict(v=1, server=config['server'], uid=config['user_id'],
+            sni=config['donor']['sni'], psk=config['psk'],
+            tag_key=config['tag_key'], fp=config.get('fingerprint', 'chrome112'))
+encoded = base64.urlsafe_b64encode(json.dumps(body).encode()).decode().rstrip('=')
+print('bproto://import/' + encoded)
+PYCODE
+```
+
+**RU.** До конвертации исправьте `server` на публичный IP:port. URI эквивалентен
+секретному конфигу, а QR-код — визуальное представление этого же секрета.
+**EN.** Correct `server` to the public IP:port before converting. The URI is
+secret configuration material; its QR code contains the same secret.
