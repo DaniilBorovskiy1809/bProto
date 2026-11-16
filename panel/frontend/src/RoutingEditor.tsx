@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, type RoutingPolicy } from "./api";
 import { Button, Card, ErrorBanner, Field, Notice, useAction, useLoader } from "./ui";
 
@@ -11,6 +11,12 @@ export default function RoutingEditor() {
   const [saved, setSaved] = useState(false);
   const action = useAction(async () => { await settings.reload(); setDraft(null); setSaved(true); });
   const policy = draft ?? settings.data?.routing ?? defaults;
+  useEffect(() => {
+    if (!draft) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [draft]);
   const fields = [
     ["routes", "Tunnel IPv4 routes", "One network CIDR per line. Default: all IPv4 traffic."],
     ["dns", "DNS resolvers", "One IPv4 address per line."],
