@@ -118,17 +118,31 @@ pub(crate) fn decode_uri(uri: &str) -> Option<Value> {
 }
 
 fn opt_str(v: &Value, key: &str) -> Option<String> {
-    v.get(key)?.as_str().filter(|s| !s.is_empty()).map(str::to_owned)
+    v.get(key)?
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .map(str::to_owned)
 }
 
 fn entry_from_uri(uri: &str) -> SubEntry {
     let parsed = decode_uri(uri);
     SubEntry {
         uri: uri.to_string(),
-        server: parsed.as_ref().and_then(|v| v.get("server").and_then(Value::as_str).map(str::to_owned)),
-        sni: parsed.as_ref().and_then(|v| v.get("sni").and_then(Value::as_str).map(str::to_owned)),
-        uid: parsed.as_ref().and_then(|v| v.get("uid")).and_then(Value::as_i64),
-        label: parsed.as_ref().and_then(|v| v.get("label")).and_then(Value::as_str).map(str::to_owned),
+        server: parsed
+            .as_ref()
+            .and_then(|v| v.get("server").and_then(Value::as_str).map(str::to_owned)),
+        sni: parsed
+            .as_ref()
+            .and_then(|v| v.get("sni").and_then(Value::as_str).map(str::to_owned)),
+        uid: parsed
+            .as_ref()
+            .and_then(|v| v.get("uid"))
+            .and_then(Value::as_i64),
+        label: parsed
+            .as_ref()
+            .and_then(|v| v.get("label"))
+            .and_then(Value::as_str)
+            .map(str::to_owned),
         fingerprint: parsed.as_ref().and_then(|v| opt_str(v, "fp")),
     }
 }
@@ -349,7 +363,10 @@ pub(crate) async fn serve_sub(
         .filter(|t| !t.trim().is_empty())
         .unwrap_or_else(|| format!("{PANEL_NAME} · {username}"));
 
-    let routing: crate::routing::RoutingPolicy = match get_setting(&state.db, "sub_routing").await.map_err(ApiError::internal)? {
+    let routing: crate::routing::RoutingPolicy = match get_setting(&state.db, "sub_routing")
+        .await
+        .map_err(ApiError::internal)?
+    {
         Some(value) => serde_json::from_str(&value).map_err(ApiError::internal)?,
         None => Default::default(),
     };
@@ -483,7 +500,10 @@ pub(crate) async fn get_sub_settings(State(state): State<App>) -> Result<Json<Va
         .await
         .map_err(ApiError::internal)?
         .unwrap_or_default();
-    let routing: crate::routing::RoutingPolicy = match get_setting(&state.db, "sub_routing").await.map_err(ApiError::internal)? {
+    let routing: crate::routing::RoutingPolicy = match get_setting(&state.db, "sub_routing")
+        .await
+        .map_err(ApiError::internal)?
+    {
         Some(value) => serde_json::from_str(&value).map_err(ApiError::internal)?,
         None => Default::default(),
     };

@@ -594,11 +594,26 @@ async fn audit_log_records_admin_actions() {
 async fn subscription_routing_roundtrip_and_partial_update() {
     let app = test_app().await;
     let token = login(&app).await;
-    let policy = json!({"routes":["10.0.0.0/8"],"dns":["9.9.9.9"],"bypass_apps":["org.example.browser"]});
-    let (status, saved) = call(&app, "PATCH", "/api/subscriptions/settings", Some(&token), Some(json!({"routing":policy}))).await;
+    let policy =
+        json!({"routes":["10.0.0.0/8"],"dns":["9.9.9.9"],"bypass_apps":["org.example.browser"]});
+    let (status, saved) = call(
+        &app,
+        "PATCH",
+        "/api/subscriptions/settings",
+        Some(&token),
+        Some(json!({"routing":policy})),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(saved["routing"], policy);
-    let (status, updated) = call(&app, "PATCH", "/api/subscriptions/settings", Some(&token), Some(json!({"sub_title":"Orbit"}))).await;
+    let (status, updated) = call(
+        &app,
+        "PATCH",
+        "/api/subscriptions/settings",
+        Some(&token),
+        Some(json!({"sub_title":"Orbit"})),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(updated["routing"], policy);
     assert_eq!(updated["sub_title"], "Orbit");
@@ -608,12 +623,33 @@ async fn subscription_routing_roundtrip_and_partial_update() {
 async fn invalid_subscription_routes_do_not_change_settings() {
     let app = test_app().await;
     let token = login(&app).await;
-    let (status, before) = call(&app, "GET", "/api/subscriptions/settings", Some(&token), None).await;
+    let (status, before) = call(
+        &app,
+        "GET",
+        "/api/subscriptions/settings",
+        Some(&token),
+        None,
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
-    for route in ["10.1.2.3/8", "0.0.0.0/33", "::/0", "example.org/24", "10.0.0.0", "-1.0.0.0/8"] {
+    for route in [
+        "10.1.2.3/8",
+        "0.0.0.0/33",
+        "::/0",
+        "example.org/24",
+        "10.0.0.0",
+        "-1.0.0.0/8",
+    ] {
         let (status, _) = call(&app, "PATCH", "/api/subscriptions/settings", Some(&token), Some(json!({"sub_title":"must not save","routing":{"routes":[route],"dns":["1.1.1.1"],"bypass_apps":[]}}))).await;
         assert_eq!(status, StatusCode::BAD_REQUEST, "{route}");
     }
-    let (_, after) = call(&app, "GET", "/api/subscriptions/settings", Some(&token), None).await;
+    let (_, after) = call(
+        &app,
+        "GET",
+        "/api/subscriptions/settings",
+        Some(&token),
+        None,
+    )
+    .await;
     assert_eq!(after, before);
 }

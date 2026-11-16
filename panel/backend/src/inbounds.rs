@@ -718,7 +718,9 @@ pub(crate) async fn update_client(
     }
     if let Some(limit) = body.traffic_limit_bytes {
         if limit < 0 {
-            return Err(ApiError::bad_request("traffic_limit_bytes cannot be negative"));
+            return Err(ApiError::bad_request(
+                "traffic_limit_bytes cannot be negative",
+            ));
         }
         sqlx::query("UPDATE users SET traffic_limit_bytes = ? WHERE id = ?")
             .bind((limit > 0).then_some(limit))
