@@ -909,3 +909,15 @@ async fn json_subscription_exports_saved_routing_and_schema() {
     assert_eq!(document["routing"], policy);
     assert_eq!(document["clients"].as_array().unwrap().len(), 1);
 }
+
+#[tokio::test]
+async fn subscription_routing_settings_require_administrator() {
+    let app = test_app().await;
+    for token in [None, Some("invalid-session")] {
+        for method in ["GET", "PATCH"] {
+            let (status, _) = call(&app, method, "/api/subscriptions/settings", token,
+                if method == "PATCH" { Some(json!({"routing":{"routes":["0.0.0.0/0"],"dns":["1.1.1.1"],"bypass_apps":[]}})) } else { None }).await;
+            assert_eq!(status, StatusCode::UNAUTHORIZED);
+        }
+    }
+}
