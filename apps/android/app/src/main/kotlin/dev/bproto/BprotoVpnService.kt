@@ -68,6 +68,9 @@ class BprotoVpnService : VpnService() {
         @Volatile
         var running: Boolean = false
             private set
+
+        @Volatile var connecting: Boolean = false
+            private set
     }
 
     // Touched from the main thread (start) and the tunnel thread (finally).
@@ -107,6 +110,7 @@ class BprotoVpnService : VpnService() {
             return
         }
         cancelled = false
+        connecting = true
         goForeground()
         worker = Thread({ pump(config) }, "bproto-vpn").apply { start() }
     }
@@ -170,6 +174,7 @@ class BprotoVpnService : VpnService() {
                 return
             }
 
+            connecting = false
             running = true
             if (warning != null) {
                 publish("connected as $address — warning: $warning")
@@ -189,6 +194,7 @@ class BprotoVpnService : VpnService() {
             publish("failed: ${t.message ?: t.javaClass.simpleName}")
         } finally {
             running = false
+            connecting = false
             Bproto.stop()
             if (handle != 0L) {
                 Bproto.close(handle)

@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.globe.setOnClickListener {
-            if (BprotoVpnService.running) send(BprotoVpnService.ACTION_DISCONNECT, null) else connect()
+            if (BprotoVpnService.running || BprotoVpnService.connecting) send(BprotoVpnService.ACTION_DISCONNECT, null) else connect()
         }
         binding.serverButton.setOnClickListener { showServers() }
         runCatching { ProfileStore(this).load() }.onSuccess {
@@ -153,8 +153,9 @@ class MainActivity : AppCompatActivity() {
     private fun render(status: String) {
         binding.globe.connected = BprotoVpnService.running
         binding.status.text = status
-        binding.disconnectButton.isEnabled = BprotoVpnService.running
-        binding.connectButton.isEnabled = !BprotoVpnService.running
+        binding.disconnectButton.isEnabled = BprotoVpnService.running || BprotoVpnService.connecting
+        binding.connectButton.isEnabled = !BprotoVpnService.running && !BprotoVpnService.connecting
+        binding.serverButton.isEnabled = !BprotoVpnService.running && !BprotoVpnService.connecting
     }
 
     private fun toast(message: String) {
