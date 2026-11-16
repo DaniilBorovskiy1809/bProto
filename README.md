@@ -696,3 +696,36 @@ subscription and reconnect. Subscription preview shows exported routes and DNS.
 are package names such as `org.example.browser`, not display names. Route and
 DNS lists must be nonempty, with at most 128 entries per list. Unknown fields,
 domain rules and unsupported `stealth` settings are rejected.
+
+<a id="split-tunnel"></a>
+## Выборочный туннель / Split tunneling
+
+**RU.** Для полного IPv4-туннеля оставьте `0.0.0.0/0`. Для доступа только к
+конкретным сетям перечислите их CIDR. Остальные адреса будут использовать обычную
+сеть устройства. Это выбор маршрутов, а не классификация доменов или контента.
+Указанный домен может менять IP или использовать CDN; простой CIDR-список
+не отслеживает эти изменения.
+
+**EN.** Keep `0.0.0.0/0` for a full IPv4 tunnel. List specific CIDRs to tunnel
+only those networks. Other destinations use the device’s ordinary network.
+This is destination routing, not domain/content classification. Domains can
+change IPs or use CDNs; a plain CIDR list does not track those changes.
+
+```json
+{
+  "routes": ["10.0.0.0/8", "192.168.0.0/16"],
+  "dns": ["9.9.9.9"],
+  "bypass_apps": ["org.example.browser"]
+}
+```
+
+**RU.** Исключённое приложение целиком выходит из VPN, включая его обращения
+к адресам, которые обычно покрывают маршруты. Не исключайте приложение bProto:
+клиент отклоняет такую настройку. Android Always-on VPN с блокировкой соединений
+без VPN может дополнительно блокировать намеренно исключённый трафик — проверьте
+сочетание настроек на своём устройстве.
+
+**EN.** An excluded application bypasses the VPN entirely, including traffic
+otherwise covered by VPN routes. Excluding bProto itself is rejected. Android
+Always-on VPN with blocking outside VPN can also block deliberately excluded
+traffic; test that combination on your device.
