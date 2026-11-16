@@ -25,3 +25,31 @@ network configuration, maintenance and the limits of the current implementation.
 > **EN:** encryption is implemented; guaranteed censorship or allowlist bypass
 > is not claimed. The 1.0.0 Android APK is debug-signed. Read the requirements
 > and limitations before depending on the tunnel for real traffic.
+
+## Содержание / Contents
+
+Каждый раздел содержит русский и английский текст; команды общие, если не указано иное.
+Each section includes Russian and English explanations; commands are shared unless stated otherwise.
+
+| Начало / Getting started | Эксплуатация / Operations | Устройство / Internals |
+| --- | --- | --- |
+| [Быстрая установка / Quick install](#quick-install) | [Служба / Service](#service) | [Архитектура / Architecture](#architecture) |
+| [Доверие скрипту / Script trust](#script-trust) | [NAT и адрес / NAT and endpoint](#nat) | [Протокол / Protocol](#protocol) |
+| [Требования / Requirements](#requirements) | [Firewall](#firewall) | [Возможности / Capabilities](#capabilities) |
+| [Параметры / Options](#bootstrap-options) | [Конфигурация / Configuration](#server-config) | [Безопасность / Security](#security) |
+| [Скачивание / Download only](#download-only) | [Ключи / Keys](#keys) | [Разработка / Development](#development) |
+| [Файлы / Files](#files) | [Обновление / Upgrade](#upgrade) | [Участие / Contributing](#contributing) |
+
+**Клиенты / Clients:** [Linux](#linux-client) · [Android](#android) ·
+[Профили / Profiles](#profiles) · [Автовыбор / Automatic selection](#automatic).
+
+**Панель / Panel:** [Установка / Installation](#panel-install) · [HTTPS](#https) ·
+[Первый вход / First login](#panel-first-login) · [Синхронизация ключей / Key sync](#key-sync) ·
+[Подписки / Subscriptions](#subscriptions).
+
+**Маршрутизация / Routing:** [Правила / Rules](#routing) · [Split tunnel](#split-tunnel) ·
+[DNS и IPv6](#dns-ipv6) · [Приватность / Privacy](#privacy).
+
+**Обслуживание / Maintenance:** [Резервные копии / Backups](#backups) · [Откат / Rollback](#rollback) ·
+[Удаление / Removal](#uninstall) · [Диагностика / Troubleshooting](#troubleshooting) ·
+[FAQ](#faq) · [Поддержка / Support](#support) · [Релизы / Releases](#releases).
