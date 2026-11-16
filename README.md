@@ -326,3 +326,47 @@ sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 sudo ufw status verbose
 ```
+
+<a id="server-config"></a>
+## Конфигурация сервера / Server configuration
+
+**RU.** Редактируйте существующий файл через `sudoedit`, сохраняя ключи.
+Ниже — схема, не готовый секретный конфиг: замените placeholders реальными
+значениями. Для рабочего первого конфига используйте генерацию установщика.
+
+**EN.** Edit the existing file with `sudoedit`, preserving keys. This is a
+schema example, not a usable secret configuration. Replace placeholders with
+real values, or let the installer generate the initial configuration.
+
+```toml
+listen_addr = "0.0.0.0:443"
+tag_key = "<64 hex characters shared with the panel>"
+
+[donor]
+sni = "www.cloudflare.com"
+
+[tun]
+name = "bproto0"
+address = "10.66.0.1"
+netmask = "255.255.255.0"
+mtu = 1280
+nat_interface = "ens3"
+
+[admin]
+listen_addr = "127.0.0.1:9100"
+token = "<64 hex characters>"
+
+[[users]]
+id = 1
+psk = "<64 hex characters for this user>"
+```
+
+**RU.** `tag_key` общий для развёртывания, `psk` индивидуален. SNI в текущей
+версии не делает UDP-трафик похожим на настоящий HTTPS. Смена ключей без
+обновления клиентов разрывает совместимость. После изменений выполните
+`--check-config`, затем перезапустите службу.
+
+**EN.** `tag_key` is shared across the deployment; PSKs are individual. The SNI
+field does not make current UDP traffic indistinguishable from HTTPS. Changing
+keys without updating clients breaks compatibility. Run `--check-config`
+after changes, then restart the service.
