@@ -1010,3 +1010,35 @@ pnpm из `packageManager`, доступ к registry и TLS. Полная сбо
 **EN.** Do not replace the lockfile to work around installation failures.
 Check pinned pnpm, registry access and TLS first. Build artifacts using
 `./build_app.sh`; Android using `./build_app.sh --android --no-panel`.
+
+<a id="architecture"></a>
+## Архитектура и дерево проекта / Architecture and project layout
+
+```text
+Android app / Linux CLI
+          │ encrypted UDP / зашифрованный UDP
+          ▼
+     vpn-server ── TUN ── nft NAT ── Internet
+
+Browser ── HTTPS ── Caddy ── panel backend ── SQLite
+                        └── static React frontend
+```
+
+| Каталог / Directory | Назначение / Purpose |
+| --- | --- |
+| `crates/vpn-core` | Пакеты, криптография, сессии / Packets, crypto, sessions |
+| `crates/vpn-tun` | Linux TUN, NAT, маршруты / Linux networking |
+| `crates/vpn-server` | Сервер и systemd unit / Server and service unit |
+| `crates/vpn-cli` | Linux `bproto` CLI |
+| `crates/vpn-ffi` | C ABI и Android JNI / C ABI and Android JNI |
+| `apps/android` | Android UI и VpnService / Android UI and VpnService |
+| `apps/ios` | Исходники провайдера iOS / iOS provider sources |
+| `panel/backend` | Axum + SQLite API |
+| `panel/frontend` | React + TypeScript + Vite |
+| `bootstrap.sh` | Скачивание и проверка релиза / Release download and verification |
+| `install.sh` | Развёртывание на хосте / Host deployment |
+
+**RU.** Панель — control plane, сервер — datapath. Наличие записи в SQLite само
+по себе не загружает ключ в запущенный сервер.
+**EN.** The panel is the control plane; the server is the datapath. A SQLite
+record alone does not load a key into a running server.
