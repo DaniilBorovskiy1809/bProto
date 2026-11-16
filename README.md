@@ -266,3 +266,32 @@ that the process is running; test Internet forwarding from a client separately.
 sudo /usr/local/bin/vpn-server --check-config --config /etc/bproto/server.toml
 sudo systemctl cat bproto-server
 ```
+
+<a id="nat"></a>
+## Публичный адрес, NAT и forwarding / Public endpoint, NAT and forwarding
+
+**RU.** Автоматическое определение IP часто возвращает **локальный** адрес VPS
+за NAT. В клиентской конфигурации должен стоять адрес, доступный пользователю
+из интернета: публичный IP и внешний UDP-порт. Проверьте его в панели провайдера.
+Если VPS находится за NAT, настройте перенаправление UDP снаружи на порт сервера.
+Имя интерфейса для исходящего трафика не всегда `eth0` — встречаются `ens3`, `enp1s0`.
+
+**EN.** Automatic address detection can return a **private** address on a
+NAT-backed VPS. The client needs an endpoint reachable from its network:
+public IP and external UDP port. Check your provider’s console. If the VPS is
+behind NAT, forward the external UDP port to the server. The outbound interface
+is not always `eth0`; `ens3` and `enp1s0` are common.
+
+```bash
+ip route get 1.1.1.1
+sysctl net.ipv4.ip_forward
+sudo nft list ruleset
+sudoedit /etc/bproto/server.toml
+```
+
+**RU.** `nat_interface` должен совпадать с `dev` из маршрута наружу.
+`net.ipv4.ip_forward` должен быть `1`. Не заменяйте весь действующий ruleset
+командами из случайной инструкции: это может оборвать SSH или другие сервисы.
+**EN.** Set `nat_interface` to the outbound route’s `dev` value. IPv4 forwarding
+must be `1`. Do not replace the whole firewall ruleset with unrelated examples;
+you could disconnect SSH or other services.
