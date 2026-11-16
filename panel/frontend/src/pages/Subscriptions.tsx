@@ -1,3 +1,4 @@
+import RoutingEditor from "../RoutingEditor";
 import { useState, type FormEvent } from "react";
 import { api, type RemoteEntry, type RemoteSub, type SubItem } from "../api";
 import { ClientDialog, useConfirm } from "../components";
@@ -124,6 +125,8 @@ export default function Subscriptions() {
           </div>
         </form>
       </Card>
+
+      <RoutingEditor />
 
       <Card title="Client subscriptions">
         {subs.data && subs.data.items.length > 0 ? (
