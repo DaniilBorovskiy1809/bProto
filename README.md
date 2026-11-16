@@ -1147,3 +1147,36 @@ folder. Run actual systemd/TUN smoke tests in a suitable isolated VM rather
 than on a user’s production server without a maintenance window.
 
 Лицензия проекта / Project license: **AGPL-3.0-or-later**; see Cargo manifests.
+
+<a id="support"></a>
+## Как сообщить о проблеме / Reporting a problem
+
+**RU.** Создайте [issue](https://github.com/dr-lexus-dr/bProto/issues) и укажите
+версию/commit, ОС/архитектуру, способ установки, точную команду без секретов,
+ожидаемое поведение и фактическую ошибку. Для Android укажите модель, версию ОС
+и удалось ли выдать VPN consent. Для панели — URL-путь без subscription ID,
+код HTTP и краткий фрагмент соответствующего лога.
+
+**EN.** Open an [issue](https://github.com/dr-lexus-dr/bProto/issues) with the
+version/commit, OS/architecture, installation method, exact command with secrets
+removed, expected behavior and actual error. For Android, include device/OS
+and whether VPN consent succeeded. For the panel, include a URL path without
+subscription ID, HTTP status and a short relevant log excerpt.
+
+```text
+Version / commit:
+OS / architecture / device:
+Installation method:
+Command (redacted):
+Expected:
+Observed:
+Relevant log (redacted):
+Checks already performed:
+```
+
+**RU.** Удалите PSK, tag key, admin token, пароли, QR и полные import/subscription
+URI. Публичный IP тоже можно скрыть, если он не нужен для диагностики.
+Не прикладывайте `.env`, SQLite-базу, backup или полный дамп окружения.
+**EN.** Remove PSKs, tag keys, admin tokens, passwords, QR codes and complete
+import/subscription URIs. Redact public IPs when unnecessary. Do not attach
+`.env`, a SQLite database, backups or a full process-environment dump.
