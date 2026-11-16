@@ -1180,3 +1180,43 @@ URI. Публичный IP тоже можно скрыть, если он не 
 **EN.** Remove PSKs, tag keys, admin tokens, passwords, QR codes and complete
 import/subscription URIs. Redact public IPs when unnecessary. Do not attach
 `.env`, a SQLite database, backups or a full process-environment dump.
+
+<a id="releases"></a>
+## Релизы, проверки и дальнейшее чтение / Releases, evidence and further reading
+
+**RU.** В [GitHub Releases](https://github.com/dr-lexus-dr/bProto/releases)
+публикуются Linux-архив с панелью, Android debug APK, исходники и SHA256SUMS.
+Для v1.0.0 имена: `bproto-linux-x86_64.tar.gz`, `bproto-1.0.0-debug.apk`,
+`bproto-v1.0.0-source.tar.gz`. Манифест v1.0.0 содержит путь `android/` перед APK;
+для `sha256sum -c` сохраните такую структуру либо сравните хэш нужного файла отдельно.
+Новая документация и bootstrap находятся в `main`, а исходники тега v1.0.0
+остаются неизменными. Используйте `main/bootstrap.sh`, а не путь к bootstrap
+в старом теге, где этого файла ещё нет.
+
+**EN.** [GitHub Releases](https://github.com/dr-lexus-dr/bProto/releases)
+provides a Linux/panel archive, Android debug APK, source archive and SHA256SUMS.
+For v1.0.0 the files are `bproto-linux-x86_64.tar.gz`, `bproto-1.0.0-debug.apk`
+and `bproto-v1.0.0-source.tar.gz`. Its manifest prefixes the APK with `android/`;
+preserve that layout for `sha256sum -c` or compare the desired hash separately.
+The new bootstrap/docs live on `main`; v1.0.0 tag sources remain unchanged.
+Use `main/bootstrap.sh`, not a bootstrap URL under the older tag where it did not exist.
+
+| Материал / Document | Для чего / Purpose |
+| --- | --- |
+| [DEPLOY-RU.md](docs/DEPLOY-RU.md) | Краткое развёртывание / Short deployment guide |
+| [ROUTING-RU.md](docs/ROUTING-RU.md) | Правила и клиент / Routing and client |
+| [INSTALL.md](docs/INSTALL.md) | Подробности сервера, клиента, ручной синхронизации / Detailed operations |
+| [BUILD-CLIENTS.md](docs/BUILD-CLIENTS.md) | Android/iOS build context |
+| [panel/README.md](panel/README.md) | API и переменные / API and environment |
+| [ORBIT-VALIDATION.md](docs/ORBIT-VALIDATION.md) | Выполненные проверки и их границы / Checks and limits |
+| [Release 1.0.0 notes](docs/releases/1.0.0.md) | Состав релиза / Release contents |
+
+**RU.** Для нового bootstrap проверены справка через process substitution,
+аргументы, сохранение `.env`, shell syntax и реальное скачивание v1.0.0 с
+успешным SHA256. Установка нового bootstrap на настоящем systemd/TUN VPS
+в этой задаче не выполнялась.
+
+**EN.** New bootstrap checks cover process-substitution help, arguments,
+`.env` preservation, shell syntax and an actual v1.0.0 download with a matching
+SHA256. The new bootstrap has not been installed on a real systemd/TUN VPS
+in this task.
