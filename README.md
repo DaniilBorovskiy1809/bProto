@@ -784,3 +784,34 @@ VPN” for stricter policy, checking compatibility with exclusions and firmware.
 
 **RU:** отсутствие ошибок в UI не доказывает отсутствие DNS/IPv6-утечек.
 **EN:** a clean UI status alone does not prove absence of DNS/IPv6 leaks.
+
+<a id="backups"></a>
+## Резервное копирование / Backups
+
+**RU.** Сохраняйте `/etc/bproto`, `panel/.env`, базу панели и сведения о версии
+бинарников. Копии содержат ключи и должны быть зашифрованы или храниться в
+каталоге с ограниченным доступом. Для согласованной SQLite-копии остановите
+запись в backend на время копирования. Ниже пример с Docker, выполняемый в
+приватной root-оболочке:
+
+**EN.** Back up `/etc/bproto`, `panel/.env`, the panel database and installed
+version information. Backups contain credentials: encrypt them or restrict
+access. Stop backend writes while copying SQLite data for a consistent backup.
+Example for Docker, run in a private root shell:
+
+```bash
+backup_dir="/root/bproto-backup-$(date -u +%Y%m%d-%H%M%S)"
+install -d -m0700 "$backup_dir"
+cp -a /etc/bproto "$backup_dir/server-config"
+cp -a /opt/bproto/panel/.env "$backup_dir/panel.env"
+cd /opt/bproto/panel
+docker compose stop panel
+container_id="$(docker compose ps -a -q panel)"
+docker cp "$container_id:/data" "$backup_dir/panel-data"
+docker compose start panel
+```
+
+**RU.** Если копирование завершилось ошибкой, отдельно запустите backend снова.
+Проверьте восстановление на отдельной машине, не заменяя вслепую рабочую базу.
+**EN.** If copying fails, restart the backend explicitly. Test restoration on
+a separate machine rather than blindly overwriting the production database.
