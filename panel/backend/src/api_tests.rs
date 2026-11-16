@@ -653,3 +653,37 @@ async fn invalid_subscription_routes_do_not_change_settings() {
     .await;
     assert_eq!(after, before);
 }
+
+async fn assert_routing_patch_rejected(policy: Value, expected: StatusCode) {
+    let app = test_app().await;
+    let token = login(&app).await;
+    let (_, before) = call(
+        &app,
+        "GET",
+        "/api/subscriptions/settings",
+        Some(&token),
+        None,
+    )
+    .await;
+    let (status, _) = call(
+        &app,
+        "PATCH",
+        "/api/subscriptions/settings",
+        Some(&token),
+        Some(json!({"routing":policy})),
+    )
+    .await;
+    assert_eq!(status, expected);
+    let (_, after) = call(
+        &app,
+        "GET",
+        "/api/subscriptions/settings",
+        Some(&token),
+        None,
+    )
+    .await;
+    assert_eq!(
+        after, before,
+        "Rejected policy must not alter stored settings"
+    );
+}
