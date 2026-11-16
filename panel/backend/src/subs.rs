@@ -530,27 +530,39 @@ pub(crate) async fn update_sub_settings(
     Extension(admin): Extension<Admin>,
     Json(body): Json<SubSettingsReq>,
 ) -> Result<Json<Value>, ApiError> {
+    let mut updates: Vec<(&str, String)> = Vec::new();
     if let Some(policy) = &body.routing {
         policy.validate().map_err(ApiError::bad_request)?;
+        updates.push((
+            "sub_routing",
+            serde_json::to_string(policy).map_err(ApiError::internal)?,
+        ));
     }
     if let Some(url) = &body.sub_base_url {
         let url = url.trim().trim_end_matches('/');
         if !url.is_empty() {
             let parsed = Url::parse(url)
                 .map_err(|_| ApiError::bad_request("sub_base_url must be a full URL"))?;
-            if !matches!(parsed.scheme(), "http" | "https") {
-                return Err(ApiError::bad_request("sub_base_url must be http(s)"));
+            if !matches!(parsed.scheme(), "http" | "https")
+                || !parsed.username().is_empty()
+                || parsed.password().is_some()
+            {
+                return Err(ApiError::bad_request(
+                    "sub_base_url must be http(s) without embedded credentials",
+                ));
             }
         }
-        set_setting(&state.db, SETTING_SUB_BASE_URL, url).await?;
+        updates.push((SETTING_SUB_BASE_URL, url.to_owned()));
     }
     if let Some(title) = &body.sub_title {
-        set_setting(&state.db, SETTING_SUB_TITLE, title.trim()).await?;
+        updates.push((SETTING_SUB_TITLE, title.trim().to_owned()));
     }
-    if let Some(policy) = &body.routing {
-        let encoded = serde_json::to_string(policy).map_err(ApiError::internal)?;
-        set_setting(&state.db, "sub_routing", &encoded).await?;
+    let mut transaction = state.db.begin().await?;
+    for (key, value) in updates {
+        sqlx::query("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+            .bind(key).bind(value).execute(&mut *transaction).await?;
     }
+    transaction.commit().await?;
     audit(&state.db, admin.user_id, "update_sub_settings", "", "").await;
     get_sub_settings(State(state)).await
 }
