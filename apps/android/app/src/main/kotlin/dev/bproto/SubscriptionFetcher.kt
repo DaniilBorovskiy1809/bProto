@@ -5,7 +5,10 @@ import java.net.URL
 
 object SubscriptionFetcher {
     fun fetch(address: String): List<ServerProfile> {
-        val url = URL(address)
+        val parsed = android.net.Uri.parse(address)
+        val requested = if (parsed.getQueryParameter("format") == null)
+            parsed.buildUpon().appendQueryParameter("format", "json").build().toString() else address
+        val url = URL(requested)
         require(url.protocol == "https" && url.userInfo == null) { "Subscription URL must use HTTPS without embedded credentials" }
         val connection = url.openConnection() as HttpURLConnection
         connection.connectTimeout = 10000
