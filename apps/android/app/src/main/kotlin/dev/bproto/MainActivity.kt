@@ -28,6 +28,7 @@ class MainActivity : AppCompatActivity() {
     private var profiles: List<ServerProfile> = emptyList()
     private var selected: ServerProfile? = null
     private var automatic = false
+    private var importing = false
 
     private val vpnPermission =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -100,17 +101,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun connect() {
+        if (importing) return
         val config = binding.configUri.text?.toString()?.trim().orEmpty()
         if (config.isEmpty()) {
             toast("paste a bproto:// key first")
             return
         }
         if (config.startsWith("https://")) {
-            binding.connectButton.isEnabled = false
+            importing = true
+            render(BprotoVpnService.lastStatus)
             Thread {
                 val result = runCatching { SubscriptionFetcher.fetch(config) }
                 runOnUiThread {
-                    binding.connectButton.isEnabled = true
+                    if (isDestroyed || isFinishing) return@runOnUiThread
+                    importing = false
+                    render(BprotoVpnService.lastStatus)
                     result.onSuccess { servers ->
                         profiles = servers
                         runCatching { ProfileStore(this).save(servers) }
@@ -163,11 +168,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun render(status: String) {
+        binding.globe.isEnabled = !importing
         binding.globe.connected = BprotoVpnService.running
         binding.status.text = status
         binding.disconnectButton.isEnabled = BprotoVpnService.running || BprotoVpnService.connecting
-        binding.connectButton.isEnabled = !BprotoVpnService.running && !BprotoVpnService.connecting
-        binding.serverButton.isEnabled = !BprotoVpnService.running && !BprotoVpnService.connecting
+        binding.connectButton.isEnabled = !BprotoVpnService.running && !BprotoVpnService.connecting && !importing
+        binding.serverButton.isEnabled = !BprotoVpnService.running && !BprotoVpnService.connecting && !importing
         binding.routingButton.isEnabled = binding.serverButton.isEnabled
     }
 
