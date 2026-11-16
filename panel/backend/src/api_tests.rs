@@ -696,3 +696,12 @@ async fn routing_rejects_empty_route_set() {
     )
     .await;
 }
+
+#[tokio::test]
+async fn routing_rejects_empty_resolver_set() {
+    assert_routing_patch_rejected(
+        serde_json::from_str(r#"{"routes":["0.0.0.0/0"],"dns":[],"bypass_apps":[]}"#).unwrap(),
+        StatusCode::from_u16(400).unwrap(),
+    )
+    .await;
+}
