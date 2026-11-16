@@ -9,6 +9,7 @@ object SubscriptionParser {
         val text = body.trim()
         val profiles = if (text.startsWith("{")) {
             val document = JSONObject(text)
+            require(document.optInt("schema_version", 1) == 1) { "Unsupported subscription schema version" }
             val routing = RoutingPolicy.parse(document.optJSONObject("routing"))
             val entries = document.getJSONArray("clients")
             require(entries.length() <= 128) { "Too many servers" }
