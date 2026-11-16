@@ -117,7 +117,7 @@ existing_tag_key() {
 
 find_artifact() { # name -> path or empty (release wins, dist/ is the fallback)
     local name="$1"
-    for p in "$REPO_ROOT/target/release/$name" "$REPO_ROOT/dist/bin/$name" "$REPO_ROOT/target/debug/$name"; do
+    for p in "$REPO_ROOT/dist/bin/$name" "$REPO_ROOT/target/release/$name" "$REPO_ROOT/target/debug/$name"; do
         if [ -x "$p" ]; then printf '%s' "$p"; return 0; fi
     done
 }
