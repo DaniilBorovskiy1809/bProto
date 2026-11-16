@@ -53,3 +53,34 @@ Each section includes Russian and English explanations; commands are shared unle
 **Обслуживание / Maintenance:** [Резервные копии / Backups](#backups) · [Откат / Rollback](#rollback) ·
 [Удаление / Removal](#uninstall) · [Диагностика / Troubleshooting](#troubleshooting) ·
 [FAQ](#faq) · [Поддержка / Support](#support) · [Релизы / Releases](#releases).
+
+<a id="quick-install"></a>
+## Быстрая установка на VPS / Quick VPS installation
+
+**RU.** Для готового пакета нужен x86_64 VPS с Ubuntu 24.04+ или Debian 13+,
+systemd и доступным TUN. Откройте root-оболочку: `sudo -i`. Затем выполните:
+
+**EN.** The prebuilt package requires an x86_64 VPS running Ubuntu 24.04+ or
+Debian 13+, with systemd and TUN available. Enter a root shell using `sudo -i`, then run:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/dr-lexus-dr/bProto/main/bootstrap.sh)
+```
+
+**RU.** Команда скачивает бинарники **v1.0.0**, проверяет контрольную сумму,
+размещает текущие скрипты проекта в `/opt/bproto`, устанавливает сервер и CLI,
+создаёт ключи и службу. Rust не нужен. Порты firewall скрипт не открывает:
+после завершения проверьте UDP 443, `nat_interface` и публичный адрес клиента.
+Служба должна перейти в `active`; ошибка запуска возвращает ненулевой код.
+
+**EN.** The command downloads **v1.0.0** binaries, verifies their checksum,
+places current project scripts in `/opt/bproto`, installs the server and CLI,
+and creates keys and a service. Rust is not required. The script does not open
+firewall ports: check UDP 443, `nat_interface` and the client’s public endpoint
+after installation. The service should become `active`; startup failure returns
+an error status.
+
+```bash
+systemctl status bproto-server --no-pager
+journalctl -u bproto-server -n 50 --no-pager
+```
