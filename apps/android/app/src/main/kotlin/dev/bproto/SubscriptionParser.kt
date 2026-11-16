@@ -5,7 +5,7 @@ import org.json.JSONObject
 
 object SubscriptionParser {
     fun parse(body: String): List<ServerProfile> {
-        require(body.length <= 1048576) { "Subscription exceeds 1 MiB" }
+        require(body.length <= 1048576 && body.toByteArray(Charsets.UTF_8).size <= 1048576) { "Subscription exceeds 1 MiB" }
         val text = body.trim()
         val profiles = if (text.startsWith("{")) {
             val document = JSONObject(text)
