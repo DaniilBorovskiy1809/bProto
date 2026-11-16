@@ -632,3 +632,34 @@ the panel’s `BPROTO_TAG_KEY`.
 **EN.** Revoking a key in the panel is not immediate server-side revocation if
 the old PSK remains in server configuration. Update the server when revoking.
 Подробный процесс / Detailed procedure: [INSTALL.md §5.5](docs/INSTALL.md).
+
+<a id="subscriptions"></a>
+## Форматы подписок / Subscription formats
+
+```text
+https://panel.example.com/sub/REPLACE_WITH_PRIVATE_ID
+https://panel.example.com/sub/REPLACE_WITH_PRIVATE_ID?format=list
+https://panel.example.com/sub/REPLACE_WITH_PRIVATE_ID?format=json
+```
+
+| Формат / Format | Что содержит / Contents |
+| --- | --- |
+| По умолчанию / Default | Base64-список URI / Base64 URI list |
+| `format=list` | Одна URI на строку / One URI per line |
+| `format=json` | Серверы, метаданные, schema version и routing / Servers, metadata, schema version and routing |
+
+**RU.** Android запрашивает JSON по умолчанию, добавляя `format=json`, если его
+нет в URL. Только JSON переносит политику маршрутизации. Явный `format=list`
+или base64 возвращает ключи без правил. Локальные overrides меняются отдельно.
+Импорт ограничен 1 MiB и 128 записями; HTTPS-перенаправления не принимаются,
+сертификаты проверяются. При смене схемы клиент явно отказывается от неизвестной
+версии вместо молчаливого игнорирования настроек.
+
+**EN.** Android requests JSON by adding `format=json` when absent. Only JSON
+carries routing policy. Explicit list/base64 formats contain keys without rules.
+Local overrides are separate. Imports are limited to 1 MiB and 128 entries;
+HTTPS redirects are rejected and certificates are verified. Unknown schema
+versions fail explicitly rather than silently ignoring configuration.
+
+**RU:** subscription URL — секрет доступа, не публичная ссылка.
+**EN:** a subscription URL is an access secret, not a public link.
