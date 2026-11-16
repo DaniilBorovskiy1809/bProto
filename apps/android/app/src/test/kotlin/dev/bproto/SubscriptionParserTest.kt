@@ -41,4 +41,8 @@ class SubscriptionParserTest {
     @Test(expected = IllegalArgumentException::class) fun subscriptionByteLimit() {
         SubscriptionParser.parse("A".repeat(1048577))
     }
+    @Test fun nullServerLabelsUseReadableFallback() {
+        val body = JSONObject().put("clients", JSONArray().put(JSONObject().put("uri", uri()).put("label", JSONObject.NULL)))
+        assertEquals("Server 1", SubscriptionParser.parse(body.toString()).single().name)
+    }
 }
