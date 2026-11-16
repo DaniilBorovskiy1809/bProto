@@ -63,6 +63,7 @@ export default function App() {
 
   return (
     <div className="panel-shell flex min-h-screen flex-col bg-neutral-50 text-neutral-900 md:flex-row">
+      <a href="#panel-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:p-3">Skip to content</a>
       <aside className="panel-sidebar border-b border-neutral-200 md:w-60 md:shrink-0 md:border-b-0 md:border-r">
         <div className="flex items-center justify-between px-4 py-4">
           <div>
@@ -115,7 +116,7 @@ export default function App() {
         </div>
       </aside>
 
-      <main className="panel-content min-w-0 flex-1 p-4 md:p-6">
+      <main id="panel-content" tabIndex={-1} className="panel-content min-w-0 flex-1 p-4 md:p-6">
         <header className="mb-6 flex items-center justify-between gap-3 border-b border-neutral-200 pb-4">
           <div><p className="text-xs font-semibold uppercase tracking-widest text-blue-600">Network workspace</p>
             <p className="mt-1 text-sm text-neutral-500">{NAV.find(item => item.id === page)?.hint}</p></div>
