@@ -166,15 +166,8 @@ build_panel_frontend() {
     step "build panel frontend"
     (
         cd "$fe"
-        if [ ! -d node_modules ]; then
-            if command -v pnpm >/dev/null 2>&1; then
-                pnpm install --frozen-lockfile 2>/dev/null || pnpm install
-            elif command -v npm >/dev/null 2>&1; then
-                npm install
-            else
-                die "neither pnpm nor npm found"
-            fi
-        fi
+        command -v pnpm >/dev/null 2>&1 || die "pnpm required: use the packageManager version in panel/frontend/package.json"
+        pnpm install --frozen-lockfile
 
         # Prefer the locally installed toolchain: it is what the lockfile pins.
         if [ -x node_modules/.bin/tsc ] && [ -x node_modules/.bin/vite ]; then
