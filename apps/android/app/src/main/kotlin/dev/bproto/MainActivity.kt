@@ -54,11 +54,17 @@ class MainActivity : AppCompatActivity() {
         binding.globe.setOnClickListener {
             if (BprotoVpnService.running) send(BprotoVpnService.ACTION_DISCONNECT, null) else connect()
         }
+        binding.serverButton.setOnClickListener { showServers() }
+        runCatching { ProfileStore(this).load() }.onSuccess {
+            profiles = it
+            selected = it.firstOrNull()
+            selected?.let { profile -> binding.configUri.setText(profile.uri) }
+        }.onFailure { toast("Saved profiles could not be decrypted. Import your subscription again.") }
         binding.connectButton.setOnClickListener { connect() }
         binding.disconnectButton.setOnClickListener {
             send(BprotoVpnService.ACTION_DISCONNECT, null)
         }
-        binding.configUri.setText(savedInstanceState?.getString("config").orEmpty())
+        savedInstanceState?.getString("config")?.let { binding.configUri.setText(it) }
         render(BprotoVpnService.lastStatus)
     }
 
@@ -97,14 +103,9 @@ class MainActivity : AppCompatActivity() {
                     binding.connectButton.isEnabled = true
                     result.onSuccess { servers ->
                         profiles = servers
-                        androidx.appcompat.app.AlertDialog.Builder(this)
-                            .setTitle("Select server")
-                            .setItems((listOf("Automatic · first reachable") + servers.map { it.name }).toTypedArray()) { _, index ->
-                                automatic = index == 0
-                                selected = servers[if (automatic) 0 else index - 1]
-                                binding.configUri.setText(selected!!.uri)
-                                connect()
-                            }.show()
+                        runCatching { ProfileStore(this).save(servers) }
+                            .onFailure { toast("Imported, but profiles could not be saved") }
+                        showServers()
                     }.onFailure { toast(it.message ?: "Subscription failed") }
                 }
             }.start()
@@ -117,6 +118,18 @@ class MainActivity : AppCompatActivity() {
         } else {
             send(BprotoVpnService.ACTION_CONNECT, config)
         }
+    }
+
+    private fun showServers() {
+        if (profiles.isEmpty()) { toast("Import an HTTPS subscription first"); return }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Select server")
+            .setItems((listOf("Automatic · first reachable") + profiles.map { it.name }).toTypedArray()) { _, index ->
+                automatic = index == 0
+                selected = profiles[if (automatic) 0 else index - 1]
+                binding.configUri.setText(selected!!.uri)
+                binding.serverButton.text = if (automatic) "Automatic" else selected!!.name
+            }.show()
     }
 
     private fun send(action: String, config: String?) {

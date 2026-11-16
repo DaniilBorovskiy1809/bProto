@@ -19,6 +19,12 @@
         android:layout_width="match_parent"
         android:layout_height="240dp" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/serverButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Choose server" />
+
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
