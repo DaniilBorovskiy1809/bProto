@@ -116,6 +116,11 @@ export default function App() {
       </aside>
 
       <main className="panel-content min-w-0 flex-1 p-4 md:p-6">
+        <header className="mb-6 flex items-center justify-between gap-3 border-b border-neutral-200 pb-4">
+          <div><p className="text-xs font-semibold uppercase tracking-widest text-blue-600">Network workspace</p>
+            <p className="mt-1 text-sm text-neutral-500">{NAV.find(item => item.id === page)?.hint}</p></div>
+          <span className="max-w-40 truncate rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm" title={me.username}>{me.username}</span>
+        </header>
         {page === "dashboard" && <Dashboard />}
         {page === "inbounds" && <Inbounds />}
         {page === "clients" && <Clients />}
