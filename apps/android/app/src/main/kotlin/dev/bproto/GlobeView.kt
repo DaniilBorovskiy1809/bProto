@@ -13,12 +13,12 @@ import kotlin.math.min
 class GlobeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : View(context, attrs) {
     private val ink = Paint(Paint.ANTI_ALIAS_FLAG)
     var connected = false
-        set(value) { field = value; invalidate(); contentDescription = if (value) "Disconnect VPN" else "Connect selected server" }
+        set(value) { field = value; invalidate(); contentDescription = context.getString(if (value) dev.bproto.client.R.string.globe_disconnect else dev.bproto.client.R.string.globe_connect) }
 
     init {
         isClickable = true
         isFocusable = true
-        contentDescription = "Connect selected server"
+        contentDescription = context.getString(dev.bproto.client.R.string.globe_connect)
     }
 
     override fun performClick(): Boolean {

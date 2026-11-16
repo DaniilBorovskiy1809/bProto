@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">bProto</string>
-    <string name="config_label">bproto:// key URI</string>
+    <string name="config_label">bproto:// key or HTTPS subscription</string>
     <string name="connect">Connect</string>
     <string name="disconnect">Disconnect</string>
     <string name="status_idle">Idle</string>
     <string name="permission_needed">VPN permission is required</string>
     <string name="notification_channel">Tunnel</string>
     <string name="notification_title">bProto is running</string>
+    <string name="orbit_title">bProto · Your private orbit</string>
+    <string name="choose_server">Choose server</string>
+    <string name="routing_settings">Routing settings</string>
+    <string name="globe_connect">Connect selected server</string>
+    <string name="globe_disconnect">Disconnect VPN</string>
 </resources>

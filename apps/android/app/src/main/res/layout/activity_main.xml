@@ -13,7 +13,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="bProto · Your private orbit"
+        android:text="@string/orbit_title"
         android:textColor="#172A46"
         android:textSize="24sp"
         android:paddingBottom="12dp" />
@@ -27,7 +27,7 @@
         android:id="@+id/serverButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Choose server" />
+        android:text="@string/choose_server" />
 
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
@@ -67,7 +67,7 @@
         android:id="@+id/routingButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Routing settings" />
+        android:text="@string/routing_settings" />
 
     <TextView
         android:id="@+id/status"
