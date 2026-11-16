@@ -295,3 +295,34 @@ sudoedit /etc/bproto/server.toml
 **EN.** Set `nat_interface` to the outbound route’s `dev` value. IPv4 forwarding
 must be `1`. Do not replace the whole firewall ruleset with unrelated examples;
 you could disconnect SSH or other services.
+
+<a id="firewall"></a>
+## Порты и firewall / Ports and firewall
+
+| Порт / Port | Для чего / Purpose | Доступ / Exposure |
+| --- | --- | --- |
+| UDP 443, либо выбранный / or selected port | VPN transport | Клиентам / Client networks |
+| TCP 80 | Caddy HTTP / ACME | Интернет при установке панели / Internet for panel setup |
+| TCP 443 | HTTPS панели / Panel HTTPS | Пользователям панели / Panel users |
+| TCP 8080 | Backend панели / Panel backend | Только Compose network / Compose network only |
+| TCP 9100 | Административный endpoint сервера / Server administration | Loopback only |
+| TCP 22, либо SSH-порт / or SSH port | SSH | По вашей политике / Your access policy |
+
+**RU.** UDP 443 и TCP 443 — разные сокеты: VPN и HTTPS-панель могут использовать
+один номер порта на одном VPS. Однако HTTP/3 Caddy или другой UDP-сервис может
+занять UDP 443; проверяйте `ss`. Кроме firewall ОС часто есть отдельный security
+group у провайдера. Разрешите SSH **до** включения нового firewall.
+
+**EN.** UDP 443 and TCP 443 are different sockets: the tunnel and HTTPS panel
+can share the port number. Caddy HTTP/3 or another UDP service can still occupy
+UDP 443, so inspect listeners. Cloud-provider security groups are separate
+from the host firewall. Allow SSH **before** enabling a new firewall.
+
+```bash
+sudo ss -lntup
+# If UFW is already your chosen firewall:
+sudo ufw allow 443/udp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw status verbose
+```
