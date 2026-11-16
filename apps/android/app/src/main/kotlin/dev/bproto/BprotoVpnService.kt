@@ -240,7 +240,10 @@ class BprotoVpnService : VpnService() {
             val parts = it.split('/')
             builder.addRoute(parts[0], parts[1].toInt())
         }
-        routing.dns.forEach { builder.addDnsServer(it) }
+        routing.dns.forEach {
+            builder.addDnsServer(it)
+            builder.addRoute(it, 32)
+        }
         routing.bypassApps.forEach { builder.addDisallowedApplication(it) }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             builder.setMetered(false)
