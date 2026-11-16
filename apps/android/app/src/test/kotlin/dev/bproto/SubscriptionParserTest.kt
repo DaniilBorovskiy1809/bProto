@@ -53,4 +53,7 @@ class SubscriptionParserTest {
             .put("sni", "example.org").put("psk", "ab").put("tag_key", "cd".repeat(32))
         ServerProfile.fromUri("bproto://import/" + Base64.getUrlEncoder().encodeToString(body.toString().toByteArray()))
     }
+    @Test(expected = IllegalArgumentException::class) fun futureSchemaRejected() {
+        SubscriptionParser.parse(JSONObject().put("schema_version", 2).put("clients", JSONArray().put(JSONObject().put("uri", uri()))).toString())
+    }
 }
