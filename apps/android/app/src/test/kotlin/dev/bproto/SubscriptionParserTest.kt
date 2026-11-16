@@ -21,4 +21,12 @@ class SubscriptionParserTest {
         val encoded = Base64.getEncoder().encodeToString((uri(1) + "\n" + uri(2)).toByteArray())
         assertEquals(2, SubscriptionParser.parse(encoded).size)
     }
+    @Test fun jsonRoutingInheritance() {
+        val document = JSONObject().put("clients", JSONArray().put(JSONObject().put("uri", uri()).put("label", "Paris")))
+            .put("routing", JSONObject().put("routes", JSONArray(listOf("10.0.0.0/8"))).put("dns", JSONArray(listOf("9.9.9.9"))))
+        val profile = SubscriptionParser.parse(document.toString()).single()
+        assertEquals("Paris", profile.name)
+        assertEquals(listOf("10.0.0.0/8"), profile.routing.routes)
+        assertEquals(listOf("9.9.9.9"), profile.routing.dns)
+    }
 }
