@@ -914,3 +914,32 @@ sudo docker compose down
 сохраните нужный backup и закройте ненужные firewall rules/security groups.
 **EN.** Before permanently deleting keys, revoke device access, preserve any
 required backup and remove obsolete firewall/security-group rules.
+
+<a id="troubleshooting"></a>
+## Диагностика по симптомам / Symptom-driven troubleshooting
+
+| Симптом / Symptom | Проверить / Check |
+| --- | --- |
+| `Permission denied` reading server config | `root:bproto`, directory `0750`, config `0640`; service account |
+| `Address already in use` | `ss -lntup`; conflicting UDP listener / конфликт UDP |
+| TUN creation fails | `/dev/net/tun`, VPS permissions, `CAP_NET_ADMIN` |
+| Handshake timeout | Public IP:port, UDP firewall, PSK, user ID, tag key |
+| Connected but no Internet | `--datapath`, forwarding=1, NAT interface, DNS |
+| Android IPv6 capture refused | Firmware support; connection intentionally fails closed |
+| Panel certificate failure | DNS A/AAAA, TCP 80/443, Caddy logs |
+| Subscription import failure | HTTPS certificate, no redirect, ≤1 MiB, supported schema |
+| Panel key does not connect | Manual server-side synchronization / ручная синхронизация |
+| Bootstrap checksum failure | Re-download from official release; never bypass verification |
+
+```bash
+sudo journalctl -u bproto-server -n 100 --no-pager
+sudo /usr/local/bin/vpn-server --check-config --config /etc/bproto/server.toml
+ip route get 1.1.1.1
+sysctl net.ipv4.ip_forward
+sudo ss -lntup
+```
+
+**RU.** Сначала определите уровень отказа: загрузка → служба → рукопожатие → TUN →
+маршруты → DNS. Не меняйте все уровни одновременно: теряется причина ошибки.
+**EN.** Locate the failing layer first: download → service → handshake → TUN →
+routes → DNS. Changing all layers at once hides the original cause.
