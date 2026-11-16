@@ -26,15 +26,6 @@ class GlobeView @JvmOverloads constructor(context: Context, attrs: AttributeSet?
         return true
     }
 
-    override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
-        if (!isEnabled) return false
-        if (event.action == android.view.MotionEvent.ACTION_UP) {
-            performClick()
-            return true
-        }
-        return event.action == android.view.MotionEvent.ACTION_DOWN
-    }
-
     override fun onInitializeAccessibilityNodeInfo(info: android.view.accessibility.AccessibilityNodeInfo) {
         super.onInitializeAccessibilityNodeInfo(info)
         info.className = android.widget.Button::class.java.name
