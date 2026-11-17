@@ -95,3 +95,19 @@ donor test; Rust/aioquic suite: 10 passed; Python QUIC suite: 8 passed, 80% cove
 Android: 27 JVM tests passed, APK assembled with three rebuilt ABIs and all five
 new QUIC JNI symbols verified. Frontend TypeScript/Vite build passed.
 No Android device run, ECH, browser profile or target-network evidence is claimed.
+
+## Required ECH client implementation
+
+Native HTTP3/Android QUIC now accept a bounded, expiring operator-provided
+ECHConfigList with required-only semantics. Rustls/AWS-LC emits ECH; rejected ECH
+does not retry with a cleartext inner SNI. Panel exports Android ECH settings.
+The observed full ClientHello contains the public hostname and ECH extension,
+without the inner hostname; malformed/expired configurations emit no ClientHello.
+Successful ECH acceptance remains unverified; the Python server does not support
+ECH termination. DNS discovery, rotation and Android device tests remain open.
+
+Validation: 117 Rust tests passed with ech enabled (one legacy donor test remains
+ignored); 13 ECH/interoperability tests passed; 34 Android JVM tests passed.
+All three native Android ABIs and the APK built successfully; frontend build passed.
+Required-ECH Android selections filter out non-ECH fallback candidates.
+These results do not include successful ECH acceptance or device runtime.

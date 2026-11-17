@@ -9,6 +9,7 @@ data class WssProfile(val url: String, val token: String) {
             require(!(config.has("tls") && config.has("wss"))) { "Choose one carrier" }
             if (!config.has("wss")) return null
             val value = config.getJSONObject("wss")
+            require(!value.has("ech")) { "ECH is supported only by QUIC carrier" }
             val url = value.getString("url")
             val parsed = URI(url)
             require(parsed.scheme == "wss" && !parsed.host.isNullOrBlank() &&

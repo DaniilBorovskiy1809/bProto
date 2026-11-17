@@ -8,6 +8,32 @@ fn failure(e: impl std::fmt::Display) -> Error {
     Error::Transport(format!("HTTP3: {e}"))
 }
 
+/// Operator-provided ECHConfigList. Presence means ECH is required.
+/// The caller must obtain this public configuration from an authenticated source.
+#[derive(Debug, Clone)]
+pub struct EchSettings {
+    pub config_list: Vec<u8>,
+    pub expires_unix_secs: u64,
+}
+
+impl EchSettings {
+    fn validate(&self) -> Result<()> {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(failure)?
+            .as_secs();
+        if self.expires_unix_secs <= now
+            || self.config_list.len() < 2
+            || self.config_list.len() > 4096
+        {
+            return Err(Error::Config(
+                "ECH configuration is expired or invalid".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
 /// Bound external socket. No packets are emitted until connect.
 #[derive(Debug)]
 pub struct QuicTransport {
@@ -36,6 +62,22 @@ impl QuicTransport {
         token: &str,
         ca_der: Option<Vec<u8>>,
     ) -> Result<QuicBridge> {
+        self.connect_with_ech(server, hostname, token, ca_der, None)
+            .await
+    }
+
+    /// ECH never falls back to a cleartext inner SNI. Server rejection is fatal.
+    pub async fn connect_with_ech(
+        self,
+        server: SocketAddr,
+        hostname: &str,
+        token: &str,
+        ca_der: Option<Vec<u8>>,
+        ech: Option<EchSettings>,
+    ) -> Result<QuicBridge> {
+        if let Some(ref config) = ech {
+            config.validate()?;
+        }
         if hostname.is_empty()
             || hostname.len() > 253
             || !hostname
@@ -48,7 +90,7 @@ impl QuicTransport {
         }
         tokio::time::timeout(
             Duration::from_secs(10),
-            self.connect_inner(server, hostname, token, ca_der),
+            self.connect_inner(server, hostname, token, ca_der, ech),
         )
         .await
         .map_err(|_| failure("connection timeout"))?
@@ -59,15 +101,38 @@ impl QuicTransport {
         hostname: &str,
         token: &str,
         ca_der: Option<Vec<u8>>,
+        ech: Option<EchSettings>,
     ) -> Result<QuicBridge> {
         let mut roots =
             quinn::rustls::RootCertStore::from_iter(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
         if let Some(der) = ca_der {
             roots.add(der.into()).map_err(failure)?;
         }
-        let mut tls = quinn::rustls::ClientConfig::builder()
-            .with_root_certificates(roots)
-            .with_no_client_auth();
+        // Choose explicitly because the ECH HPKE backend also enables AWS-LC.
+        let builder = quinn::rustls::ClientConfig::builder_with_provider(Arc::new(
+            quinn::rustls::crypto::ring::default_provider(),
+        ));
+        let builder = if let Some(ech) = ech {
+            #[cfg(feature = "ech")]
+            {
+                let config = rustls::client::EchConfig::new(
+                    ech.config_list.as_slice().into(),
+                    rustls::crypto::aws_lc_rs::hpke::ALL_SUPPORTED_SUITES,
+                )
+                .map_err(failure)?;
+                builder.with_ech(config.into()).map_err(failure)?
+            }
+            #[cfg(not(feature = "ech"))]
+            {
+                let _ = ech;
+                return Err(Error::Config("ECH support is not compiled in".into()));
+            }
+        } else {
+            builder
+                .with_protocol_versions(&[&quinn::rustls::version::TLS13])
+                .map_err(failure)?
+        };
+        let mut tls = builder.with_root_certificates(roots).with_no_client_auth();
         tls.alpn_protocols = vec![b"h3".to_vec()];
         let crypto = quinn::crypto::rustls::QuicClientConfig::try_from(tls).map_err(failure)?;
         let mut client = quinn::ClientConfig::new(Arc::new(crypto));

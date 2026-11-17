@@ -42,7 +42,8 @@ class QuicCarrier private constructor(private var handle: Long) : Closeable {
                 val fd = Bproto.quicSocketFd(handle)
                 check(fd >= 0 && protectFd(fd)) { "QUIC socket protection failed" }
                 val endpoint = if (ipv6) "[${address.hostAddress}]:${profile.port}" else "${address.hostAddress}:${profile.port}"
-                val port = Bproto.quicStart(handle, endpoint, profile.hostname, profile.token)
+                val port = Bproto.quicStart(handle, endpoint, profile.hostname, profile.token,
+                    profile.ech?.bytes ?: byteArrayOf(), profile.ech?.expires ?: 0)
                 check(port > 0) { "QUIC handshake failed" }
                 config.remove("quic")
                 config.put("server", "127.0.0.1:$port")

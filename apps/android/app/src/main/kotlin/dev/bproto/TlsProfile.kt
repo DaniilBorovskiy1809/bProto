@@ -7,6 +7,7 @@ data class TlsProfile(val hostname: String, val address: String, val port: Int, 
         fun parse(config: JSONObject): TlsProfile? {
             if (!config.has("tls")) return null
             val tls = config.getJSONObject("tls")
+            require(!tls.has("ech")) { "ECH is supported only by QUIC carrier" }
             val host = tls.getString("hostname")
             val address = tls.optString("server_host", host)
             val port = tls.optInt("server_port", 443)

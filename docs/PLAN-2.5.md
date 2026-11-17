@@ -34,7 +34,7 @@ TLS, HTTP/3 и WSS как внешние транспорты, управлен�
 | Android | TLS/WSS, импорт, защита сокета | 24 JVM-теста, сборка APK | QUIC реализован после базы; instrumentation и Wi-Fi/mobile transitions остаются |
 | Панель/агент | Экспорт; TLS apply, health, rollback; mTLS | Тесты доступа, mTLS и транзакций; 75% покрытия агента | Полный deploy e2e, схемы всех транспортов, crash recovery |
 | ClientHello-профили | Только старые enum-настройки | Browser matching не подтверждён | Библиотека, профили, эталоны, тесты |
-| ECH | Нет | Нет | Backend, DNS HTTPS RR, ключи, политика fallback |
+| ECH | Required-клиент добавлен после базы документа | ClientHello и fail-closed тесты | Принимающий сервер, successful e2e, DNS HTTPS RR, ротация |
 | Белые списки/CDN | WSS-путь для своего домена | Локальный WSS, не живой CDN | Разрешённый управляемый узел и целевая сеть |
 | Релиз | CI сборок и тестов | Предыдущие сборки успешны | Финальный SHA, артефакты, release gate |
 
@@ -214,3 +214,11 @@ Android-устройство или emulator, signing key для release APK.
 Добавлены native HTTP3 на h3/quinn, JNI bind/protect/start, Kotlin lifecycle,
 экспорт QUIC профилей и Rust↔aioquic integration tests. Этап A не закрыт целиком:
 нужны Android VpnService instrumentation, смена сети и TUN/Internet через HTTP3.
+
+
+### Обновление этапа C: ECH
+
+Добавлен required-only ECH-клиент для native/Android QUIC и экспорт конфигурации
+из панели. Проверены отправляемый ClientHello и отсутствие downgrade при отказе.
+Это не закрывает этап C: Python-сервер не принимает ECH, успешный ECH e2e, DNS
+discovery и ротация ещё не реализованы/не проверены. См. ../tools/ech/README.ru.md.

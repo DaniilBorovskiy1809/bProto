@@ -1,10 +1,10 @@
 //! Two-phase carrier lifecycle: bind -> protect(fd) in Java -> start.
 use jni::{
     JNIEnv,
-    objects::{JObject, JString},
+    objects::{JByteArray, JObject, JString},
     sys::{jint, jlong},
 };
-use vpn_core::transport::quic::{QuicBridge, QuicTransport};
+use vpn_core::transport::quic::{EchSettings, QuicBridge, QuicTransport};
 
 struct Carrier {
     prepared: Option<QuicTransport>,
@@ -66,6 +66,8 @@ pub extern "system" fn Java_dev_bproto_Bproto_quicStart(
     server: JString,
     hostname: JString,
     token: JString,
+    ech: JByteArray,
+    expires: jlong,
 ) -> jint {
     if handle == 0 {
         return -1;
@@ -77,10 +79,24 @@ pub extern "system" fn Java_dev_bproto_Bproto_quicStart(
             .map_err(|_| "invalid QUIC endpoint")?;
         let hostname = super::read_string(&mut env, &hostname)?;
         let token = super::read_string(&mut env, &token)?;
+        let bytes = env
+            .convert_byte_array(&ech)
+            .map_err(|_| "Invalid ECH bytes")?;
+        let ech = if bytes.is_empty() && expires == 0 {
+            None
+        } else {
+            if expires <= 0 {
+                return Err("Invalid ECH expiry".to_string());
+            }
+            Some(EchSettings {
+                config_list: bytes,
+                expires_unix_secs: expires as u64,
+            })
+        };
         let prepared = carrier.prepared.take().ok_or("carrier already started")?;
         let bridge = carrier
             .runtime
-            .block_on(prepared.connect(server, &hostname, &token, None))
+            .block_on(prepared.connect_with_ech(server, &hostname, &token, None, ech))
             .map_err(|e| e.to_string())?;
         let port = bridge.local_port();
         carrier.bridge = Some(bridge);

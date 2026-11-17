@@ -2,7 +2,7 @@
 #[cfg(feature = "quic")]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use vpn_core::transport::quic::QuicTransport;
+    use vpn_core::transport::quic::{EchSettings, QuicTransport};
     let args: Vec<String> = std::env::args().collect();
     let server: std::net::SocketAddr = args.get(1).ok_or("endpoint required")?.parse()?;
     let hostname = args.get(2).ok_or("hostname required")?;
@@ -12,8 +12,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         "0.0.0.0:0"
     };
+    let ech = match std::env::var("BPROTO_ECH_CONFIG") {
+        Ok(path) => Some(EchSettings {
+            config_list: std::fs::read(path)?,
+            expires_unix_secs: std::env::var("BPROTO_ECH_EXPIRES")?.parse()?,
+        }),
+        Err(_) => None,
+    };
     let bridge = QuicTransport::bind(bind.parse()?)?
-        .connect(server, hostname, &std::env::var("BPROTO_BRIDGE_TOKEN")?, ca)
+        .connect_with_ech(
+            server,
+            hostname,
+            &std::env::var("BPROTO_BRIDGE_TOKEN")?,
+            ca,
+            ech,
+        )
         .await?;
     println!("{}", bridge.local_port());
     while !bridge.is_finished() {

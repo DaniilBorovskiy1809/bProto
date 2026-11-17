@@ -142,7 +142,14 @@ class BprotoVpnService : VpnService() {
         var handle = 0L
         var tun: ParcelFileDescriptor? = null
         try {
-            val choices = candidates.ifEmpty { listOf(config) }
+            val allChoices = candidates.ifEmpty { listOf(config) }
+            val choices = if (QuicProfile.requiresEchUri(config)) {
+                allChoices.filter { QuicProfile.requiresEchUri(it) }
+            } else allChoices
+            if (choices.isEmpty()) {
+                publish("No compatible ECH server in the selection")
+                return
+            }
             for ((index, candidate) in choices.withIndex()) {
                 if (cancelled) return
                 publish("Connecting to server ${index + 1}/${choices.size}")

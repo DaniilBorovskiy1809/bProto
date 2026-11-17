@@ -73,7 +73,7 @@ target the configured raw-TLS service; QUIC JSON must be deployed separately.
 Android QUIC uses the bundled Mozilla/WebPKI roots, not the Android user CA store.
 Hostname verification stays enabled. The native Rust API also supports an explicit
 DER private CA for desktop/test deployments; Android import doesn't expose it.
-No ECH or browser impersonation is implemented.
+Required ECH client support is now experimental; see ../ech/README.md. Browser impersonation remains absent.
 
 Build/test:
 - cargo test --locked -p vpn-core --features quic

@@ -56,7 +56,7 @@ object Bproto {
 
     external fun quicBind(ipv6: Int): Long
     external fun quicSocketFd(handle: Long): Int
-    external fun quicStart(handle: Long, server: String, hostname: String, token: String): Int
+    external fun quicStart(handle: Long, server: String, hostname: String, token: String, ech: ByteArray, expires: Long): Int
     external fun quicAlive(handle: Long): Int
     external fun quicClose(handle: Long)
 }

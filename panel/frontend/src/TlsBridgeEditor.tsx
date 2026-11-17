@@ -4,6 +4,16 @@ import { Button, Card, Field, Input, Notice } from "./ui";
 
 export default function TlsBridgeEditor() {
   const [transport, setTransport] = useState<"tls" | "wss" | "quic">("tls");
+  const [echConfig, setEchConfig] = useState("");
+  const [echExpires, setEchExpires] = useState("");
+  let echValid = true;
+  if (transport === "quic" && echConfig) {
+    try {
+      const length = atob(echConfig).length;
+      echValid = length >= 2 && length <= 4096 && Number.isSafeInteger(Number(echExpires))
+        && Number(echExpires) > Date.now() / 1000;
+    } catch { echValid = false; }
+  }
   const [hostname, setHostname] = useState("");
   const [address, setAddress] = useState("");
   const [port, setPort] = useState("443");
@@ -58,7 +68,8 @@ export default function TlsBridgeEditor() {
       delete config.wss;
       delete config.quic;
       if (transport === "tls") config.tls = { hostname, server_host: address || hostname, server_port: Number(port), token };
-      else if (transport === "quic") config.quic = {hostname, server_host: address || hostname, server_port: Number(port), token};
+      else if (transport === "quic") config.quic = {hostname, server_host: address || hostname, server_port: Number(port), token,
+        ...(echConfig ? {ech: {mode: "required", config_list: echConfig, expires_unix_secs: Number(echExpires)}} : {})};
       else config.wss = {url: `wss://${hostname}:${port}/bproto`, token};
       const bytes = new TextEncoder().encode(JSON.stringify(config));
       const uri = "bproto://import/" + btoa(Array.from(bytes, x => String.fromCharCode(x)).join("")).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -71,15 +82,22 @@ export default function TlsBridgeEditor() {
   }
   const valid = /^[a-zA-Z0-9.-]+$/.test(hostname) && Number.isInteger(Number(port))
     && Number(port) > 0 && Number(port) <= 65535 && /^[a-f0-9]{64}$/.test(token)
-    && !!cert && !!key && !!fallback;
+    && !!cert && !!key && !!fallback && echValid;
   return <Card title="TLS 1.3 · экспериментальный транспорт / Experimental transport">
     <div className="space-y-3">
       <Notice>Конструктор конфигурации: экспорт не применяет настройки на сервере.
-        TLS/WSS проверяют сертификат. Android QUIC экспериментальный; ECH пока отсутствует. Обход белых списков не гарантируется.
+        TLS/WSS проверяют сертификат. Android QUIC/ECH экспериментальные; требуется совместимый сервер. Обход белых списков не гарантируется.
         Используйте собственный домен и сертификат. / Use an owned domain and certificate.</Notice>
       <Field label="Transport"><select value={transport} onChange={e => setTransport(e.target.value as "tls" | "wss" | "quic")}>
         <option value="tls">TLS 1.3</option><option value="wss">WebSocket over TLS</option><option value="quic">QUIC / HTTP3</option>
       </select></Field>
+      {transport === "quic" && <>
+        <Field label="ECHConfigList (base64, необязательно)"><Input value={echConfig} onChange={e => setEchConfig(e.target.value)} /></Field>
+        <Field label="ECH expires (Unix seconds)"><Input type="number" value={echExpires} onChange={e => setEchExpires(e.target.value)} /></Field>
+        <Notice>ECH применяется только к Android QUIC-ключу в режиме required: отказ завершает соединение.
+          Получите конфигурацию у владельца ECH-сервера. Python-сервер bProto пока не принимает ECH;
+          экспорт серверного JSON не включает эту возможность.</Notice>
+      </>}
       <Field label="Домен сертификата / Certificate hostname"><Input value={hostname} onChange={e => setHostname(e.target.value)} placeholder="vpn.example.com" /></Field>
       <Field label="Адрес сервера / Server address"><Input disabled={transport === "wss"} value={address} onChange={e => setAddress(e.target.value)} placeholder="Default: hostname" /></Field>
       <Field label={transport === "quic" ? "UDP port" : "TCP port"}><Input type="number" min={1} max={65535} value={port} onChange={e => setPort(e.target.value)} /></Field>
@@ -100,7 +118,7 @@ export default function TlsBridgeEditor() {
       <Button disabled={agentBusy} onClick={() => void agent("rollback")}>Rollback</Button>
       <p role="status">{agentStatus}</p>
       <Button disabled={!valid} onClick={() => download("server")}>Server JSON</Button>{" "}
-      <Button disabled={!valid} onClick={() => download("client")}>Client JSON</Button>
+      <Button disabled={!valid || (transport === "quic" && !!echConfig)} onClick={() => download("client")}>Client JSON</Button>
     </div>
   </Card>;
 }

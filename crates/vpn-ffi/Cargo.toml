@@ -14,7 +14,7 @@ crate-type = ["cdylib", "staticlib"]
 default = []
 # Java/Kotlin entry points for the Android app. Off by default so desktop and
 # iOS builds do not pull in the JNI bridge.
-jni = ["dep:jni", "vpn-core/quic"]
+jni = ["dep:jni", "vpn-core/ech"]
 
 [dependencies]
 vpn-core = { path = "../vpn-core" }

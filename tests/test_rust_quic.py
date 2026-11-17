@@ -8,14 +8,14 @@ import test_quic_bridge as fixture
 
 
 class RustQuicTests(fixture.QuicTests):
-    async def native(self, token=None, hostname="localhost"):
+    async def native(self, token=None, hostname="localhost", extra_env=None):
         binary = Path(os.environ.get("BPROTO_H3_BINARY", "target/debug/examples/h3_bridge")).resolve()
         self.assertTrue(binary.is_file(), "Build the h3_bridge example first")
         der = Path(self.tmp.name) / "ca.der"
         subprocess.run(["openssl", "x509", "-in", self.cfg["ca"], "-outform", "DER", "-out", str(der)],
                        check=True, capture_output=True)
         return await asyncio.create_subprocess_exec(str(binary), f"127.0.0.1:{self.port}", hostname, str(der),
-            env=dict(os.environ, BPROTO_BRIDGE_TOKEN=token or self.cfg["token"]),
+            env=dict(os.environ, BPROTO_BRIDGE_TOKEN=token or self.cfg["token"], **(extra_env or {})),
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
     async def test_rust_bidirectional_datagrams(self):
