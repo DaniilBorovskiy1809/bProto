@@ -260,6 +260,10 @@ struct ImportBody {
     /// Human label for the device; informational only.
     #[serde(default)]
     label: Option<String>,
+    /// Wire transport: `udp`, `tcp` or `auto`. Absent means the default
+    /// (udp) for backward compatibility with older panels.
+    #[serde(default)]
+    transport: Option<String>,
 }
 
 /// Parse a `bproto://import/...` URI into a [`TunnelConfig`].
@@ -302,6 +306,15 @@ pub fn from_import_uri_with_label(uri: &str) -> Result<(TunnelConfig, Option<Str
         return Err(Error::Config("import sni is empty".to_string()));
     }
 
+    let transport = match parsed.transport.as_deref() {
+        None => TransportKind::default(),
+        Some(name) => {
+            serde_json::from_value(serde_json::Value::String(name.to_string())).map_err(|_| {
+                Error::Config(format!("import transport {name:?} is not udp, tcp or auto"))
+            })?
+        }
+    };
+
     let cfg = TunnelConfig {
         server: parsed.server,
         donor: DonorSpec {
@@ -316,7 +329,7 @@ pub fn from_import_uri_with_label(uri: &str) -> Result<(TunnelConfig, Option<Str
         stealth: StealthLevel::default(),
         handshake_timeout: default_handshake_timeout(),
         shape: crate::shape::ShapeConfig::default(),
-        transport: TransportKind::default(),
+        transport,
     };
     cfg.validate()?;
     Ok((cfg, parsed.label))
@@ -325,6 +338,11 @@ pub fn from_import_uri_with_label(uri: &str) -> Result<(TunnelConfig, Option<Str
 /// Build a `bproto://import/...` URI. Used by tests and by the CLI's `export`.
 #[must_use]
 pub fn to_import_uri(cfg: &TunnelConfig, label: &str) -> String {
+    let transport_name = match cfg.transport {
+        TransportKind::Udp => "udp",
+        TransportKind::Tcp => "tcp",
+        TransportKind::Auto => "auto",
+    };
     let json = serde_json::json!({
         "v": 1,
         "server": cfg.server.to_string(),
@@ -333,6 +351,7 @@ pub fn to_import_uri(cfg: &TunnelConfig, label: &str) -> String {
         "psk": to_hex(&cfg.psk),
         "tag_key": to_hex(&cfg.tag_key),
         "fp": fingerprint_name(cfg.fingerprint),
+        "transport": transport_name,
         "label": label,
     });
     format!(
