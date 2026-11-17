@@ -142,7 +142,7 @@ dependencies = [
 
 [[package]]
 name = "bproto"
-version = "2.0.0"
+version = "2.5.0"
 dependencies = [
  "jni",
  "libc",
@@ -675,7 +675,7 @@ dependencies = [
 
 [[package]]
 name = "ipopts"
-version = "2.0.0"
+version = "2.5.0"
 dependencies = [
  "libc",
 ]
@@ -1533,7 +1533,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vpn-cli"
-version = "2.0.0"
+version = "2.5.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1547,7 +1547,7 @@ dependencies = [
 
 [[package]]
 name = "vpn-core"
-version = "2.0.0"
+version = "2.5.0"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1579,7 +1579,7 @@ dependencies = [
 
 [[package]]
 name = "vpn-server"
-version = "2.0.0"
+version = "2.5.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1596,7 +1596,7 @@ dependencies = [
 
 [[package]]
 name = "vpn-tun"
-version = "2.0.0"
+version = "2.5.0"
 dependencies = [
  "libc",
  "tracing",

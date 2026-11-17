@@ -1,35 +1,77 @@
-# bProto — VPN, сервер, Android и панель / VPN, server, Android and panel
+<p align="center">
+  <img src="docs/assets/bproto-banner.svg" alt="bProto — Your network. Your orbit." width="100%" />
+</p>
 
-> **Тестовая ветка / Test branch:** [Connection lab](tools/connection-lab/README.md) —
-> локальный UDP-стенд, Android-ключи и изолированная проверка TUN.
-> Local UDP lab, Android import keys and an isolated kernel-TUN probe.
+<p align="center">
+  <a href="https://github.com/dr-lexus-dr/bProto/actions/workflows/build.yml"><img src="https://github.com/dr-lexus-dr/bProto/actions/workflows/build.yml/badge.svg" alt="Build and test" /></a>
+  <a href="https://github.com/dr-lexus-dr/bProto/releases/tag/v2.5.0"><img src="https://img.shields.io/badge/release-2.5.0-76e7bb?style=flat-square" alt="Release 2.5.0" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-8bbbd9?style=flat-square" alt="AGPL-3.0" /></a>
+  <img src="https://img.shields.io/badge/platforms-Android%20%C2%B7%20Linux-9ba9c9?style=flat-square" alt="Android and Linux" />
+</p>
 
+<p align="center">
+  <b>Собственная сеть. Своя орбита.</b><br />
+  Rust VPN · Android globe client · Linux server · bUI control panel
+</p>
 
-[![Build and test](https://github.com/dr-lexus-dr/bProto/actions/workflows/build.yml/badge.svg)](https://github.com/dr-lexus-dr/bProto/actions/workflows/build.yml)
-[![Release](https://img.shields.io/github/v/release/dr-lexus-dr/bProto)](https://github.com/dr-lexus-dr/bProto/releases)
+<p align="center">
+  <a href="#quick-install">Установка / Install</a> ·
+  <a href="https://github.com/dr-lexus-dr/bProto/releases/tag/v2.5.0">Загрузки / Downloads</a> ·
+  <a href="docs/releases/2.5.0.md">Что нового / Release notes</a> ·
+  <a href="docs/PLAN-2.5.md">Статус разработки / Roadmap</a>
+</p>
 
-**Русский.** bProto — проект VPN на Rust: протокол поверх UDP, Linux-сервер,
-Linux CLI, Android-клиент с глобусом и веб-панель bUI. Этот README предназначен
-для владельца VPS, пользователя клиента и разработчика. Здесь есть установка
-одной командой, объяснение сетевых настроек, обслуживание и проверяемые ограничения.
+**Русский.** bProto — VPN на Rust с собственным протоколом, Linux-сервером,
+Android-клиентом с глобусом и веб-панелью. Версия 2.5.0 добавляет экспериментальные
+TLS, HTTP/3 и WSS-транспорты, обязательный ECH на QUIC-клиенте и mTLS-агент
+применения конфигураций. Эти компоненты требуют отдельной настройки.
 
-**English.** bProto is a Rust VPN project with a UDP protocol, Linux server,
-Linux CLI, an Android globe client and the bUI web panel. This README is for VPS
-operators, client users and developers. It covers one-command installation,
-network configuration, maintenance and the limits of the current implementation.
+**English.** bProto combines a custom Rust VPN protocol, a Linux server,
+an Android globe client and a web control panel. Version 2.5.0 adds experimental
+TLS, HTTP/3 and WSS carriers, required ECH on the QUIC client and an mTLS
+configuration agent. These components require explicit deployment configuration.
 
-**Текущий релиз / Current release:** [v2.0.0](https://github.com/dr-lexus-dr/bProto/releases/tag/v2.0.0).
-[Загрузки / Downloads](https://github.com/dr-lexus-dr/bProto/releases) ·
-[Сборки / Builds](https://github.com/dr-lexus-dr/bProto/actions) ·
-[Задачи / Issues](https://github.com/dr-lexus-dr/bProto/issues)
-
-> **RU:** шифрование работает; гарантированный обход блокировок или белых списков
-> не заявляется. Android APK релиза 1.0.0 имеет debug-подпись. Сначала прочитайте
-> требования и ограничения, особенно перед переносом реального трафика.
+> **Статус / Status:** 2.5.0 — выпуск с экспериментальными транспортами.
+> Полный исследовательский план ещё не завершён. Обход РКН и белых списков
+> не гарантируется; Android APK имеет debug-подпись.
 >
-> **EN:** encryption is implemented; guaranteed censorship or allowlist bypass
-> is not claimed. The 1.0.0 Android APK is debug-signed. Read the requirements
-> and limitations before depending on the tunnel for real traffic.
+> **2.5.0 ships experimental carriers.** The full research roadmap remains open.
+> No guaranteed censorship/allowlist bypass. The Android APK is debug-signed.
+
+## 2.5.0 — выберите свой транспорт / Choose your transport
+
+| Возможность / Capability | Реализация / Implementation | Граница проверки / Validation boundary |
+| --- | --- | --- |
+| Native UDP | Rust client/server, Android JNI | Native tests; isolated kernel-TUN lab |
+| TLS 1.3 | Python bridge + Android socket carrier | Native handshake; certificate rejection |
+| QUIC v1 / HTTP3 | aioquic server + Rust h3/quinn + Android JNI | Independent Rust/Python exchange and native bProto handshake |
+| WSS | Python + Android OkHttp | Native handshake; JVM TLS/WebSocket round-trip |
+| Required ECH | Rust/Android QUIC client | Emission, hidden inner hostname, safe rejection; accepting-server e2e pending |
+| Panel + agent | Export; TLS Apply/Health/Rollback over mTLS | Agent transactions/mTLS tests; production deployment e2e pending |
+
+### Настроить транспорт / Configure a carrier
+
+- [TLS — RU/EN](tools/tls-bridge/README.md)
+- [QUIC / HTTP3 — English](tools/quic-bridge/README.md) · [Русский](tools/quic-bridge/README.ru.md)
+- [WSS / owned reverse proxy — English](tools/fronting/README.md) · [Русский](tools/fronting/README.ru.md)
+- [ECH — English](tools/ech/README.md) · [Русский](tools/ech/README.ru.md)
+- [Configuration agent — English](tools/config-agent/README.md) · [Русский](tools/config-agent/README.ru.md)
+- [Connection lab](tools/connection-lab/README.md) · [Audit](docs/AUDIT.md)
+
+**RU.** В Settings панели выберите TLS, WSS или QUIC, задайте свой домен и
+экспортируйте Android-ключ из существующих учётных данных bProto. Серверный мост
+запускается отдельно. Apply относится к настроенному TLS-сервису. Перед полным
+туннелем Linux закрепите маршрут к внешнему адресу моста. Профили и токены секретны.
+
+**EN.** In panel Settings, select TLS, WSS or QUIC and export an Android key
+using existing native credentials. Deploy the server carrier separately.
+Apply targets the configured TLS service. Pin the outer carrier route before
+Linux full-tunnel use. Profiles and bearer tokens contain secrets.
+
+**Что ещё открыто / Still open:** accepting-server ECH, DNS ECH discovery/rotation,
+verified browser fingerprints, Android device/VpnService tests for new carriers,
+live CDN/target-network validation and agent crash recovery. Local test counts
+do not certify DPI indistinguishability. See the release notes for exact scope.
 
 ## Содержание / Contents
 
@@ -72,13 +114,13 @@ Debian 13+, with systemd and TUN available. Enter a root shell using `sudo -i`, 
 bash <(curl -fsSL https://raw.githubusercontent.com/dr-lexus-dr/bProto/main/bootstrap.sh)
 ```
 
-**RU.** Команда скачивает бинарники **v2.0.0**, проверяет контрольную сумму,
+**RU.** Команда скачивает бинарники **v2.5.0**, проверяет контрольную сумму,
 размещает текущие скрипты проекта в `/opt/bproto`, устанавливает сервер и CLI,
 создаёт ключи и службу. Rust не нужен. Порты firewall скрипт не открывает:
 после завершения проверьте UDP 443, `nat_interface` и публичный адрес клиента.
 Служба должна перейти в `active`; ошибка запуска возвращает ненулевой код.
 
-**EN.** The command downloads **v2.0.0** binaries, verifies their checksum,
+**EN.** The command downloads **v2.5.0** binaries, verifies their checksum,
 places current project scripts in `/opt/bproto`, installs the server and CLI,
 and creates keys and a service. Rust is not required. The script does not open
 firewall ports: check UDP 443, `nat_interface` and the client’s public endpoint
@@ -157,7 +199,7 @@ test -c /dev/net/tun && echo 'TUN available'
 
 | Флаг / Flag | Значение по умолчанию / Default | Назначение / Purpose |
 | --- | --- | --- |
-| `--release TAG` | `v2.0.0` | Версия бинарников / Binary release tag |
+| `--release TAG` | `v2.5.0` | Версия бинарников / Binary release tag |
 | `--directory PATH` | `/opt/bproto` | Постоянный checkout / Persistent checkout |
 | `--target TARGET` | `all` | `server`, `client`, `all` |
 | `--port PORT` | `443` | UDP-порт **нового** конфига / UDP port for a **new** config |
