@@ -1,15 +1,27 @@
 //! NAT masquerade for the server side.
 //!
-//! Uses `nft` rather than shelling out to `iptables`: one atomic ruleset, no
-//! legacy/nftables split-brain on modern distributions.
+//! Prefers `nft`: one atomic ruleset, no legacy/nftables split-brain on modern
+//! distributions. When `nft` is not installed (minimal servers, Android), it
+//! falls back to the `iptables` commands with the same rules.
 
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
 
 /// Install a masquerade + forwarding ruleset for the tunnel subnet.
 ///
-/// Idempotent: `nft -f` replaces the whole `inet bproto` table atomically.
+/// Idempotent: `nft -f` replaces the whole `inet bproto` table atomically, and
+/// the iptables fallback probes each rule with `-C` before appending.
 pub fn setup_nat(tun_name: &str, out_iface: &str, tunnel_subnet: &str) -> io::Result<()> {
+    match nft_ruleset(tun_name, out_iface, tunnel_subnet) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            iptables_ruleset(tun_name, out_iface, tunnel_subnet)
+        }
+        Err(e) => Err(e),
+    }
+}
+
+fn nft_ruleset(tun_name: &str, out_iface: &str, tunnel_subnet: &str) -> io::Result<()> {
     let ruleset = format!(
         "table inet bproto {{\n\
          \x20 chain postrouting {{\n\
@@ -42,6 +54,76 @@ pub fn setup_nat(tun_name: &str, out_iface: &str, tunnel_subnet: &str) -> io::Re
             String::from_utf8_lossy(&out.stderr).trim()
         )));
     }
+    Ok(())
+}
+
+/// `iptables -C rule` returns success when the rule already exists.
+fn iptables_has_rule(args: &[&str]) -> io::Result<bool> {
+    let out = Command::new("iptables")
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()?;
+    Ok(out.status.success())
+}
+
+fn iptables_add_rule(args: &[&str]) -> io::Result<()> {
+    if iptables_has_rule(args)? {
+        return Ok(());
+    }
+    let mut add = args.to_vec();
+    // Turn the `-C` existence probe into the `-A` append command, wherever
+    // it sits in the argument list (e.g. after `-t nat`).
+    match add.iter().position(|a| *a == "-C") {
+        Some(i) => add[i] = "-A",
+        None => return Err(io::Error::other("iptables rule has no -C probe")),
+    }
+    let out = Command::new("iptables")
+        .args(&add)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()?;
+    if !out.status.success() {
+        return Err(io::Error::other(format!(
+            "iptables failed: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        )));
+    }
+    Ok(())
+}
+
+fn iptables_ruleset(tun_name: &str, out_iface: &str, tunnel_subnet: &str) -> io::Result<()> {
+    // Mirror the nft ruleset: masquerade on the way out, accept both
+    // directions on the forward path.
+    iptables_add_rule(&[
+        "-t",
+        "nat",
+        "-C",
+        "POSTROUTING",
+        "-s",
+        tunnel_subnet,
+        "-o",
+        out_iface,
+        "-j",
+        "MASQUERADE",
+    ])?;
+    iptables_add_rule(&[
+        "-C", "FORWARD", "-i", tun_name, "-o", out_iface, "-j", "ACCEPT",
+    ])?;
+    iptables_add_rule(&[
+        "-C",
+        "FORWARD",
+        "-i",
+        out_iface,
+        "-o",
+        tun_name,
+        "-m",
+        "conntrack",
+        "--ctstate",
+        "ESTABLISHED,RELATED",
+        "-j",
+        "ACCEPT",
+    ])?;
     Ok(())
 }
 

@@ -50,4 +50,8 @@ migrate:
 frontend:
     cd panel/frontend && pnpm install && pnpm build
 
-release: build frontend
+# The control panel is optional: server + client run fully without it.
+release: build
+
+# Release artifacts + the control panel (backend + frontend).
+release-panel: build frontend

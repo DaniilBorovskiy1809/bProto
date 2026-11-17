@@ -5,12 +5,11 @@
 //! instead of a pile of `SIOCSIFADDR`/`SIOCSIFNETMASK`/`SIOCSIFMTU` ioctls so
 //! this file stays small enough to audit in one sitting.
 
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::io::{self, Read, Write};
-use std::os::unix::io::AsRawFd;
 use std::process::Command;
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 use std::os::fd::AsFd;
 
 /// Size of the read buffer a caller should provide.
@@ -30,8 +29,11 @@ pub struct TunDevice {
 
 impl TunDevice {
     /// Open (creating if needed) the named TUN interface. Does not configure it.
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     pub fn open(name: &str) -> io::Result<Self> {
+        use std::fs::OpenOptions;
+        use std::os::unix::io::AsRawFd;
+
         if name.len() >= libc::IFNAMSIZ {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -63,7 +65,7 @@ impl TunDevice {
     }
 
     /// Non-Linux placeholder.
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
     pub fn open(_name: &str) -> io::Result<Self> {
         Err(io::Error::other(
             "TUN devices are only implemented for Linux; other platforms pass an fd",
@@ -77,7 +79,7 @@ impl TunDevice {
     }
 
     /// The underlying file descriptor, for handing to another event loop.
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     #[must_use]
     pub fn as_fd(&self) -> std::os::fd::BorrowedFd<'_> {
         self.file.as_fd()
@@ -130,7 +132,7 @@ fn is_root() -> bool {
     false
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 #[must_use]
 fn has_cap_net_admin() -> bool {
     std::fs::read_to_string("/proc/self/status")
@@ -140,18 +142,18 @@ fn has_cap_net_admin() -> bool {
         .is_some_and(|bits| bits & (1 << CAP_NET_ADMIN) != 0)
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
 #[must_use]
 fn has_cap_net_admin() -> bool {
     false
 }
 
 /// `CAP_NET_ADMIN` is bit 12 of the capability bitmask.
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 const CAP_NET_ADMIN: u64 = 12;
 
 /// Parse the `CapEff:` line of `/proc/self/status` into a bitmask.
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 fn parse_cap_eff(status: &str) -> Option<u64> {
     let line = status.lines().find(|l| l.starts_with("CapEff:"))?;
     u64::from_str_radix(line.split_whitespace().nth(1)?, 16).ok()
@@ -217,14 +219,14 @@ mod tests {
         const { assert!(READ_BUF >= 1284) };
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     #[test]
     fn opening_a_bad_name_fails_before_ioctl() {
         let long = "x".repeat(64);
         assert!(TunDevice::open(&long).is_err());
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     #[test]
     fn cap_eff_is_parsed_from_proc_status() {
         let sample = "Name:\tcat\nState:\tR (running)\nCapEff:\t000001ffffffffff\n";

@@ -2,7 +2,8 @@
 #
 # build_app.sh — build every bProto artifact into ./dist
 #
-#   ./build_app.sh                 release binaries + C-ABI libs + control panel
+#   ./build_app.sh                 release binaries + C-ABI libs (CLI-only by
+#                                   default: server + client, no panel needed)
 #   ./build_app.sh --debug         debug profile instead of release
 #   ./build_app.sh --check         run the CI gate (fmt + clippy + tests)
 #   ./build_app.sh --android       cross-compile libbproto.so for Android
@@ -10,7 +11,10 @@
 #                                   and assemble the debug APK into dist/apk/
 #   ./build_app.sh --ios           also cross-compile libbproto.a for iOS (macOS)
 #   ./build_app.sh --no-apk        skip the APK step
-#   ./build_app.sh --no-panel      skip the control panel (backend + frontend)
+#   ./build_app.sh --panel         also build the control panel (backend +
+#                                   frontend; optional, off by default)
+#   ./build_app.sh --no-panel      accepted for backwards compatibility (panel
+#                                   is already skipped by default)
 #   ./build_app.sh --no-ffi        skip the C-ABI library
 #
 # Output layout:
@@ -18,8 +22,8 @@
 #   dist/bin/bproto              client CLI
 #   dist/lib/libbproto.so        C-ABI shared library (Android / desktop)
 #   dist/lib/libbproto.a         C-ABI static library (iOS / linking)
-#   dist/panel/panel             control panel backend
-#   dist/panel/dist/             control panel frontend (static, serve with any web server)
+#   dist/panel/panel             control panel backend (with --panel)
+#   dist/panel/dist/             control panel frontend (with --panel)
 #   dist/android/jniLibs/...     Android .so per ABI (with --android)
 #   dist/apk/bproto-*-debug.apk  installable Android APK (with --android)
 #   dist/ios/libbproto*.a        iOS static libraries (with --ios)
@@ -33,7 +37,7 @@ DIST="$REPO_ROOT/dist"
 PROFILE="release"
 CARGO_FLAGS=()
 WANT_CHECK=0
-WANT_PANEL=1
+WANT_PANEL=0
 WANT_FFI=1
 WANT_ANDROID=0
 WANT_IOS=0
@@ -71,6 +75,7 @@ while [ $# -gt 0 ]; do
         --android)   WANT_ANDROID=1; shift ;;
         --ios)       WANT_IOS=1; shift ;;
         --no-apk)    WANT_APK=0; shift ;;
+        --panel)     WANT_PANEL=1; shift ;;
         --no-panel)  WANT_PANEL=0; shift ;;
         --no-ffi)    WANT_FFI=0; shift ;;
         -h|--help)   usage 0 ;;
