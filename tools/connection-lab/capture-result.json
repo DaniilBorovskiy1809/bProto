@@ -1,0 +1,11 @@
+{
+  "result": "passed",
+  "wire_udp": 334,
+  "tun_marker_packets": 8,
+  "tun_http_requests": 1,
+  "tun_http_responses": 1,
+  "cleartext_wire_markers": 0,
+  "limit": "Marker absence is a regression check, not an independent cryptographic audit; Internet forwarding and Android were not tested",
+  "validated_on": "2026-11-17",
+  "pcap_sha256": "0fd06c59997b5867e082fbf6fcb952e9afd2b21dbd4b82366e0b0e1bd2f23699"
+}

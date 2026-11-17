@@ -8,7 +8,7 @@ Branch: `test/connection-lab`, based on bProto v2.0.0 (`8b21399`).
 | Native loopback positive handshake | Passed, address `10.66.0.2` |
 | Valid configuration with incorrect PSK | Handshake failed as expected; server stayed alive |
 | Existing real-UDP transport tests | 5 passed: both packet directions, two users, wrong key, quiet session |
-| Python installer + lab contracts | 9 passed |
+| Python installer + lab + capture contracts | 14 passed |
 | Docker Compose configuration | Valid |
 | Docker server/probe image build | Passed |
 | Docker binary startup | `bproto 2.0.0` |
@@ -64,3 +64,25 @@ server does not satisfy that external connectivity requirement by itself.
 
 Internet egress through the VPN, physical Android behavior, public-network
 reachability, censorship bypass and a public UDP relay were not tested.
+
+## Controlled traffic capture
+
+A separate capture run in project `bproto-capture-check` passed on 2026-11-17:
+
+- Real kernel TUN ping: 3/3 replies.
+- Synthetic HTTP request to `10.66.0.1:8088/probe`: HTTP 200, expected body.
+- External UDP packets captured: 334.
+- TUN packets containing the controlled marker: 8.
+- TUN HTTP requests/responses observed: 1 / 1.
+- Plaintext marker occurrences in outer UDP payloads: 0.
+
+The first PCAP was incomplete because buffered capture lost the final packets
+at immediate teardown. The corrected immediate-mode/unbuffered capture with a
+short completion grace was rerun and produced the complete request/response.
+Raw PCAP and interface metadata remain private under `.connection-lab/captures/`.
+The non-secret summary and PCAP hash are in `capture-result.json`.
+
+Five analyzer tests cover valid controlled traffic, plaintext-marker leakage,
+missing TUN evidence, missing UDP evidence and empty PCAPs. Marker absence is
+not an independent cryptographic audit. Internet forwarding and Android runtime
+behavior are still untested; no emulator KVM device is exposed by this Docker host.

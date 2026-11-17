@@ -164,3 +164,40 @@ cannot forward Internet traffic. The optional Compose probe requires a real
 TUN-capable Docker host, uses separate server/client network namespaces and
 asserts three ICMP replies through the tunnel. Neither native smoke nor tunnel
 ping claims Internet forwarding, Android device validation or censorship bypass.
+
+## 6. Захват собственного тестового трафика
+
+Compose теперь поднимает также внутренний HTTP-сервис и capture-sidecar в
+сетевом namespace сервера. Probe требует не только 3/3 ping, но и HTTP 200 от
+`10.66.0.1:8088/probe` с известным синтетическим маркером `BPROTO_LAB_PROBE`.
+Никакие PSK или пользовательские данные в HTTP-запрос не добавляются.
+
+Capture использует `NET_RAW` и `SETGID` (для инициализации групп tcpdump), без
+`privileged` и без доступа к fixtures с ключами. `--immediate-mode` и `-U`
+уменьшают буферизацию, а probe оставляет время на обработку последних пакетов.
+Захват ограничен тестовыми UDP 4443, ICMP и TCP 8088. HTTP-порт не публикуется
+на хосте. PCAP и таблица интерфейсов пишутся в отдельный named volume.
+
+Пример сохранения результата после завершения теста, **до** `down`:
+
+```bash
+# После up --abort-on-container-exit --exit-code-from probe для этого проекта:
+install -d -m0700 .connection-lab/captures
+capture_id="$(docker compose -p bproto-capture-check -f tools/connection-lab/compose.yaml ps -a -q capture)"
+docker cp "$capture_id:/captures/server.pcap" .connection-lab/captures/server.pcap
+docker cp "$capture_id:/captures/interfaces.json" .connection-lab/captures/interfaces.json
+chmod 600 .connection-lab/captures/*
+python3 tools/connection-lab/analyze_capture.py   .connection-lab/captures/server.pcap .connection-lab/captures/interfaces.json
+# Только этот временный тестовый проект, после копирования артефактов:
+docker compose -p bproto-capture-check -f tools/connection-lab/compose.yaml down -v
+```
+
+Запускайте up с тем же `-p bproto-capture-check`; при занятом порте задайте
+`BPROTO_LAB_PORT=5444`. Анализатор требует SLL2 capture, внешние UDP-пакеты,
+HTTP-запрос и ответ на интерфейсе `bplab0`. Он выдаёт ошибку для пустого capture,
+отсутствующих доказательств или открытого маркера во внешнем UDP.
+
+Открытый HTTP/ICMP внутри TUN ожидаем: это пакеты после расшифрования/до
+шифрования. Отсутствие известной строки во внешнем UDP — регрессионная проверка,
+не доказательство отсутствия любых утечек и не криптографический аудит.
+Это тест серверной части с автоматическим Linux probe, не проверка Android UI.
