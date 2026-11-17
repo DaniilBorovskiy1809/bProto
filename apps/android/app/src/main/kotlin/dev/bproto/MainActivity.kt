@@ -52,7 +52,16 @@ class MainActivity : AppCompatActivity() {
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars() or androidx.core.view.WindowInsetsCompat.Type.displayCutout())
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
 
+        binding.importButton.setOnClickListener {
+            binding.importPanel.visibility = if (binding.importPanel.visibility == android.view.View.VISIBLE) android.view.View.GONE else android.view.View.VISIBLE
+        }
+        binding.applyImportButton.setOnClickListener { connect() }
         binding.globe.setOnClickListener {
             if (BprotoVpnService.running || BprotoVpnService.connecting) send(BprotoVpnService.ACTION_DISCONNECT, null) else connect()
         }
@@ -73,7 +82,7 @@ class MainActivity : AppCompatActivity() {
             val index = preferences.getInt("selectedIndex", 0).coerceIn(0, (it.size - 1).coerceAtLeast(0))
             selected = it.getOrNull(index)
             automatic = preferences.getBoolean("automatic", false)
-            binding.serverButton.text = if (automatic && it.isNotEmpty()) "Automatic" else selected?.name ?: getString(R.string.choose_server)
+            binding.serverButton.text = if (automatic && it.isNotEmpty()) getString(R.string.automatic_server) else selected?.name ?: getString(R.string.choose_server)
             selected?.let { profile -> binding.configUri.setText(profile.uri) }
         }.onFailure { toast("Saved profiles could not be decrypted. Import your subscription again.") }
         binding.connectButton.setOnClickListener { connect() }
@@ -81,6 +90,7 @@ class MainActivity : AppCompatActivity() {
             send(BprotoVpnService.ACTION_DISCONNECT, null)
         }
 
+        binding.importPanel.visibility = if (profiles.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
         render(BprotoVpnService.lastStatus)
     }
 
@@ -154,6 +164,8 @@ class MainActivity : AppCompatActivity() {
                             profiles = emptyList(); selected = null; automatic = false
                             binding.configUri.setText("")
                             binding.serverButton.setText(R.string.choose_server)
+                            binding.importPanel.visibility = android.view.View.VISIBLE
+                            render(BprotoVpnService.lastStatus)
                         }.onFailure { toast("Could not remove saved profiles") }
                     }.show()
             }
@@ -163,7 +175,9 @@ class MainActivity : AppCompatActivity() {
                 automatic = index == 0
                 selected = profiles[if (automatic) 0 else index - 1]
                 binding.configUri.setText(selected!!.uri)
-                binding.serverButton.text = if (automatic) "Automatic" else selected!!.name
+                binding.serverButton.text = if (automatic) getString(R.string.automatic_server) else selected!!.name
+                binding.importPanel.visibility = android.view.View.GONE
+                render(BprotoVpnService.lastStatus)
             }.show()
     }
 
@@ -186,13 +200,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun render(status: String) {
+        val active = BprotoVpnService.running
+        val busy = BprotoVpnService.connecting
+        binding.connectionTitle.setText(when {
+            importing -> R.string.importing_profile
+            busy -> R.string.state_connecting
+            active -> R.string.state_connected
+            else -> R.string.state_disconnected
+        })
+        binding.connectionHint.setText(when {
+            busy -> R.string.tap_to_cancel
+            active -> R.string.tap_to_disconnect
+            else -> R.string.tap_to_connect
+        })
+        binding.profileSummary.text = if (profiles.isEmpty()) getString(R.string.no_profiles) else getString(R.string.profiles_count, profiles.size)
+        binding.globe.connecting = busy
         binding.globe.isEnabled = !importing
         binding.globe.connected = BprotoVpnService.running
-        binding.status.text = status
+        binding.status.text = status.ifBlank { getString(R.string.status_idle) }
         binding.disconnectButton.isEnabled = BprotoVpnService.running || BprotoVpnService.connecting
         binding.connectButton.isEnabled = !BprotoVpnService.running && !BprotoVpnService.connecting && !importing
         binding.serverButton.isEnabled = !BprotoVpnService.running && !BprotoVpnService.connecting && !importing
         binding.routingButton.isEnabled = binding.serverButton.isEnabled
+        binding.importButton.isEnabled = binding.serverButton.isEnabled
+        binding.applyImportButton.isEnabled = binding.serverButton.isEnabled
+        binding.configUri.isEnabled = binding.serverButton.isEnabled
     }
 
     private fun toast(message: String) {

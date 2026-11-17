@@ -1,0 +1,14 @@
+<resources>
+    <style name="Theme.Bproto" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#0B101B</item>
+        <item name="android:navigationBarColor">#0B101B</item>
+        <item name="android:windowBackground">#0B101B</item>
+        <item name="colorPrimary">#88E1CF</item>
+        <item name="colorOnPrimary">#092B25</item>
+        <item name="colorSurface">#151E2D</item>
+        <item name="colorOnSurface">#ECF2FC</item>
+        <item name="colorOutline">#354359</item>
+    </style>
+</resources>

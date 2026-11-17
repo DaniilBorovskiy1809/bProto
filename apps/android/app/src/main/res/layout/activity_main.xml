@@ -1,81 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true">
-<LinearLayout
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="24dp"
-    android:background="#F4F7FC">
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/orbit_title"
-        android:textColor="#172A46"
-        android:textSize="24sp"
-        android:paddingBottom="12dp" />
-
-    <dev.bproto.GlobeView
-        android:id="@+id/globe"
-        android:layout_width="match_parent"
-        android:layout_height="240dp" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/serverButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/choose_server" />
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="@string/config_label">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/configUri"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="textUri"
-            android:maxLines="3" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:orientation="horizontal">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/connectButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/connect" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/disconnectButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:enabled="false"
-            android:text="@string/disconnect" />
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="#0B101B" android:fillViewport="true" android:clipToPadding="false">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="24dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="bProto" android:textSize="28sp" android:textStyle="bold" android:letterSpacing="-0.04" android:textColor="#ECF2FC" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ORBIT"
+                android:letterSpacing="0.18" android:textSize="11sp" android:textColor="#88E1CF" />
+        </LinearLayout>
+        <TextView android:id="@+id/connectionTitle" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="36dp" android:gravity="center" android:text="@string/state_disconnected"
+            android:textSize="26sp" android:textStyle="bold" android:textColor="#ECF2FC" />
+        <TextView android:id="@+id/connectionHint" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" android:gravity="center" android:text="@string/tap_to_connect"
+            android:textColor="#A4B2C8" android:textSize="14sp" />
+        <dev.bproto.GlobeView android:id="@+id/globe" android:layout_width="match_parent" android:layout_height="256dp" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:background="@drawable/orbit_card" android:orientation="vertical" android:padding="18dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/selected_server"
+                android:textColor="#A4B2C8" android:textSize="12sp" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/serverButton"
+                style="@style/Widget.Material3.Button.TextButton" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:minHeight="56dp" android:gravity="start|center_vertical" android:text="@string/choose_server"
+                android:textSize="18sp" android:textColor="#ECF2FC" android:insetLeft="0dp" android:insetRight="0dp" />
+            <TextView android:id="@+id/profileSummary" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="@string/no_profiles" android:textColor="#88E1CF" android:textSize="12sp" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:orientation="horizontal">
+            <com.google.android.material.button.MaterialButton android:id="@+id/connectButton" android:layout_width="0dp"
+                android:layout_height="56dp" android:layout_weight="1" android:text="@string/connect" app:cornerRadius="18dp" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/disconnectButton"
+                style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="56dp"
+                android:layout_weight="1" android:layout_marginStart="12dp" android:text="@string/disconnect" app:cornerRadius="18dp" android:enabled="false" />
+        </LinearLayout>
+        <com.google.android.material.button.MaterialButton android:id="@+id/routingButton"
+            style="@style/Widget.Material3.Button.TextButton" android:layout_width="match_parent" android:layout_height="52dp"
+            android:text="@string/routing_settings" android:layout_marginTop="8dp" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/importButton"
+            style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="52dp"
+            android:text="@string/import_profile" app:cornerRadius="18dp" />
+        <LinearLayout android:id="@+id/importPanel" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:orientation="vertical" android:background="@drawable/orbit_card" android:padding="16dp">
+            <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="@string/config_label" app:boxBackgroundMode="outline" app:boxStrokeColor="#88E1CF">
+                <com.google.android.material.textfield.TextInputEditText android:id="@+id/configUri"
+                    android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textUri"
+                    android:maxLines="3" android:textSize="13sp" android:importantForAutofill="no" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <com.google.android.material.button.MaterialButton android:id="@+id/applyImportButton" android:layout_width="match_parent"
+                android:layout_height="52dp" android:text="@string/use_profile" app:cornerRadius="14dp" />
+        </LinearLayout>
+        <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="20dp" android:paddingBottom="12dp" android:text="@string/status_idle" android:textColor="#A4B2C8"
+            android:textSize="12sp" android:gravity="center" android:textIsSelectable="true" android:accessibilityLiveRegion="polite" />
     </LinearLayout>
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/routingButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/routing_settings" />
-
-    <TextView
-        android:id="@+id/status"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="@string/status_idle"
-        android:textIsSelectable="true" />
-</LinearLayout>
-
 </ScrollView>

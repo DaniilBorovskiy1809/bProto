@@ -13,4 +13,17 @@
     <string name="routing_settings">Настройки маршрутизации</string>
     <string name="globe_connect">Подключить выбранный сервер</string>
     <string name="globe_disconnect">Отключить VPN</string>
+    <string name="state_disconnected">Не подключено</string>
+    <string name="state_connected">Подключено</string>
+    <string name="state_connecting">Подключение…</string>
+    <string name="tap_to_connect">Нажмите глобус для подключения</string>
+    <string name="tap_to_disconnect">Туннель активен · нажмите для отключения</string>
+    <string name="tap_to_cancel">Пробуем подключиться · нажмите для отмены</string>
+    <string name="selected_server">ВЫБРАННЫЙ СЕРВЕР</string>
+    <string name="no_profiles">Добавьте ключ или подписку для начала</string>
+    <string name="import_profile">＋  Добавить профиль или подписку</string>
+    <string name="use_profile">Использовать профиль</string>
+    <string name="importing_profile">Импорт подписки…</string>
+    <string name="profiles_count">Сохранено профилей: %1$d</string>
+    <string name="automatic_server">Автоматически</string>
 </resources>

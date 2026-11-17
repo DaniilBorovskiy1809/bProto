@@ -13,4 +13,17 @@
     <string name="routing_settings">Routing settings</string>
     <string name="globe_connect">Connect selected server</string>
     <string name="globe_disconnect">Disconnect VPN</string>
+    <string name="state_disconnected">Not connected</string>
+    <string name="state_connected">Connected</string>
+    <string name="state_connecting">Connecting…</string>
+    <string name="tap_to_connect">Tap the globe to connect</string>
+    <string name="tap_to_disconnect">Your tunnel is active · tap to disconnect</string>
+    <string name="tap_to_cancel">Trying your server · tap to cancel</string>
+    <string name="selected_server">SELECTED SERVER</string>
+    <string name="no_profiles">Import a key or subscription to get started</string>
+    <string name="import_profile">＋  Add profile or subscription</string>
+    <string name="use_profile">Use this profile</string>
+    <string name="importing_profile">Importing subscription…</string>
+    <string name="profiles_count">%1$d saved profiles</string>
+    <string name="automatic_server">Automatic</string>
 </resources>
