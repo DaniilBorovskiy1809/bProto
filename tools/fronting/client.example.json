@@ -1,0 +1,5 @@
+{
+  "url": "wss://vpn.example.com/bproto",
+  "local_port": 14443,
+  "token_env": "BPROTO_BRIDGE_TOKEN"
+}

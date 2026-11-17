@@ -56,3 +56,12 @@ certificates. Panel API and TLS editor now expose Apply/Health/Rollback against
 one fixed operator-configured mTLS destination. Seven agent tests pass, including
 real mTLS rejection/acceptance, with 75% statement coverage. Actual systemd and
 full panel-to-service e2e remain unverified; this is experimental.
+
+## Native carrier and WSS update
+
+Real vpn-server and bproto CLI binaries now establish sessions through TLS,
+HTTP3 and WSS in tests; wrong native PSKs are rejected across all three.
+An owned-domain WSS reverse-proxy carrier has been added, with certificate
+verification, environment token, bounded WebSocket buffers and local HTML fallback.
+This is not arbitrary SNI/Host fronting or ECH. Live CDN/allowlist testing,
+Android QUIC/WSS, browser fingerprints and TUN/Internet e2e remain open.
