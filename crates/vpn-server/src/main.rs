@@ -166,6 +166,7 @@ async fn main() -> anyhow::Result<()> {
         let node = Arc::clone(&node);
         let device = device.clone();
         let boot = Arc::clone(&boot);
+        let donor = donor_addr;
         tokio::spawn(async move {
             loop {
                 let Ok((stream, peer)) = listener.accept().await else {
@@ -174,8 +175,9 @@ async fn main() -> anyhow::Result<()> {
                 let node = Arc::clone(&node);
                 let device = device.clone();
                 let boot = Arc::clone(&boot);
+                let donor = donor;
                 tokio::spawn(async move {
-                    if let Err(e) = serve_tcp_conn(stream, peer, node, device, boot).await {
+                    if let Err(e) = serve_tcp_conn(stream, peer, node, device, boot, donor).await {
                         tracing::debug!(error = %e, %peer, "tcp connection ended");
                     }
                 });
@@ -188,17 +190,44 @@ async fn main() -> anyhow::Result<()> {
 
 /// Serve one TCP transport connection: length-prefixed bProto datagrams in
 /// both directions (u16 BE length prefix per datagram, matching the client).
+///
+/// Anything that is not our framing is relayed verbatim to the donor, so an
+/// active prober that opens the port and sends a TLS ClientHello (or an HTTP
+/// request) sees the real donor site, same as on the UDP path. Our client's
+/// first frame always carries a u16 BE length of at most
+/// `MAX_DATAGRAM + 32`, whose first byte is therefore <= 0x05; every common
+/// probe protocol starts with a byte well above that (TLS 0x16, HTTP 'G'/'P',
+/// SSH 'S'), which makes the classification a single peek.
 async fn serve_tcp_conn(
     stream: tokio::net::TcpStream,
     peer: SocketAddr,
     node: Arc<ServerNode>,
     device: Option<Arc<dev::TunDevice>>,
     boot: Arc<Instant>,
+    donor: Option<SocketAddr>,
 ) -> anyhow::Result<()> {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     const MAX_FRAME: usize = packet::MAX_DATAGRAM + 32;
 
     stream.set_nodelay(true).ok();
+
+    // Probe classification: peek the first two bytes without consuming them,
+    // so a splice can still forward the connection from byte 0.
+    let mut probe = [0u8; 2];
+    match stream.peek(&mut probe).await {
+        Ok(2) => {
+            let len = u16::from_be_bytes(probe) as usize;
+            if (len == 0 || len > MAX_FRAME)
+                && let Some(donor) = donor
+            {
+                tracing::debug!(%peer, "tcp probe relayed to the donor");
+                return splice_to_donor(stream, donor).await;
+            }
+        }
+        Ok(_) => return Ok(()), // 0/1 bytes then EOF: empty scan, nothing to say
+        Err(_) => return Ok(()),
+    }
+
     let (mut read_half, mut write_half) = stream.into_split();
     let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<u8>>(256);
 
@@ -247,6 +276,21 @@ async fn serve_tcp_conn(
             Err(e) => tracing::debug!(error = %e, %peer, "datagram rejected"),
         }
     }
+}
+
+/// Relay the whole connection to the donor over TCP (ShadowTLS style): the
+/// prober completes a genuine TLS handshake with the donor's certificate and
+/// can browse the real site through us.
+async fn splice_to_donor(
+    mut client: tokio::net::TcpStream,
+    donor: SocketAddr,
+) -> anyhow::Result<()> {
+    let mut upstream = tokio::net::TcpStream::connect(donor)
+        .await
+        .with_context(|| format!("donor connect {donor}"))?;
+    upstream.set_nodelay(true).ok();
+    let _ = tokio::io::copy_bidirectional(&mut client, &mut upstream).await;
+    Ok(())
 }
 
 fn bring_up_tun(

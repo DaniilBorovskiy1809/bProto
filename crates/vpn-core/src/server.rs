@@ -756,7 +756,7 @@ mod tests {
         let moved: SocketAddr = "127.0.0.1:5001".parse().unwrap();
         let attacker: SocketAddr = "127.0.0.1:5002".parse().unwrap();
         let (state, hello) = handshake::start(&cfg, unix_now_secs()).unwrap();
-        node.handle(&hello, original, 100).await.unwrap();
+        node.handle(&hello, original, 100, None).await.unwrap();
         let mut buf = vec![0; packet::MAX_DATAGRAM];
         let (n, _) = tokio::time::timeout(Duration::from_secs(2), client.recv_from(&mut buf))
             .await
@@ -774,7 +774,7 @@ mod tests {
         }
         let mut forged = valid.clone();
         *forged.last_mut().unwrap() ^= 1;
-        node.handle(&forged, attacker, 200).await.unwrap();
+        node.handle(&forged, attacker, 200, None).await.unwrap();
         {
             let inner = node.inner.lock().await;
             let s = &inner.sessions[&tag];
@@ -784,7 +784,7 @@ mod tests {
             assert_eq!(s.ping_backoff_us, 8_000_000);
         }
         // A new authenticated packet permits legitimate NAT rebinding.
-        node.handle(&valid, moved, 300).await.unwrap();
+        node.handle(&valid, moved, 300, None).await.unwrap();
         {
             let inner = node.inner.lock().await;
             let s = &inner.sessions[&tag];
@@ -794,7 +794,7 @@ mod tests {
             assert_eq!(s.ping_backoff_us, PING_BACKOFF_BASE_US);
         }
         // Capturing a valid ciphertext must not allow redirecting the session.
-        node.handle(&valid, attacker, 400).await.unwrap();
+        node.handle(&valid, attacker, 400, None).await.unwrap();
         {
             let inner = node.inner.lock().await;
             let s = &inner.sessions[&tag];
@@ -802,7 +802,9 @@ mod tests {
             assert_eq!(s.last_rx_us, 300);
         }
         // Nor may forged traffic keep a dead session alive indefinitely.
-        node.handle(&forged, attacker, 44_000_000).await.unwrap();
+        node.handle(&forged, attacker, 44_000_000, None)
+            .await
+            .unwrap();
         node.tick(46_000_000).await.unwrap();
         assert_eq!(node.stats().await.sessions, 0);
     }

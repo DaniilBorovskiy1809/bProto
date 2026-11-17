@@ -169,7 +169,21 @@ struct Registry {
     dns: Mutex<HashMap<u16, mpsc::Sender<Vec<u8>>>>,
     dns_sport: Mutex<u16>,
     next_port: AtomicU32,
+    /// Resolved A records, keyed by hostname. Saves one tunnel RTT per repeat
+    /// lookup: every proxied connection otherwise pays a full DNS round trip
+    /// (up to three on loss) before the TCP handshake even starts.
+    dns_cache: Mutex<HashMap<String, DnsEntry>>,
 }
+
+struct DnsEntry {
+    ip: Ipv4Addr,
+    expires: Instant,
+}
+
+/// TTL clamp for cached answers: never shorter than 5 s, never longer than
+/// 10 min, and answers with TTL 0 are not cached at all.
+const DNS_CACHE_MIN_TTL: Duration = Duration::from_secs(5);
+const DNS_CACHE_MAX_TTL: Duration = Duration::from_secs(600);
 
 impl Registry {
     fn new() -> Self {
@@ -178,7 +192,30 @@ impl Registry {
             dns: Mutex::new(HashMap::new()),
             dns_sport: Mutex::new(0),
             next_port: AtomicU32::new(0x4000_0000 | random_u32()),
+            dns_cache: Mutex::new(HashMap::new()),
         }
+    }
+
+    fn dns_cached(&self, name: &str, now: Instant) -> Option<Ipv4Addr> {
+        let mut cache = self.dns_cache.lock().expect("dns cache");
+        cache.retain(|_, e| e.expires > now);
+        cache.get(name).map(|e| e.ip)
+    }
+
+    fn dns_store(&self, name: &str, ip: Ipv4Addr, ttl_secs: u32, now: Instant) {
+        if ttl_secs == 0 {
+            return;
+        }
+        let ttl =
+            (Duration::from_secs(u64::from(ttl_secs))).clamp(DNS_CACHE_MIN_TTL, DNS_CACHE_MAX_TTL);
+        let mut cache = self.dns_cache.lock().expect("dns cache");
+        cache.insert(
+            name.to_owned(),
+            DnsEntry {
+                ip,
+                expires: now + ttl,
+            },
+        );
     }
 
     fn insert_flow(&self, key: FlowKey, tx: mpsc::Sender<Vec<u8>>) {
@@ -1165,6 +1202,11 @@ impl DnsClient {
 
     /// Resolve a hostname through the tunnel. `None` on any failure.
     async fn resolve(&self, name: &str) -> Option<Ipv4Addr> {
+        let now = Instant::now();
+        if let Some(ip) = self.shared.dns_cached(name, now) {
+            tracing::debug!(name, %ip, "dns cache hit");
+            return Some(ip);
+        }
         for _ in 0..2 {
             let id = random_u32() as u16;
             let (tx, mut rx) = mpsc::channel(1);
@@ -1182,7 +1224,8 @@ impl DnsClient {
             match tokio::time::timeout(Duration::from_secs(4), rx.recv()).await {
                 Ok(Some(reply)) => {
                     self.shared.remove_dns_waiter(id);
-                    if let Some(ip) = parse_a_reply(&reply, id) {
+                    if let Some((ip, ttl)) = parse_a_reply(&reply, id) {
+                        self.shared.dns_store(name, ip, ttl, now);
                         return Some(ip);
                     }
                 }
@@ -1235,8 +1278,8 @@ fn skip_name(msg: &[u8], mut off: usize) -> Option<usize> {
     }
 }
 
-/// Extract the first A record of a DNS reply.
-fn parse_a_reply(reply: &[u8], id: u16) -> Option<Ipv4Addr> {
+/// Extract the first A record of a DNS reply, with its TTL.
+fn parse_a_reply(reply: &[u8], id: u16) -> Option<(Ipv4Addr, u32)> {
     if reply.len() < 12 {
         return None;
     }
@@ -1260,11 +1303,20 @@ fn parse_a_reply(reply: &[u8], id: u16) -> Option<Ipv4Addr> {
         let rdlen = u16::from_be_bytes([reply[off + 8], reply[off + 9]]) as usize;
         let rdata = off + 10;
         if rtype == 1 && rdlen == 4 && rdata + 4 <= reply.len() {
-            return Some(Ipv4Addr::new(
-                reply[rdata],
-                reply[rdata + 1],
-                reply[rdata + 2],
-                reply[rdata + 3],
+            let ttl = u32::from_be_bytes([
+                reply[off + 4],
+                reply[off + 5],
+                reply[off + 6],
+                reply[off + 7],
+            ]);
+            return Some((
+                Ipv4Addr::new(
+                    reply[rdata],
+                    reply[rdata + 1],
+                    reply[rdata + 2],
+                    reply[rdata + 3],
+                ),
+                ttl,
             ));
         }
         off = rdata + rdlen;
@@ -1601,7 +1653,7 @@ mod tests {
         r.extend_from_slice(&[93, 184, 216, 34]);
         assert_eq!(
             parse_a_reply(&r, 0x1234),
-            Some(Ipv4Addr::new(93, 184, 216, 34))
+            Some((Ipv4Addr::new(93, 184, 216, 34), 60))
         );
         // wrong id
         assert_eq!(parse_a_reply(&r, 0x9999), None);

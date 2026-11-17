@@ -42,6 +42,12 @@ pub struct QuicTransport {
 impl QuicTransport {
     pub fn bind(local: SocketAddr) -> Result<Self> {
         let socket = std::net::UdpSocket::bind(local).map_err(failure)?;
+        // Chrome-socket shape on the carrier's own wire, matching the native
+        // transport's shape profile defaults: pinned TTL and DF on IPv4.
+        if local.is_ipv4() {
+            let _ = socket.set_ttl(64);
+            let _ = ipopts::set_df_v4(&socket);
+        }
         socket.set_nonblocking(true).map_err(failure)?;
         Ok(Self { socket })
     }
