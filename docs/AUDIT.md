@@ -1,42 +1,82 @@
-# WebSocket через собственный домен
+# 2.5 transport audit
 
-Модуль передаёт неизменённые пакеты bProto в бинарных WSS-сообщениях. Это reverse
-proxy через свой домен, а не произвольный domain fronting: TLS SNI и HTTP Host
-совпадают. CDN должен разрешать WebSocket и направлять домен на ваш origin.
+Baseline: 831a2e1, test/connection-lab. This document records observed implementation,
+not promises of censorship resistance.
 
-Установите requirements.txt в venv. Скопируйте примеры JSON, укажите собственный
-домен и сертификат. В окружении сервера и клиента задайте одинаковый случайный
-BPROTO_BRIDGE_TOKEN (64 hex-символа). Запуск: `python bridge.py server server.json`
-и `python bridge.py client client.json`. Native-клиент bProto подключается к
-127.0.0.1:14443 с прежними ключами. Native-сервер — upstream моста.
+| Requirement | Baseline status | Evidence |
+|---|---|---|
+| Native encrypted protocol | Implemented | crates/vpn-core |
+| Real TLS carrier | Experimental Python sidecar | tools/tls-bridge/bridge.py |
+| Certificate verification | Implemented; local tests | tests/test_tls_bridge.py |
+| Panel transport configuration | Export only | TlsBridgeEditor.tsx |
+| Android TLS carrier | Absent | BprotoVpnService.kt uses native UDP |
+| QUIC/HTTP3 | Core placeholder, no carrier | transport/quic.rs |
+| Browser fingerprints | Enum only, no verified browser handshakes | config.rs |
+| CDN/ECH/allowlist deployment | Absent; no operator domain/CDN available | environment |
+| Config agent with mTLS/rollback | Absent | tools |
+| Android runtime e2e | Not verified | no emulator validation |
+| DPI/JA3/JA4 evidence | Absent | no reference captures |
+| Coverage >=70% | Not measured | four carrier tests only |
 
-Перед включением полного туннеля закрепите внешний маршрут WSS: native-клиент
-видит только loopback. Android 10+ теперь содержит встроенный WSS-мост. Проверка сертификата и
-имени обязательна; compression отключён. Опциональное поле ca клиента позволяет
-добавить тестовый CA, не отключая проверку TLS.
+## Constraints / Ограничения
 
-Для CDN/reverse-proxy включите WebSocket, сохраните путь /bproto и Authorization,
-отключите кеширование этого пути, проверяйте сертификат origin. Настройка зависит
-от провайдера; сторонние домены без контроля не используются. Обновления JSON
-применяются перезапуском. Неверный токен или путь возвращает локальную HTML-страницу.
+An unrelated SNI cannot bypass an IP allowlist. TLS certificate chains cannot be
+borrowed from a fallback site without its private key. HTTP/3 requires HTTP/3
+framing; raw QUIC streams must not advertise h3. TLS 1.3 padding is optional, not
+automatic 16-byte alignment. Failure to reject a timing hypothesis (p > .05)
+does not prove indistinguishability. Synthetic tests cannot certify RKN evasion.
 
-Тесты запускают реальные native-бинарники через TLS, QUIC/HTTP3 и WSS, проверяют
-неверные PSK, токены, имя сертификата и тип сообщений. Команды — в README.md.
-Kernel TUN, Интернет, живой CDN, ECH, Android VpnService на устройстве и реальный РКН не проверены.
-100% гарантии обхода нет: разрешённый прокси должен быть доступен из целевой сети.
+Разрешённый SNI не делает заблокированный IP доступным. Для реальной проверки
+нужны контролируемый разрешённый узел и доступ к целевой сети; сейчас их нет.
+100% гарантии обхода РКН нет.
 
+## Implementation update
 
-## Android
+- Android TLS carrier added in TlsCarrier.kt: protected TCP socket, TLS 1.3,
+  hostname verification, framed datagrams and shutdown cleanup.
+- TlsProfile.kt validates optional transport configuration; six JVM tests added.
+- Panel exports Android TLS import keys from existing native credentials.
+- Existing four TLS tests are included in build.yml.
+- Android runtime e2e, QUIC, fingerprints, ECH/CDN, agent and coverage gate remain
+  open. The full 2.5.0 acceptance criteria are not yet met.
 
-В Settings панели выберите WSS, задайте свой домен/порт и существующий ключ bProto.
-Экспортируйте Android-ключ и импортируйте текст в приложение. Поле wss содержит
-url и token; одновременно указывать tls и wss нельзя. Используется системное
-доверие сертификатам и TLS 1.3. На Android 8/9 режим отклоняется.
+## QUIC implementation update
 
-Внешний сокет защищается через VpnService.protect до TCP connect. Редиректы и
-системный HTTP-прокси отключены; очередь исходящих сообщений ограничена.
-При отказе транспорта native-туннель останавливается без перехода на открытый UDP.
+tools/quic-bridge now implements a separate aioquic HTTP/3 carrier with QUIC v1,
+Retry, certificate validation, framed native datagrams and local HTML fallback.
+Seven real-UDP integration/framing tests pass, with 80% statement coverage.
+CI runs these tests with a 70% gate. Android QUIC and independent HTTP/3/DPI
+interoperability evidence remain open; this does not satisfy the full 2.5 DoD.
 
-JVM-тесты проверяют реальный TLS/WebSocket UDP-обмен и HTTP fallback, но не
-заменяют проверку VpnService на телефоне. Apply в панели относится только к
-настроенному raw-TLS агенту; WSS-конфигурация экспортируется отдельно.
+## Config-agent implementation update
+
+Added a version-1 JSON transaction agent, atomic replacement, validation/restart/
+health commands, automatic recovery, explicit rollback and mandatory client
+certificates. Panel API and TLS editor now expose Apply/Health/Rollback against
+one fixed operator-configured mTLS destination. Seven agent tests pass, including
+real mTLS rejection/acceptance, with 75% statement coverage. Actual systemd and
+full panel-to-service e2e remain unverified; this is experimental.
+
+## Native carrier and WSS update
+
+Real vpn-server and bproto CLI binaries now establish sessions through TLS,
+HTTP3 and WSS in tests; wrong native PSKs are rejected across all three.
+An owned-domain WSS reverse-proxy carrier has been added, with certificate
+verification, environment token, bounded WebSocket buffers and local HTML fallback.
+This is not arbitrary SNI/Host fronting or ECH. Live CDN/allowlist testing,
+Android QUIC/WSS, browser fingerprints and TUN/Internet e2e remain open.
+
+## Android WSS update (2f7296d)
+
+Android WSS now uses OkHttp with pre-connect VpnService socket protection,
+system certificate validation, TLS 1.3, bounded outbound queues and shutdown
+cleanup. The panel exports WSS JSON and Android import keys.
+24 Android JVM tests pass, including a local TLS/WebSocket UDP round-trip;
+the APK and panel build. These are not Android device VpnService tests.
+Android QUIC, ECH, browser profiles and live network validation remain open.
+
+## Documentation correction
+
+The audit was accidentally replaced by the Russian WSS README in 2f7296d.
+This version restores the preceding audit and appends the Android WSS result.
+See [the current release plan](PLAN-2.5.md) for remaining acceptance gates.
