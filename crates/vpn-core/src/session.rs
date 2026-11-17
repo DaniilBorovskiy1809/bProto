@@ -339,6 +339,14 @@ impl Wire {
         }
     }
 
+    /// Which wire this link rides.
+    fn kind(&self) -> &'static str {
+        match self {
+            Self::Udp { .. } => "udp",
+            Self::Tcp { .. } => "tcp",
+        }
+    }
+
     async fn tcp(peer: SocketAddr) -> Result<Self> {
         let stream = tokio::net::TcpStream::connect(peer)
             .await
@@ -477,11 +485,15 @@ impl Tunnel {
                 match Self::connect_once(udp_cfg.clone()).await {
                     Ok(t) => Ok(t),
                     Err(
-                        Error::HandshakeTimeout
+                        e @ (Error::HandshakeTimeout
                         | Error::Transport(_)
                         | Error::Io(_)
-                        | Error::Decrypt,
+                        | Error::Decrypt),
                     ) => {
+                        tracing::warn!(
+                            error = %e,
+                            "udp handshake failed; falling back to the tcp transport"
+                        );
                         let mut tcp_cfg = cfg.clone();
                         tcp_cfg.transport = crate::TransportKind::Tcp;
                         Self::connect_once(tcp_cfg).await
@@ -539,6 +551,7 @@ impl Tunnel {
                 Err(_elapsed) => {} // retransmit
             }
         };
+        tracing::info!(transport = wire.kind(), "tunnel established");
 
         let session = Session::new(established.keys, established.session_tag, mtu);
         let (inbound_tx, inbound_rx) = mpsc::channel(2048);
