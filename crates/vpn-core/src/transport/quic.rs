@@ -1,12 +1,8 @@
-//! QUIC-backed transport (feature `quic`).
+//! Unfinished QUIC transport scaffold (feature `quic`).
 //!
-//! Stage 1 uses `quinn` for: UDP socket handling, connection IDs, RTT
-//! estimation (RFC 9002), loss detection and CUBIC congestion control. bProto
-//! datagrams ride in QUIC 1-RTT packets; the handshake rides in Initial/Handshake
-//! CRYPTO frames so the donor's certificate can be relayed.
-//!
-//! Congestion control is selected through [`crate::transport::Congestion`].
-//! BBRv3 is deliberately not offered.
+//! This wrapper stores an address only: it does not bind a socket, negotiate
+//! TLS, send QUIC packets, or relay a donor certificate. Production sessions
+//! continue to use the native UDP transport even when this feature is enabled.
 
 use std::net::SocketAddr;
 
@@ -19,12 +15,12 @@ pub struct QuicTransport {
 }
 
 impl QuicTransport {
-    /// Bind the transport to a local UDP address.
+    /// Record the intended local address; no socket is bound.
     pub fn bind(local: SocketAddr) -> Result<Self> {
         Ok(Self { local: Some(local) })
     }
 
-    /// The bound local address.
+    /// The configured local address (not an actual socket address).
     #[must_use]
     pub fn local_addr(&self) -> Result<SocketAddr> {
         self.local

@@ -86,3 +86,19 @@ Five analyzer tests cover valid controlled traffic, plaintext-marker leakage,
 missing TUN evidence, missing UDP evidence and empty PCAPs. Marker absence is
 not an independent cryptographic audit. Internet forwarding and Android runtime
 behavior are still untested; no emulator KVM device is exposed by this Docker host.
+
+## Return-path authentication regression / Проверка обратного адреса
+
+The server previously updated the peer address and idle timer before AEAD and
+replay validation. A forged datagram with an observed session tag could redirect
+encrypted replies or keep a session alive. These updates now occur only after
+successful authentication and replay checks.
+
+Сервер теперь меняет адрес клиента и таймер активности только после проверки
+подлинности и защиты от повторов. Тест проверяет подделку пакета, повтор
+перехваченного пакета, законную смену адреса и завершение неактивной сессии.
+
+Validation: `cargo test --locked -p vpn-core`: 114 passed, 1 ignored.
+The ignored donor-handshake test still requires an unimplemented transport.
+This change does not implement TLS/QUIC camouflage, TCP fallback, or allowlist
+bypass. Android runtime and real censorship networks have not been tested.
