@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" role="img" aria-label="bProto — Your network. Your orbit.">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#091923"/><stop offset="1" stop-color="#142f34"/></linearGradient><radialGradient id="glow"><stop stop-color="#66f3bd" stop-opacity=".22"/><stop offset="1" stop-color="#66f3bd" stop-opacity="0"/></radialGradient></defs>
+<rect width="1280" height="420" rx="28" fill="url(#bg)"/>
+<circle cx="1010" cy="210" r="260" fill="url(#glow)"/>
+<g fill="none" stroke="#6cf1bd"><circle cx="1000" cy="210" r="132" opacity=".65"/><ellipse cx="1000" cy="210" rx="65" ry="132" opacity=".4"/><ellipse cx="1000" cy="210" rx="132" ry="48" opacity=".4"/><path d="M868 210h264M1000 78v264" opacity=".25"/><ellipse cx="1000" cy="210" rx="192" ry="70" transform="rotate(-28 1000 210)" opacity=".35"/></g>
+<circle cx="1121" cy="127" r="8" fill="#a6ffda"/>
+<text x="78" y="105" fill="#80e5bc" font-family="sans-serif" font-size="16" letter-spacing="5">OPEN SOURCE · RUST · ANDROID</text>
+<text x="72" y="235" fill="#effff9" font-family="sans-serif" font-size="112" font-weight="700" letter-spacing="-5">bProto</text>
+<text x="80" y="294" fill="#b1c9c6" font-family="sans-serif" font-size="27">Your network. Your orbit.</text>
+<text x="80" y="359" fill="#80e5bc" font-family="sans-serif" font-size="17" letter-spacing="2">2.5.0 / TLS · HTTP3 · WSS</text>
+</svg>

@@ -53,4 +53,10 @@ object Bproto {
 
     /** Release a handle from [connect]. Never call while [pump] is using it. */
     external fun close(handle: Long)
+
+    external fun quicBind(ipv6: Int): Long
+    external fun quicSocketFd(handle: Long): Int
+    external fun quicStart(handle: Long, server: String, hostname: String, token: String, ech: ByteArray, expires: Long): Int
+    external fun quicAlive(handle: Long): Int
+    external fun quicClose(handle: Long)
 }

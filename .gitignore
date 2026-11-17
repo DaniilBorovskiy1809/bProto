@@ -29,3 +29,6 @@ apps/android/.kotlin/
 # Python installer contract tests
 __pycache__/
 *.pyc
+
+# Private connection lab keys and local test outputs
+.connection-lab/

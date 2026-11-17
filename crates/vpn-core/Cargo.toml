@@ -15,7 +15,8 @@ crate-type = ["rlib"]
 default = ["std"]
 std = []
 # quinn-backed UDP transport (CUBIC congestion control, QUIC-shaped wire format)
-quic = ["dep:quinn"]
+quic = ["dep:quinn", "dep:h3", "dep:h3-quinn", "dep:http", "dep:bytes", "dep:webpki-roots"]
+ech = ["quic", "dep:rustls"]
 # donor relay / certificate borrowing (needs a rustls-compatible client)
 masquerade = []
 # userspace TCP stack for the relay side (stage 2)
@@ -41,6 +42,12 @@ aes.workspace = true
 aes-gcm.workspace = true
 
 quinn = { workspace = true, optional = true }
+rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs", "std"], optional = true }
+h3 = { version = "0.0.8", optional = true }
+h3-quinn = { version = "0.0.10", optional = true }
+http = { version = "1", optional = true }
+bytes = { version = "1", optional = true }
+webpki-roots = { version = "1", optional = true }
 smoltcp = { version = "0.11", optional = true, default-features = false }
 
 [dev-dependencies]

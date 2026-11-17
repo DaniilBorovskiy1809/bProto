@@ -76,6 +76,7 @@ class BprotoVpnService : VpnService() {
     // Touched from the main thread (start) and the tunnel thread (finally).
     @Volatile
     private var worker: Thread? = null
+    @Volatile private var carrier: java.io.Closeable? = null
     private var routing = RoutingPolicy()
     private var candidates: List<String> = emptyList()
     @Volatile private var cancelled = false
@@ -121,6 +122,7 @@ class BprotoVpnService : VpnService() {
 
     fun stopTunnel() {
         cancelled = true
+        carrier?.close()
         Bproto.stop()
     }
 
@@ -140,11 +142,30 @@ class BprotoVpnService : VpnService() {
         var handle = 0L
         var tun: ParcelFileDescriptor? = null
         try {
-            val choices = candidates.ifEmpty { listOf(config) }
+            val allChoices = candidates.ifEmpty { listOf(config) }
+            val choices = if (QuicProfile.requiresEchUri(config)) {
+                allChoices.filter { QuicProfile.requiresEchUri(it) }
+            } else allChoices
+            if (choices.isEmpty()) {
+                publish("No compatible ECH server in the selection")
+                return
+            }
             for ((index, candidate) in choices.withIndex()) {
                 if (cancelled) return
                 publish("Connecting to server ${index + 1}/${choices.size}")
-                handle = Bproto.connect(candidate)
+                carrier?.close()
+                carrier = null
+                val prepared = runCatching {
+                    QuicCarrier.prepare(candidate, { fd -> protect(fd) }, { socket -> protect(socket) }, { Bproto.stop() })
+                }
+                if (prepared.isFailure) {
+                    publish("Carrier failed for server ${index + 1}")
+                    continue
+                }
+                val (nativeConfig, activeCarrier) = prepared.getOrThrow()
+                carrier = activeCarrier
+                if (cancelled) return
+                handle = Bproto.connect(nativeConfig)
                 if (handle != 0L) break
             }
             if (handle == 0L) {
@@ -203,6 +224,8 @@ class BprotoVpnService : VpnService() {
             if (handle != 0L) {
                 Bproto.close(handle)
             }
+            carrier?.close()
+            carrier = null
             runCatching { tun?.close() }
             worker = null
             stopForeground(STOP_FOREGROUND_REMOVE)

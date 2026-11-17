@@ -963,3 +963,18 @@ async fn subscription_base_url_credentials_are_rejected_atomically() {
     .await;
     assert_eq!(before, after);
 }
+
+#[tokio::test]
+async fn config_agent_requires_admin_and_rejects_unknown_actions() {
+    let app = test_app().await;
+    let (status, _) = call(&app, "POST", "/api/config-agent", None,
+        Some(json!({"action": "health"}))).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    let token = login(&app).await;
+    let (status, _) = call(&app, "POST", "/api/config-agent", Some(&token),
+        Some(json!({"action": "run-shell"}))).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    let (status, _) = call(&app, "POST", "/api/config-agent", Some(&token),
+        Some(json!({"action": "health", "url": "https://attacker.example"}))).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+}

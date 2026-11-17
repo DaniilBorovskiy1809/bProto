@@ -3,7 +3,7 @@
 set -euo pipefail
 
 REPOSITORY="https://github.com/dr-lexus-dr/bProto"
-RELEASE="v2.0.0"
+RELEASE="v2.5.0"
 DIRECTORY="/opt/bproto"
 TARGET="all"
 PORT="443"
@@ -17,7 +17,7 @@ usage() {
     cat <<'HELP'
 bProto server bootstrap / Установка bProto
 Usage: bash bootstrap.sh [options]
-  --release TAG       Published release, default v2.0.0
+  --release TAG       Published release, default v2.5.0
   --directory PATH    Persistent source checkout, default /opt/bproto
   --target TARGET     server, client, all (default all)
   --port PORT         New server UDP port, default 443

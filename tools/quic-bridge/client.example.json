@@ -1,0 +1,7 @@
+{
+  "server_host": "vpn.example.com",
+  "server_port": 8443,
+  "hostname": "vpn.example.com",
+  "local_port": 14443,
+  "token_env": "BPROTO_BRIDGE_TOKEN"
+}

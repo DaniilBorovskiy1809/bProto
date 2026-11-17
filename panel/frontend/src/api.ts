@@ -285,6 +285,8 @@ export interface ClientUpdate {
 // --- api -------------------------------------------------------------------
 
 export const api = {
+  configAgent: (action: "apply" | "health" | "rollback", config?: unknown) =>
+    req<{status: string}>("/api/config-agent", {method: "POST", body: JSON.stringify({action, config})}),
   login: (username: string, password: string) =>
     post<{ token: string; expires_at: number }>("/api/auth/login", { username, password }),
   me: () => req<Me>("/api/me"),

@@ -1,18 +1,10 @@
-//! UDP datagram transport.
+//! Native UDP datagram transport.
 //!
-//! The wire format is deliberately shaped like QUIC so a passive observer sees
-//! a short-header UDP flow to :443 that matches the donor's traffic profile.
-//! Reliability, RTT estimation and congestion control are QUIC-grade:
-//!
-//! * ACK frames carry acknowledged packet-number ranges (RFC 9002 style),
-//! * packet numbers are never reused and are covered by the replay window,
-//! * NACK is sent as an explicit fast-loss hint, *in addition* to ACK, so loss
-//!   recovery does not wait for a timeout,
-//! * congestion control is CUBIC by default (via `quinn` when the `quic`
-//!   feature is on), BBR as an opt-in experiment, BBRv3 is explicitly avoided.
-//!
-//! This module defines the `Transport` trait; the QUIC implementation lives in
-//! `transport::quic` behind the `quic` feature.
+//! Production tunnels use bProto's own wire format, not standard QUIC or
+//! HTTP/3. Padding and header sizing do not establish DPI indistinguishability.
+//! Reliability and congestion control are implemented by the session layer.
+//! The optional `quic` module provides an HTTP/3 carrier; applications select
+//! and protect its outer socket explicitly. Native UDP remains the default.
 
 use std::net::SocketAddr;
 

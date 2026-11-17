@@ -17,8 +17,8 @@ android {
         applicationId = "dev.bproto.client"
         minSdk = 26
         targetSdk = 35
-        versionCode = 20000
-        versionName = "2.0.0"
+        versionCode = 20500
+        versionName = "2.5.0"
         ndk {
             // Only the ABIs we build; cargo-ndk maps them in build_app.sh --android.
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
@@ -58,6 +58,9 @@ kotlin {
 }
 
 dependencies {
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("com.squareup.okhttp3:okhttp-tls:4.12.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     implementation("androidx.core:core-ktx:1.15.0")
