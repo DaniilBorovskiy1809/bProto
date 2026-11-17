@@ -1,3 +1,4 @@
+import TlsBridgeEditor from "../TlsBridgeEditor";
 import { useState, type FormEvent } from "react";
 import { api, type AdminRow } from "../api";
 import { useConfirm } from "../components";
@@ -165,6 +166,7 @@ export default function Settings({ username }: { username: string }) {
 
       <h1 className="text-lg font-semibold text-neutral-900">Settings</h1>
 
+      <TlsBridgeEditor />
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title={`Change password · ${username}`}>
           <ErrorBanner
