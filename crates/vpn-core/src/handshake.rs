@@ -28,12 +28,10 @@ use crate::config::TunnelConfig;
 use crate::crypto::{self, KEY_LEN, KeyPair, SessionKeys};
 use crate::error::{Error, Result};
 use crate::frame::{Hello, HelloAck};
+use crate::masquerade;
 use crate::packet;
+use crate::shape::ShapeProfile;
 use crate::tags::TagTable;
-
-/// Server flight size after the client's double-Initial: the real site answers
-/// with a datagram in the 1200-byte chunk band (measured).
-const ACK_FLIGHT_SIZE: usize = 1200;
 
 /// Client state kept between `HELLO` and `HELLO_ACK`.
 #[derive(Debug)]
@@ -43,6 +41,10 @@ pub struct ClientHandshake {
     psk: [u8; KEY_LEN],
     /// Sent to the server; kept so a retransmit is byte-identical.
     datagram: Vec<u8>,
+    /// The real QUIC Initial wrapping a labeled, browser-shaped ClientHello —
+    /// sent before every HELLO retransmit when the profile enables the
+    /// parrot. Empty when the profile opts out.
+    parrot: Vec<u8>,
 }
 
 impl ClientHandshake {
@@ -50,6 +52,13 @@ impl ClientHandshake {
     #[must_use]
     pub fn datagram(&self) -> &[u8] {
         &self.datagram
+    }
+
+    /// The QUIC Initial datagram that precedes the HELLO, if the profile
+    /// crafts one.
+    #[must_use]
+    pub fn parrot(&self) -> &[u8] {
+        &self.parrot
     }
 
     /// The client random, for logging.
@@ -71,13 +80,42 @@ pub struct ClientEstablished {
 }
 
 /// Start the client handshake: generate the ephemeral key and build `HELLO`.
+///
+/// The shape profile drives the opening datagram: with `initial_parrot` the
+/// client's first datagram is a genuine QUIC v1 Initial carrying a
+/// browser-shaped ClientHello with the auth label, followed by the padded
+/// native HELLO.
 pub fn start(cfg: &TunnelConfig, now_unix_secs: u64) -> Result<(ClientHandshake, Vec<u8>)> {
-    let eph = KeyPair::generate();
+    let shape = ShapeProfile::resolve(&cfg.shape)?;
     let client_random = crypto::random_32();
+    let eph = KeyPair::generate();
     let tag = auth::compute_tag(&cfg.tag_key, cfg.user_id);
     let window = auth::time_window(now_unix_secs);
     let x25519_pub = eph.public_bytes();
     let mac = auth::label_mac(&cfg.psk, &tag, &client_random, &x25519_pub, window);
+
+    // The QUIC Initial parrot carries the same label the native HELLO does:
+    // session_id derives from the same PSK/tag/random/key-share inputs, so the
+    // server verifies both with one code path and the flights stay consistent.
+    let parrot = if shape.initial_parrot {
+        let params = masquerade::HelloParams {
+            sni: cfg.donor.sni.clone(),
+            alpn: cfg.donor.alpn.clone(),
+            fingerprint: cfg.fingerprint,
+            session_id: auth::derive_session_id(
+                &cfg.psk,
+                &tag,
+                &client_random,
+                &x25519_pub,
+                now_unix_secs,
+            ),
+            client_random,
+            x25519_pub,
+        };
+        masquerade::craft_initial_flight(&params, shape.initial_size)?
+    } else {
+        Vec::new()
+    };
 
     let hello = Hello {
         tag,
@@ -89,12 +127,9 @@ pub fn start(cfg: &TunnelConfig, now_unix_secs: u64) -> Result<(ClientHandshake,
     // The header's session_tag field is unused before the handshake completes;
     // the frame carries the routing tag.
     let mut datagram = packet::encode_plaintext_control(0, 0, &hello.encode());
-    // Firefox-shape the first flight: 1252 B like a real QUIC Initial, with
-    // OS-random filler so the padded region does not read as zero fill. Both
-    // retransmits use these exact bytes.
-    let old_len = datagram.len();
-    datagram.resize(packet::INITIAL_SIZE, 0);
-    crypto::fill_random(&mut datagram[old_len..]);
+    // Browser-shape the first flight: one padded datagram in the QUIC Initial
+    // band, with the profile's filler. Both retransmits use these exact bytes.
+    shape.pad(&mut datagram, shape.initial_size)?;
 
     Ok((
         ClientHandshake {
@@ -102,6 +137,7 @@ pub fn start(cfg: &TunnelConfig, now_unix_secs: u64) -> Result<(ClientHandshake,
             client_random,
             psk: cfg.psk,
             datagram: datagram.clone(),
+            parrot,
         },
         datagram,
     ))
@@ -179,10 +215,14 @@ pub fn verify(tags: &TagTable, hello_datagram: &[u8], now_unix_secs: u64) -> Res
 }
 
 /// Build the `HELLO_ACK` for a verified client and derive the server-side keys.
+///
+/// `shape` drives the opening flight's size and filler (the server config
+/// carries its own shape section; presets default to Chrome values).
 pub fn respond(
     verified: &VerifiedHello,
     server_eph: &KeyPair,
     assigned_ip: Ipv4Addr,
+    shape: &ShapeProfile,
 ) -> Result<(Vec<u8>, SessionKeys, u32)> {
     let server_random = crypto::random_32();
     let x25519_pub = server_eph.public_bytes();
@@ -201,12 +241,10 @@ pub fn respond(
         assigned_ip: ip_bytes,
         mac,
     };
-    // Server-side opening flight shaped like the real site's: one big
-    // datagram in the 1200 B chunk band, random filler past the fixed frame.
+    // Server-side opening flight shaped like the real site's: one padded
+    // datagram in the profile's band, filler past the fixed frame.
     let mut datagram = packet::encode_plaintext_control(0, 0, &ack.encode());
-    let old_len = datagram.len();
-    datagram.resize(ACK_FLIGHT_SIZE, 0);
-    crypto::fill_random(&mut datagram[old_len..]);
+    shape.pad(&mut datagram, shape.ack_size)?;
 
     let shared = server_eph.diffie_hellman(&verified.x25519_pub);
     let keys = crypto::derive_session_keys(&shared, &verified.client_random, &server_random, false);
@@ -233,6 +271,8 @@ mod tests {
             fingerprint: crate::Fingerprint::Chrome112,
             stealth: crate::StealthLevel::Off,
             handshake_timeout: std::time::Duration::from_secs(10),
+            shape: crate::shape::ShapeConfig::default(),
+            transport: crate::TransportKind::Udp,
         }
     }
 
@@ -258,7 +298,9 @@ mod tests {
 
         let server_eph = KeyPair::generate();
         let assigned = Ipv4Addr::new(10, 66, 0, 2);
-        let (ack, server_keys, server_tag) = respond(&verified, &server_eph, assigned).unwrap();
+        let shape = crate::shape::ShapeProfile::resolve(&c.shape).unwrap();
+        let (ack, server_keys, server_tag) =
+            respond(&verified, &server_eph, assigned, &shape).unwrap();
 
         let est = finish(&state, &ack).unwrap();
         assert_eq!(est.assigned_ip, assigned);
@@ -309,7 +351,13 @@ mod tests {
         let (state, hello) = start(&c, NOW).unwrap();
         let verified = verify(&table(), &hello, NOW).unwrap();
         let server_eph = KeyPair::generate();
-        let (ack, _k, _t) = respond(&verified, &server_eph, Ipv4Addr::new(10, 66, 0, 2)).unwrap();
+        let (ack, _k, _t) = respond(
+            &verified,
+            &server_eph,
+            Ipv4Addr::new(10, 66, 0, 2),
+            &crate::shape::ShapeProfile::default(),
+        )
+        .unwrap();
 
         // flip a byte inside the assigned-address field (offset 12 + 97)
         let mut bad = ack.clone();
@@ -324,7 +372,13 @@ mod tests {
         let (_state_b, hello_b) = start(&c, NOW).unwrap();
         let verified = verify(&table(), &hello_b, NOW).unwrap();
         let server_eph = KeyPair::generate();
-        let (ack_b, _k, _t) = respond(&verified, &server_eph, Ipv4Addr::new(10, 66, 0, 2)).unwrap();
+        let (ack_b, _k, _t) = respond(
+            &verified,
+            &server_eph,
+            Ipv4Addr::new(10, 66, 0, 2),
+            &crate::shape::ShapeProfile::default(),
+        )
+        .unwrap();
         assert!(matches!(finish(&state_a, &ack_b), Err(Error::BadLabel)));
     }
 }

@@ -12,6 +12,10 @@ use vpn_core::crypto::KEY_LEN;
 pub struct ServerConfig {
     /// UDP address the QUIC/bProto listener binds to. Use `:443` to look like QUIC.
     pub listen_addr: SocketAddr,
+    /// Optional TCP transport listener (length-prefixed frames) for paths
+    /// where UDP is throttled or blocked outright.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub listen_addr_tcp: Option<SocketAddr>,
     /// Donor site whose identity we borrow.
     pub donor: DonorConfig,
     /// Routing tag key `K_tag` (hex, 32 bytes). Must match the clients and panel.
@@ -25,6 +29,16 @@ pub struct ServerConfig {
     /// Loopback admin API.
     #[serde(default)]
     pub admin: AdminConfig,
+    /// Masquerade shape of the server's opening flights.
+    #[serde(default)]
+    pub shape: vpn_core::ShapeConfig,
+}
+
+impl ServerConfig {
+    /// Resolve the configured shape profile for server-sent flights.
+    pub fn shape_profile(&self) -> anyhow::Result<vpn_core::ShapeProfile> {
+        vpn_core::ShapeProfile::resolve(&self.shape).map_err(|e| anyhow::anyhow!("shape: {e}"))
+    }
 }
 
 /// Donor site definition.
@@ -209,6 +223,7 @@ mod tests {
         let tag_key = [0x01u8; KEY_LEN];
         let cfg = ServerConfig {
             listen_addr: "0.0.0.0:443".parse().unwrap(),
+            listen_addr_tcp: None,
             donor: DonorConfig {
                 sni: "example.org".into(),
                 alpn: default_alpn(),
@@ -228,6 +243,7 @@ mod tests {
             ],
             tun: TunConfig::default(),
             admin: AdminConfig::default(),
+            shape: vpn_core::ShapeConfig::default(),
         };
         let mut t = cfg.tag_table().unwrap();
         assert_eq!(t.len(), 2);
@@ -246,6 +262,7 @@ mod tests {
     fn rejects_short_tag_key() {
         let cfg = ServerConfig {
             listen_addr: "0.0.0.0:443".parse().unwrap(),
+            listen_addr_tcp: None,
             donor: DonorConfig {
                 sni: "example.org".into(),
                 alpn: default_alpn(),
@@ -256,6 +273,7 @@ mod tests {
             users: vec![],
             tun: TunConfig::default(),
             admin: AdminConfig::default(),
+            shape: vpn_core::ShapeConfig::default(),
         };
         assert!(cfg.validate().is_err());
     }

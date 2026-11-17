@@ -79,6 +79,8 @@ fn client_config(server: SocketAddr) -> TunnelConfig {
         fingerprint: Fingerprint::Chrome112,
         stealth: StealthLevel::Off,
         handshake_timeout: Duration::from_secs(3),
+        shape: vpn_core::shape::ShapeConfig::default(),
+        transport: vpn_core::TransportKind::Udp,
     }
 }
 

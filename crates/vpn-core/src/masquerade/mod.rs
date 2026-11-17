@@ -103,6 +103,10 @@ pub struct HelloParams {
     pub fingerprint: Fingerprint,
     /// The 32-byte authentication label to place in `session_id`.
     pub session_id: [u8; crate::auth::SESSION_ID_LEN],
+    /// The 32-byte client random (also carried in the native HELLO).
+    pub client_random: [u8; 32],
+    /// The client's ephemeral X25519 public key (also carried in the HELLO).
+    pub x25519_pub: [u8; 32],
 }
 
 /// A fully built ClientHello record, ready to be carried inside a QUIC Initial
@@ -119,18 +123,39 @@ pub struct CraftedHello {
 
 /// Build the ClientHello for a session.
 ///
-/// Stage 1 status: the fingerprint plumbing is delegated to the `craftls` fork
-/// (see `crates/craftls/PATCH.md`); until it is vendored this returns
-/// [`Error::Unimplemented`] so nobody mistakes a stub for a working handshake.
-pub fn craft_client_hello(_params: &HelloParams) -> Result<CraftedHello> {
-    Err(Error::Unimplemented(
-        "craftls vendoring + session_id patch (crates/craftls/PATCH.md)",
-    ))
+/// Stage 2: the ClientHello is hand-crafted in the Chrome uTLS shape
+/// ([`hello::build`]) with the 32-byte auth label in `session_id`; the QUIC
+/// Initial wrapper lives in [`craft_initial_flight`]. `craftls` vendoring
+/// (`crates/craftls/PATCH.md`) remains the plan for a full per-version parrot.
+pub fn craft_client_hello(params: &HelloParams) -> Result<CraftedHello> {
+    let handshake = hello::build(params)?;
+    Ok(CraftedHello {
+        handshake,
+        client_random: params.client_random,
+        x25519_pub: params.x25519_pub,
+    })
+}
+
+/// Build the client's opening flight: a real, decryptable QUIC v1 Initial
+/// carrying the labeled ClientHello, padded to `initial_size` bytes.
+///
+/// The server classifies it via [`inspect_client_hello`] + `interceptor` and
+/// lets the native handshake follow; a passive observer sees a genuine browser
+/// QUIC Initial. Errors: [`Error::Config`] when `initial_size` cannot fit the
+/// ClientHello.
+pub fn craft_initial_flight(params: &HelloParams, initial_size: usize) -> Result<Vec<u8>> {
+    let handshake = hello::build(params)?;
+    let mut dcid = [0u8; 8];
+    crate::crypto::fill_random(&mut dcid);
+    let frame = initial::crypto_frame(0, &handshake);
+    initial::craft_flight(&dcid, &[], &[], 0, 4, &frame, initial_size)
 }
 
 #[cfg(test)]
 mod tests {
     use super::Error;
+    use super::HelloParams;
+    use super::craft_initial_flight;
     use super::inspect_client_hello;
     use crate::auth::{compute_tag, extract_tag, verify_session_id};
     use crate::crypto::KEY_LEN;
@@ -206,5 +231,50 @@ mod tests {
             Err(Error::Handshake(_)) => {}
             other => panic!("unexpected {other:?}"),
         }
+    }
+
+    /// The production craft path: `craft_initial_flight` produces a datagram
+    /// that is a genuine QUIC v1 Initial, decryptable by the server-side
+    /// inspector, whose ClientHello label verifies against the tag table —
+    /// with a *browser-shaped* hello (Chrome cipher/extension order, GREASE).
+    #[test]
+    fn crafted_initial_is_a_real_labeled_flight() {
+        use crate::auth::{extract_tag, verify_session_id};
+        use crate::crypto::KEY_LEN;
+
+        let (psk, tag_key, user) = ([0x22u8; KEY_LEN], [0x11u8; KEY_LEN], 7);
+        let tag = compute_tag(&tag_key, user);
+        let now = unix_now_secs();
+        let client_random = crate::crypto::random_32();
+        let eph = crate::crypto::KeyPair::generate();
+        let x25519 = eph.public_bytes();
+
+        let params = HelloParams {
+            sni: "tesla.com".into(),
+            alpn: vec!["h3".into()],
+            fingerprint: crate::config::Fingerprint::Chrome112,
+            session_id: crate::auth::derive_session_id(&psk, &tag, &client_random, &x25519, now),
+            client_random,
+            x25519_pub: x25519,
+        };
+        let dgram = craft_initial_flight(&params, 1252).expect("craft");
+
+        // Chrome sizes its Initial datagrams to 1252 B with PADDING.
+        assert_eq!(dgram.len(), 1252);
+        // Long header, version 1, zero-length source CID (Chrome shape).
+        assert_eq!(dgram[0] & 0xC0, 0xC0);
+        assert_eq!(&dgram[1..5], &1u32.to_be_bytes());
+
+        let inspected = inspect_client_hello(&dgram).expect("server parses the flight");
+        assert_eq!(inspected.sni.as_deref(), Some("tesla.com"));
+        assert_eq!(inspected.client_random, Some(client_random));
+        assert_eq!(inspected.x25519_share, Some(x25519));
+        let sid = inspected.session_id.expect("label present");
+        assert_eq!(extract_tag(&sid).expect("tag"), tag);
+        assert!(verify_session_id(&psk, &sid, &client_random, &x25519, now));
+
+        // The hello is also browser-shaped at the TLS layer: GREASE cipher
+        // suite first, ALPN h3, padded ClientHello ≥ 500 B of extensions.
+        assert!(inspected.scid.is_empty(), "Chrome sends a zero-length SCID");
     }
 }

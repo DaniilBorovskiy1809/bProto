@@ -6,6 +6,17 @@
 # UDP listener. Publish on :443 with a QUIC-shaped flow to look like HTTP/3.
 listen_addr = "0.0.0.0:443"
 
+# Optional TCP transport listener: length-prefixed datagrams on a stream, for
+# paths where UDP is throttled or blocked. Clients pick with transport = "tcp"
+# (or "auto" to fall back). The framing is opaque binary; keep the port private.
+# listen_addr_tcp = "0.0.0.0:45002"
+
+# Masquerade shape of the server's opening flights (HELLO_ACK and probes).
+# Presets and fields match the client's [shape] section.
+# [shape]
+# profile = "chrome-quic"
+# ack_size = 1200
+
 # Routing tag key K_tag: 32 bytes hex. MUST match the panel and every client.
 # Generate with: openssl rand -hex 32
 tag_key = "0000000000000000000000000000000000000000000000000000000000000000"

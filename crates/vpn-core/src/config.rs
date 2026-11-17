@@ -94,6 +94,26 @@ pub struct TunnelConfig {
     /// Handshake timeout.
     #[serde(default = "default_handshake_timeout", with = "humantime_serde_compat")]
     pub handshake_timeout: Duration,
+    /// Masquerade shape profile (opening flight sizes, socket options, noise).
+    #[serde(default)]
+    pub shape: crate::shape::ShapeConfig,
+    /// Wire transport: UDP (QUIC-shaped) or TCP (framed stream fallback).
+    #[serde(default)]
+    pub transport: TransportKind,
+}
+
+/// Which wire transport the client connects over.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TransportKind {
+    /// QUIC-shaped UDP datagrams (the native, default transport).
+    #[default]
+    Udp,
+    /// Length-prefixed frames over one TCP stream — for paths where UDP is
+    /// throttled or blocked outright.
+    Tcp,
+    /// Try UDP first; fall back to TCP if the handshake does not complete.
+    Auto,
 }
 
 fn default_mtu() -> u16 {
@@ -295,6 +315,8 @@ pub fn from_import_uri_with_label(uri: &str) -> Result<(TunnelConfig, Option<Str
         fingerprint,
         stealth: StealthLevel::default(),
         handshake_timeout: default_handshake_timeout(),
+        shape: crate::shape::ShapeConfig::default(),
+        transport: TransportKind::default(),
     };
     cfg.validate()?;
     Ok((cfg, parsed.label))
@@ -457,6 +479,8 @@ mod tests {
             fingerprint: Fingerprint::Safari171,
             stealth: StealthLevel::Off,
             handshake_timeout: Duration::from_secs(10),
+            shape: crate::shape::ShapeConfig::default(),
+            transport: TransportKind::default(),
         };
         let uri = to_import_uri(&cfg, "Pixel");
         assert!(uri.starts_with(IMPORT_SCHEME));

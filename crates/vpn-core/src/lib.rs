@@ -40,17 +40,19 @@ pub mod pool;
 pub mod replay;
 pub mod server;
 pub mod session;
+pub mod shape;
 pub mod tags;
 pub mod transport;
 
 pub use ack::{AckRanges, RttEstimator, SentPackets};
-pub use config::{DonorSpec, Fingerprint, StealthLevel, TunnelConfig};
+pub use config::{DonorSpec, Fingerprint, StealthLevel, TransportKind, TunnelConfig};
 pub use congestion::Cubic;
 pub use error::{Error, Result};
 pub use packet::{HEADER_LEN, InnerType, MAX_DATAGRAM, TUNNEL_MTU};
 pub use pool::IpPool;
 pub use server::{ServerNode, ServerParams, ServerStats};
 pub use session::{Opened, Session, Tunnel, TunnelStats, unix_now_secs};
+pub use shape::{Filler, NoiseSpec, ShapeConfig, ShapePreset, ShapeProfile};
 pub use tags::TagTable;
 
 /// Protocol version carried in the header version nibble.

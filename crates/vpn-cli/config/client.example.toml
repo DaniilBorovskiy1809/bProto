@@ -32,6 +32,28 @@ stealth = "off"
 # How long to keep retrying the handshake before giving up.
 handshake_timeout = "10s"
 
+# Wire transport: udp (QUIC-shaped datagrams, default) | tcp (framed stream,
+# for paths where UDP is throttled or blocked) | auto (UDP first, TCP fallback).
+# transport = "udp"
+
+# Masquerade shape profile: how the opening flight looks on the wire.
+#   chrome-quic   — Chrome HTTP/3: 1252 B Initial, TTL 64, DF (default)
+#   chrome-noise  — the same plus random pre-flight noise datagrams
+#   webrtc        — small STUN-ish datagrams, no DF
+#   custom        — every field explicit (falls back to Chrome when unset)
+# Any preset may be overridden per-field. A real, decryptable QUIC v1 Initial
+# carrying a browser-shaped ClientHello (with the auth label) wraps the flight
+# on chrome-* presets; disable with initial_parrot = false.
+[shape]
+profile = "chrome-quic"
+# initial_size = 1252        # padded size of the client's first datagram
+# ack_size = 1200            # padded size of the server's first datagram
+# filler = "random"          # random | zeros (QUIC PADDING appearance)
+# ttl = 64
+# df = true
+# initial_parrot = true
+# noise = { count = 3, min = 64, max = 1400 }   # pre-flight noise datagrams
+
 # Local SOCKS5 proxy (`bproto socks5`): serves TCP CONNECT on `listen` and
 # carries it through the tunnel. No TUN device and no root required.
 # DNS names from CONNECT are resolved through the tunnel via `dns`.

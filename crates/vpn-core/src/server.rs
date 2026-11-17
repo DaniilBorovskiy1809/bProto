@@ -48,6 +48,8 @@ pub struct ServerParams {
     pub idle_timeout: Duration,
     /// Refuse new handshakes above this many live sessions.
     pub max_sessions: usize,
+    /// Opening-flight shape for server-sent datagrams (HELLO_ACK, probes).
+    pub shape: crate::shape::ShapeProfile,
 }
 
 impl Default for ServerParams {
@@ -57,6 +59,7 @@ impl Default for ServerParams {
             keepalive: Duration::from_secs(15),
             idle_timeout: Duration::from_secs(45),
             max_sessions: 4096,
+            shape: crate::shape::ShapeProfile::default(),
         }
     }
 }
@@ -88,6 +91,10 @@ struct Counters {
 struct ServerSession {
     sess: Session,
     peer: SocketAddr,
+    /// TCP egress for the session, when the client connected over the TCP
+    /// transport. Replies and data frames go into this channel (framed by the
+    /// per-connection writer task); `None` means the UDP socket.
+    tcp: Option<tokio::sync::mpsc::Sender<Vec<u8>>>,
     user_id: u64,
     tag: [u8; TAG_LEN],
     ip: Ipv4Addr,
@@ -195,18 +202,21 @@ impl ServerNode {
 
     /// Handle one datagram. Returns a packet to write to the TUN, if any.
     ///
-    /// Replies (handshake ACK, in-session ACK, PONG) are sent from here.
+    /// Replies (handshake ACK, in-session ACK, PONG) are sent from here. `tcp`
+    /// carries the datagram's return path when it arrived over the TCP
+    /// transport; pass `None` for the UDP socket.
     pub async fn handle(
         &self,
         datagram: &[u8],
         from: SocketAddr,
         now_us: u64,
+        tcp: Option<&tokio::sync::mpsc::Sender<Vec<u8>>>,
     ) -> Result<Option<Vec<u8>>> {
         let Ok(header) = Header::decode(datagram) else {
             return Ok(None);
         };
         if header.is_control() {
-            return self.handle_handshake(datagram, from, now_us).await;
+            return self.handle_handshake(datagram, from, now_us, tcp).await;
         }
 
         let tag = header.session_tag;
@@ -219,11 +229,13 @@ impl ServerNode {
                 self.counters.unknown_tags.fetch_add(1, Ordering::Relaxed);
                 return Ok(None);
             };
-            // Refresh the return path on every valid datagram: NAT rebinding and
-            // client roaming both show up here. Any inbound datagram also
-            // restarts the probe backoff schedule, Firefox-style — the server
-            // goes quiet while the client is talking.
+            // Refresh the return path on every valid datagram: NAT rebinding
+            // and client roaming both show up here. A datagram from the UDP
+            // socket clears a stale TCP sink and vice versa. Any inbound
+            // datagram also restarts the probe backoff schedule, Firefox
+            // style — the server goes quiet while the client is talking.
             s.peer = from;
+            s.tcp = tcp.cloned();
             s.last_rx_us = now_us;
             s.ping_backoff_us = PING_BACKOFF_BASE_US;
             s.next_ping_us = 0;
@@ -306,7 +318,7 @@ impl ServerNode {
         }
         let (pn, datagram) = s.sess.seal_ip(ip_packet)?;
         s.sent.on_sent(pn, now_us, datagram.len() as u64);
-        udp::send(&self.sock, &datagram, s.peer).await?;
+        deliver(s, &self.sock, &datagram).await;
         Ok(true)
     }
 
@@ -338,7 +350,7 @@ impl ServerNode {
                     .sess
                     .seal_control_padded(&frame::simple(FrameType::Ping), control_size())
                 {
-                    let _ = udp::send(&self.sock, &datagram, s.peer).await;
+                    deliver(s, &self.sock, &datagram).await;
                 }
                 s.ping_backoff_us = (s.ping_backoff_us * 2).min(PING_BACKOFF_MAX_US);
                 s.next_ping_us = now_us + s.ping_backoff_us;
@@ -364,11 +376,30 @@ impl ServerNode {
         Ok(())
     }
 
+    /// Send an out-of-session datagram (handshake ACK) to the peer's return
+    /// path: the TCP writer channel when the HELLO arrived over TCP, else the
+    /// shared UDP socket.
+    async fn reply(
+        &self,
+        from: SocketAddr,
+        tcp: Option<&tokio::sync::mpsc::Sender<Vec<u8>>>,
+        datagram: &[u8],
+    ) -> Result<()> {
+        if let Some(tx) = tcp {
+            return tx
+                .send(datagram.to_vec())
+                .await
+                .map_err(|_| Error::Transport("tcp sink closed".into()));
+        }
+        udp::send(&self.sock, datagram, from).await
+    }
+
     async fn handle_handshake(
         &self,
         datagram: &[u8],
         from: SocketAddr,
         now_us: u64,
+        tcp: Option<&tokio::sync::mpsc::Sender<Vec<u8>>>,
     ) -> Result<Option<Vec<u8>>> {
         let verified = {
             let tags = self
@@ -402,7 +433,7 @@ impl ServerNode {
         if let Some(ack) = replay {
             drop(pool);
             drop(inner);
-            udp::send(&self.sock, &ack, from).await?;
+            self.reply(from, tcp, &ack).await?;
             return Ok(None);
         }
 
@@ -429,7 +460,8 @@ impl ServerNode {
         };
 
         let eph = KeyPair::generate();
-        let (ack_datagram, keys, session_tag) = handshake::respond(&verified, &eph, ip)?;
+        let (ack_datagram, keys, session_tag) =
+            handshake::respond(&verified, &eph, ip, &self.params.shape)?;
 
         // A tag collision would alias two sessions; drop the older one.
         if let Some(old) = inner.sessions.remove(&session_tag) {
@@ -444,6 +476,7 @@ impl ServerNode {
             ServerSession {
                 sess: session,
                 peer: from,
+                tcp: tcp.cloned(),
                 user_id: verified.user_id,
                 tag: verified.tag,
                 ip,
@@ -483,7 +516,7 @@ impl ServerNode {
             );
         }
 
-        udp::send(&self.sock, &ack_datagram, from).await?;
+        self.reply(from, tcp, &ack_datagram).await?;
         self.counters.handshakes.fetch_add(1, Ordering::Relaxed);
         tracing::info!(user = verified.user_id, %ip, %from, "session established");
         Ok(None)
@@ -497,7 +530,7 @@ async fn flush_ack(s: &mut ServerSession, sock: &UdpSocket) {
     let ranges = std::mem::take(&mut s.ack);
     s.pending = 0;
     if let Ok((_, datagram)) = s.sess.seal_control_padded(&ranges.encode(), control_size()) {
-        let _ = udp::send(sock, &datagram, s.peer).await;
+        deliver(s, sock, &datagram).await;
     }
 }
 
@@ -538,13 +571,29 @@ async fn handle_control(
                 .sess
                 .seal_control_padded(&frame::simple(FrameType::Pong), control_size())
             {
-                let _ = udp::send(sock, &datagram, s.peer).await;
+                deliver(s, sock, &datagram).await;
             }
         }
         Ok(FrameType::Close) => return true,
         _ => {}
     }
     false
+}
+
+/// Send one datagram to a session's current return path.
+///
+/// A TCP session's replies go into its connection's writer channel; a UDP
+/// session's replies go out the shared socket. A closed TCP connection falls
+/// back to the UDP path (which will be unreachable for a TCP peer and lets
+/// the idle timeout reap the session).
+async fn deliver(s: &mut ServerSession, sock: &UdpSocket, datagram: &[u8]) {
+    if let Some(tx) = s.tcp.take()
+        && tx.send(datagram.to_vec()).await.is_ok()
+    {
+        s.tcp = Some(tx);
+        return;
+    }
+    let _ = udp::send(sock, datagram, s.peer).await;
 }
 
 /// Jittered control-flight size for server-sent frames (same Firefox band as
@@ -579,6 +628,8 @@ mod tests {
             fingerprint: crate::Fingerprint::Chrome112,
             stealth: crate::StealthLevel::Off,
             handshake_timeout: Duration::from_secs(2),
+            shape: crate::shape::ShapeConfig::default(),
+            transport: crate::TransportKind::Udp,
         };
         (node, cfg)
     }
@@ -599,7 +650,7 @@ mod tests {
             .encode(),
         );
         let from = "127.0.0.1:5000".parse().unwrap();
-        assert!(node.handle(&bogus, from, 0).await.unwrap().is_none());
+        assert!(node.handle(&bogus, from, 0, None).await.unwrap().is_none());
         assert_eq!(node.stats().await.rejected_handshakes, 1);
         assert_eq!(node.stats().await.sessions, 0);
     }
@@ -610,7 +661,7 @@ mod tests {
         let mut dg = Header::new(0, 0xDEAD, 1).encode().to_vec();
         dg.extend_from_slice(&[0u8; 32]);
         let from = "127.0.0.1:5000".parse().unwrap();
-        assert!(node.handle(&dg, from, 0).await.unwrap().is_none());
+        assert!(node.handle(&dg, from, 0, None).await.unwrap().is_none());
         assert_eq!(node.stats().await.unknown_tags, 1);
     }
 
@@ -627,12 +678,12 @@ mod tests {
             tokio::spawn(async move {
                 let mut buf = vec![0u8; packet::MAX_DATAGRAM];
                 while let Ok((n, from)) = sock.recv_from(&mut buf).await {
-                    let _ = node.handle(&buf[..n], from, 0).await;
+                    let _ = node.handle(&buf[..n], from, 0, None).await;
                 }
             });
         }
 
-        let client = udp::bind_for(server_addr).await.unwrap();
+        let client = udp::bind_for(server_addr, 64, true).await.unwrap();
         let (_state, hello) = crate::handshake::start(&cfg, unix_now_secs()).unwrap();
         udp::send(&client, &hello, server_addr).await.unwrap();
 
@@ -672,7 +723,7 @@ mod tests {
 
         // The server has been up for five minutes; the session is born now.
         let now = 300_000_000u64;
-        node.handle(&hello, from, now).await.unwrap();
+        node.handle(&hello, from, now, None).await.unwrap();
         let stats = node.stats().await;
         assert_eq!(stats.sessions, 1);
         assert_eq!(stats.handshakes, 1);
@@ -694,7 +745,7 @@ mod tests {
         let mut broken = hello;
         broken[0] &= 0xF0; // clear the flag nibble
         let from = "127.0.0.1:5000".parse().unwrap();
-        assert!(node.handle(&broken, from, 0).await.unwrap().is_none());
+        assert!(node.handle(&broken, from, 0, None).await.unwrap().is_none());
         assert_eq!(node.stats().await.rejected_handshakes, 0);
         assert_eq!(node.stats().await.unknown_tags, 1);
     }

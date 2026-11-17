@@ -409,6 +409,12 @@ pub fn inspect_datagram(dgram: &[u8]) -> Result<InitialFlight> {
     let mut pos = 0usize;
     let mut next_pn: u64 = 0;
     while pos < dgram.len() {
+        // Trailing QUIC PADDING (zero bytes) terminates the coalesced-packet
+        // walk: real browsers pad their Initial datagrams to 1252 B, and the
+        // zero run after the last packet is not a packet.
+        if dgram[pos] & 0x80 == 0 {
+            break;
+        }
         let hdr = scan_header(dgram, pos)?;
         let keys = initial_keys(&hdr.dcid, Side::Client);
         let mut packet = dgram[pos..hdr.packet_end].to_vec();
@@ -430,6 +436,106 @@ pub fn inspect_datagram(dgram: &[u8]) -> Result<InitialFlight> {
         next_pn = pn + 1;
     }
     Ok(flight)
+}
+
+/// Varint encode (RFC 9000 §16).
+#[must_use]
+pub fn encode_varint(v: u64) -> Vec<u8> {
+    if v < 0x40 {
+        vec![v as u8]
+    } else if v < 0x4000 {
+        let b = 0x4000u16 | v as u16;
+        b.to_be_bytes().to_vec()
+    } else if v < 0x4000_0000 {
+        let b = 0x8000_0000u32 | v as u32;
+        b.to_be_bytes().to_vec()
+    } else {
+        let b = 0xC000_0000_0000_0000u64 | v;
+        b.to_be_bytes().to_vec()
+    }
+}
+
+/// Wrap payload bytes in a CRYPTO (0x06) frame at `offset`.
+#[must_use]
+pub fn crypto_frame(offset: u64, data: &[u8]) -> Vec<u8> {
+    let mut out = vec![0x06u8];
+    out.extend(encode_varint(offset));
+    out.extend(encode_varint(data.len() as u64));
+    out.extend_from_slice(data);
+    out
+}
+
+/// Build a valid, header-protected client Initial datagram (RFC 9001 §5).
+///
+/// The datagram is padded to `pad_to` bytes with zero bytes — QUIC PADDING
+/// frames — which is how real browsers size their Initial datagrams (1252 B).
+/// Errors: [`Error::ShortDatagram`] when the frame does not fit `pad_to`.
+pub fn craft_flight(
+    dcid: &[u8],
+    scid: &[u8],
+    token: &[u8],
+    pn: u64,
+    pn_len: usize,
+    crypto: &[u8],
+    pad_to: usize,
+) -> Result<Vec<u8>> {
+    if dcid.len() > MAX_CID_LEN || scid.len() > MAX_CID_LEN {
+        return Err(Error::ShortDatagram {
+            got: dcid.len().max(scid.len()),
+            need: MAX_CID_LEN,
+        });
+    }
+    let keys = initial_keys(dcid, Side::Client);
+    // First byte: long header | fixed bit | Initial type 00 | pn_len-1.
+    let mut header = vec![0xC0 | ((pn_len - 1) as u8)];
+    header.extend_from_slice(&QUIC_V1.to_be_bytes());
+    header.push(dcid.len() as u8);
+    header.extend_from_slice(dcid);
+    header.push(scid.len() as u8);
+    header.extend_from_slice(scid);
+    header.extend(encode_varint(token.len() as u64));
+    header.extend_from_slice(token);
+    // Length varint (packet number + protected payload incl. tag), then the
+    // truncated pn itself.
+    let length = pn_len + crypto.len() + 16;
+    header.extend(encode_varint(length as u64));
+    let pn_offset = header.len();
+    let pnb = pn.to_be_bytes();
+    header.extend_from_slice(&pnb[8 - pn_len..]);
+
+    // Seal: nonce = iv ⊕ pn, aad = header with the still-unprotected pn,
+    // ciphertext + 16-byte tag.
+    let mut nonce = keys.iv;
+    for (i, &b) in pnb.iter().enumerate() {
+        nonce[11 - i] ^= b;
+    }
+    let mut pt = crypto.to_vec();
+    let tag = Aes128Gcm::new(keys.key.as_ref().into())
+        .encrypt_in_place_detached(Nonce::from_slice(&nonce), &header, pt.as_mut_slice())
+        .map_err(|_| Error::Decrypt)?;
+    pt.extend_from_slice(tag.as_slice());
+    let mut packet = header;
+    packet.extend_from_slice(&pt);
+
+    // Protect header(+pn) with the AES-ECB mask (long header: 4 bits).
+    let cipher = Aes128::new(keys.hp.as_ref().into());
+    let mut block = aes::Block::clone_from_slice(&packet[pn_offset + 4..pn_offset + 20]);
+    cipher.encrypt_block(&mut block);
+    let mask: [u8; 16] = block.into();
+    packet[0] ^= mask[0] & 0x0f;
+    for (i, dst) in packet[pn_offset..pn_offset + pn_len].iter_mut().enumerate() {
+        *dst ^= mask[i + 1];
+    }
+
+    // QUIC PADDING: zero bytes past the packet, up to the profile size.
+    if pad_to < packet.len() {
+        return Err(Error::ShortDatagram {
+            got: pad_to,
+            need: packet.len(),
+        });
+    }
+    packet.resize(pad_to, 0);
+    Ok(packet)
 }
 
 /// Test-only builder kit: an *independent* seal/protect path (raw aes-gcm +

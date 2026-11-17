@@ -128,6 +128,7 @@ async fn main() -> anyhow::Result<()> {
 
     let params = ServerParams {
         mtu: cfg.tun.mtu.min(packet::MAX_DATAGRAM as u16) as usize,
+        shape: cfg.shape_profile()?,
         ..ServerParams::default()
     };
     let pool = IpPool::new(network, pool_prefix);
@@ -153,7 +154,99 @@ async fn main() -> anyhow::Result<()> {
         None
     };
 
-    serve(node, splicer, device).await
+    let boot = Arc::new(Instant::now());
+
+    // Optional TCP transport: length-prefixed frames on a parallel port, for
+    // paths where UDP is throttled or blocked outright.
+    if let Some(tcp_addr) = cfg.listen_addr_tcp {
+        let listener = tokio::net::TcpListener::bind(tcp_addr)
+            .await
+            .with_context(|| format!("bind TCP {tcp_addr}"))?;
+        tracing::info!(addr = %listener.local_addr()?, "tcp listener up");
+        let node = Arc::clone(&node);
+        let device = device.clone();
+        let boot = Arc::clone(&boot);
+        tokio::spawn(async move {
+            loop {
+                let Ok((stream, peer)) = listener.accept().await else {
+                    continue;
+                };
+                let node = Arc::clone(&node);
+                let device = device.clone();
+                let boot = Arc::clone(&boot);
+                tokio::spawn(async move {
+                    if let Err(e) = serve_tcp_conn(stream, peer, node, device, boot).await {
+                        tracing::debug!(error = %e, %peer, "tcp connection ended");
+                    }
+                });
+            }
+        });
+    }
+
+    serve(node, splicer, device, boot).await
+}
+
+/// Serve one TCP transport connection: length-prefixed bProto datagrams in
+/// both directions (u16 BE length prefix per datagram, matching the client).
+async fn serve_tcp_conn(
+    stream: tokio::net::TcpStream,
+    peer: SocketAddr,
+    node: Arc<ServerNode>,
+    device: Option<Arc<dev::TunDevice>>,
+    boot: Arc<Instant>,
+) -> anyhow::Result<()> {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    const MAX_FRAME: usize = packet::MAX_DATAGRAM + 32;
+
+    stream.set_nodelay(true).ok();
+    let (mut read_half, mut write_half) = stream.into_split();
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<u8>>(256);
+
+    // Writer task: u16 BE length prefix + datagram.
+    tokio::spawn(async move {
+        while let Some(datagram) = rx.recv().await {
+            if datagram.len() > MAX_FRAME {
+                continue;
+            }
+            let mut frame = Vec::with_capacity(2 + datagram.len());
+            frame.extend_from_slice(&(datagram.len() as u16).to_be_bytes());
+            frame.extend_from_slice(&datagram);
+            if write_half.write_all(&frame).await.is_err() {
+                break;
+            }
+        }
+    });
+
+    // The clock is the server's boot time, shared with the serve loop: session
+    // timestamps must live in one time base or the idle-eviction arithmetic
+    // compares epochs (a per-connection clock starts at zero and every session
+    // looks expired).
+    let now_us = move || boot.elapsed().as_micros() as u64;
+    let mut len_buf = [0u8; 2];
+    loop {
+        if read_half.read_exact(&mut len_buf).await.is_err() {
+            return Ok(()); // connection closed or reset: normal end of life
+        }
+        let len = u16::from_be_bytes(len_buf) as usize;
+        if len == 0 || len > MAX_FRAME {
+            anyhow::bail!("tcp frame length {len} out of range");
+        }
+        let mut datagram = vec![0u8; len];
+        if read_half.read_exact(&mut datagram).await.is_err() {
+            return Ok(());
+        }
+        match node.handle(&datagram, peer, now_us(), Some(&tx)).await {
+            Ok(Some(pkt)) => {
+                if let Some(device) = &device
+                    && let Err(e) = device.write_packet(&pkt)
+                {
+                    tracing::warn!(error = %e, "TUN write failed");
+                }
+            }
+            Ok(None) => {}
+            Err(e) => tracing::debug!(error = %e, %peer, "datagram rejected"),
+        }
+    }
 }
 
 fn bring_up_tun(
@@ -203,10 +296,10 @@ async fn serve(
     node: Arc<ServerNode>,
     splicer: Option<vpn_server::splicer::Splicer>,
     device: Option<Arc<dev::TunDevice>>,
+    boot: Arc<Instant>,
 ) -> anyhow::Result<()> {
     let sock = node.socket();
-    let start = Instant::now();
-    let now_us = move || start.elapsed().as_micros() as u64;
+    let now_us = move || boot.elapsed().as_micros() as u64;
 
     // TUN reads are blocking, so they happen on a dedicated thread that hands
     // packets back over a channel.
@@ -257,7 +350,7 @@ async fn serve(
                         vpn_server::splicer::Action::Native => {}
                     }
                 }
-                match node.handle(&datagram[..n], from, now_us()).await {
+                match node.handle(&datagram[..n], from, now_us(), None).await {
                     Ok(Some(pkt)) => {
                         if let Some(device) = &device
                             && let Err(e) = device.write_packet(&pkt)

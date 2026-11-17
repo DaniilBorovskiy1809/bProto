@@ -14,6 +14,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UdpSocket;
 use tokio::sync::{Mutex, Notify, mpsc};
 use tokio::task::JoinHandle;
@@ -287,8 +288,7 @@ pub fn unix_now_secs() -> u64 {
 #[derive(Debug)]
 struct ClientShared {
     session: Session,
-    sock: Arc<UdpSocket>,
-    peer: SocketAddr,
+    wire: Arc<Wire>,
     inbound_tx: mpsc::Sender<Vec<u8>>,
     rtt: Mutex<RttEstimator>,
     cc: Mutex<Cubic>,
@@ -298,6 +298,122 @@ struct ClientShared {
     last_rx_ms: AtomicU64,
     room: Notify,
     start: Instant,
+}
+
+/// The client's wire link: QUIC-shaped UDP datagrams, or length-prefixed
+/// frames over one TCP stream (for paths where UDP is throttled or blocked).
+#[derive(Debug)]
+enum Wire {
+    Udp {
+        sock: Arc<UdpSocket>,
+        peer: SocketAddr,
+    },
+    Tcp {
+        /// Outbound datagrams, framed by a dedicated writer task.
+        tx: mpsc::Sender<Vec<u8>>,
+        /// Inbound datagrams fed by the reader task.
+        rx: tokio::sync::Mutex<mpsc::Receiver<Vec<u8>>>,
+    },
+}
+
+/// TCP framing: one u16 big-endian length prefix per datagram.
+const TCP_MAX_FRAME: usize = MAX_DATAGRAM + 32;
+
+impl Wire {
+    /// Open the link. UDP binds a browser-shaped socket from the shape
+    /// profile; TCP opens a framed stream.
+    async fn connect(
+        peer: SocketAddr,
+        kind: crate::TransportKind,
+        shape: &crate::shape::ShapeProfile,
+    ) -> Result<Self> {
+        match kind {
+            crate::TransportKind::Udp | crate::TransportKind::Auto => {
+                let sock = udp::bind_for(peer, shape.ttl, shape.df).await?;
+                Ok(Self::Udp {
+                    sock: Arc::new(sock),
+                    peer,
+                })
+            }
+            crate::TransportKind::Tcp => Self::tcp(peer).await,
+        }
+    }
+
+    async fn tcp(peer: SocketAddr) -> Result<Self> {
+        let stream = tokio::net::TcpStream::connect(peer)
+            .await
+            .map_err(|e| Error::Transport(format!("tcp connect {peer}: {e}")))?;
+        stream.set_nodelay(true).ok();
+        let (mut read_half, mut write_half) = stream.into_split();
+        let (out_tx, mut out_rx) = mpsc::channel::<Vec<u8>>(256);
+        let (in_tx, in_rx) = mpsc::channel::<Vec<u8>>(2048);
+
+        // Writer task: u16 BE length prefix + datagram.
+        tokio::spawn(async move {
+            while let Some(datagram) = out_rx.recv().await {
+                if datagram.len() > TCP_MAX_FRAME {
+                    continue;
+                }
+                let mut frame = Vec::with_capacity(2 + datagram.len());
+                frame.extend_from_slice(&(datagram.len() as u16).to_be_bytes());
+                frame.extend_from_slice(&datagram);
+                if write_half.write_all(&frame).await.is_err() {
+                    break;
+                }
+            }
+        });
+
+        // Reader task: split frames, hand each to the tunnel.
+        tokio::spawn(async move {
+            let mut len_buf = [0u8; 2];
+            loop {
+                if read_half.read_exact(&mut len_buf).await.is_err() {
+                    break;
+                }
+                let len = u16::from_be_bytes(len_buf) as usize;
+                if len == 0 || len > TCP_MAX_FRAME {
+                    break;
+                }
+                let mut datagram = vec![0u8; len];
+                if read_half.read_exact(&mut datagram).await.is_err() {
+                    break;
+                }
+                if in_tx.send(datagram).await.is_err() {
+                    break;
+                }
+            }
+        });
+
+        Ok(Self::Tcp {
+            tx: out_tx,
+            rx: tokio::sync::Mutex::new(in_rx),
+        })
+    }
+
+    async fn send(&self, datagram: &[u8]) -> Result<()> {
+        match self {
+            Self::Udp { sock, peer } => udp::send(sock, datagram, *peer).await,
+            Self::Tcp { tx, .. } => tx
+                .send(datagram.to_vec())
+                .await
+                .map_err(|_| Error::Transport("tcp link closed".into())),
+        }
+    }
+
+    /// Next inbound datagram from the server (UDP: from the expected peer
+    /// only; TCP: the next frame). Returns `None` when the link is closed.
+    async fn recv(&self, buf: &mut [u8]) -> Result<Option<Vec<u8>>> {
+        match self {
+            Self::Udp { sock, peer } => loop {
+                let (n, from) = udp::recv(sock, buf).await?;
+                if from != *peer {
+                    continue;
+                }
+                return Ok(Some(buf[..n].to_vec()));
+            },
+            Self::Tcp { rx, .. } => Ok(rx.lock().await.recv().await),
+        }
+    }
 }
 
 impl ClientShared {
@@ -321,12 +437,12 @@ impl ClientShared {
         let (_, datagram) = self
             .session
             .seal_control_padded(&ranges.encode(), control_size())?;
-        udp::send(&self.sock, &datagram, self.peer).await
+        self.wire.send(&datagram).await
     }
 
     async fn send_control(&self, frame: &[u8]) -> Result<()> {
         let (_, datagram) = self.session.seal_control_padded(frame, control_size())?;
-        udp::send(&self.sock, &datagram, self.peer).await
+        self.wire.send(&datagram).await
     }
 
     async fn mark_ack(&self, pn: u64) -> bool {
@@ -350,11 +466,39 @@ pub struct Tunnel {
 
 impl Tunnel {
     /// Establish a tunnel: run the handshake, derive keys, start the datapath.
+    ///
+    /// `transport = "auto"` tries UDP first and, if the handshake does not
+    /// complete in time, retries over the TCP transport.
     pub async fn connect(cfg: TunnelConfig) -> Result<Self> {
+        match cfg.transport {
+            crate::TransportKind::Auto => {
+                let mut udp_cfg = cfg.clone();
+                udp_cfg.transport = crate::TransportKind::Udp;
+                match Self::connect_once(udp_cfg.clone()).await {
+                    Ok(t) => Ok(t),
+                    Err(
+                        Error::HandshakeTimeout
+                        | Error::Transport(_)
+                        | Error::Io(_)
+                        | Error::Decrypt,
+                    ) => {
+                        let mut tcp_cfg = cfg.clone();
+                        tcp_cfg.transport = crate::TransportKind::Tcp;
+                        Self::connect_once(tcp_cfg).await
+                    }
+                    Err(e) => Err(e),
+                }
+            }
+            _ => Self::connect_once(cfg).await,
+        }
+    }
+
+    async fn connect_once(cfg: TunnelConfig) -> Result<Self> {
         cfg.validate()?;
         let peer = cfg.server;
         let mtu = cfg.effective_mtu();
-        let sock = Arc::new(udp::bind_for(peer).await?);
+        let shape = crate::shape::ShapeProfile::resolve(&cfg.shape)?;
+        let wire = Arc::new(Wire::connect(peer, cfg.transport, &shape).await?);
 
         let deadline = Instant::now() + cfg.handshake_timeout;
         let (state, hello) = handshake::start(&cfg, unix_now_secs())?;
@@ -366,21 +510,31 @@ impl Tunnel {
                 return Err(Error::HandshakeTimeout);
             }
             if attempt == 0 {
-                // Firefox's anti-loss opening: the padded Initial goes out
+                // Pre-flight noise (Xray finalmask/noise style): the profile's
+                // random datagrams blur the moment the real flight starts.
+                for _ in 0..shape.noise.count {
+                    wire.send(&shape.noise_datagram()).await?;
+                }
+                // The browser flight: a real QUIC Initial carrying the labeled
+                // ClientHello goes out first when the profile crafts one.
+                if !state.parrot().is_empty() {
+                    wire.send(state.parrot()).await?;
+                }
+                // Chrome's anti-loss opening: the padded Initial goes out
                 // twice, ~0.2 ms apart, both bytes-identical.
-                udp::send(&sock, &hello, peer).await?;
+                wire.send(&hello).await?;
                 tokio::time::sleep(INITIAL_GAP).await;
             }
             attempt += 1;
-            udp::send(&sock, &hello, peer).await?;
-            match tokio::time::timeout(HANDSHAKE_RETRY, sock.recv_from(&mut buf)).await {
-                Ok(Ok((n, from))) if from == peer => {
-                    if let Ok(est) = handshake::finish(&state, &buf[..n]) {
+            wire.send(&hello).await?;
+            match tokio::time::timeout(HANDSHAKE_RETRY, wire.recv(&mut buf)).await {
+                Ok(Ok(Some(ack))) => {
+                    if let Ok(est) = handshake::finish(&state, &ack) {
                         break est;
                     }
                     // A forged or stale datagram: keep retrying until timeout.
                 }
-                Ok(Ok(_)) => {} // wrong source; ignore
+                Ok(Ok(None)) => return Err(Error::Transport("link closed".into())),
                 Ok(Err(e)) => return Err(Error::Transport(format!("recv: {e}"))),
                 Err(_elapsed) => {} // retransmit
             }
@@ -390,8 +544,7 @@ impl Tunnel {
         let (inbound_tx, inbound_rx) = mpsc::channel(2048);
         let shared = Arc::new(ClientShared {
             session,
-            sock,
-            peer,
+            wire,
             inbound_tx,
             rtt: Mutex::new(RttEstimator::default()),
             cc: Mutex::new(Cubic::new(mtu as u32)),
@@ -429,19 +582,23 @@ impl Tunnel {
     /// Android needs this to call `VpnService.protect(fd)`: without it the
     /// tunnel's own traffic to the server is routed back into the tunnel and
     /// nothing gets through. The descriptor is owned by the tunnel; do not
-    /// close it.
+    /// close it. Returns `-1` when the tunnel rides the TCP transport (no UDP
+    /// socket to protect; the TCP stream needs no protection).
     #[cfg(unix)]
     #[must_use]
     pub fn socket_fd(&self) -> std::os::fd::RawFd {
         use std::os::fd::AsRawFd;
-        self.shared.sock.as_raw_fd()
+        match &*self.shared.wire {
+            Wire::Udp { sock, .. } => sock.as_raw_fd(),
+            Wire::Tcp { .. } => -1,
+        }
     }
 
     /// Encrypt and send one IP packet.
     ///
     /// Sends are gated by the CUBIC window: if it is full we wait briefly (2 ms)
-    /// for ACKs to free room, then send anyway — the tunnel is UDP, so a drop
-    /// here is a datagram the transport would have dropped under load.
+    /// for ACKs to free room, then send anyway — the tunnel is datagram-based,
+    /// so a drop here is a packet the transport would have dropped under load.
     pub async fn send_ip_packet(&self, ip_packet: &[u8]) -> Result<()> {
         let in_flight = self.shared.sent.lock().await.bytes_in_flight();
         if !self.shared.cc.lock().await.can_send(in_flight) {
@@ -454,7 +611,7 @@ impl Tunnel {
             .lock()
             .await
             .on_sent(pn, self.shared.now_us(), datagram.len() as u64);
-        udp::send(&self.shared.sock, &datagram, self.shared.peer).await
+        self.shared.wire.send(&datagram).await
     }
 
     /// Wait for the next inbound IP packet. Returns [`Error::NoSession`] once the
@@ -510,11 +667,10 @@ async fn client_loop(shared: Arc<ClientShared>) {
 
     loop {
         tokio::select! {
-            received = shared.sock.recv_from(&mut buf) => {
-                let Ok((n, from)) = received else { continue };
-                if from != shared.peer {
-                    continue;
-                }
+            received = shared.wire.recv(&mut buf) => {
+                let Ok(Some(datagram)) = received else { break };
+                let n = datagram.len();
+                buf[..n].copy_from_slice(&datagram);
                 // Plaintext control datagrams have no place in an established
                 // session: what arrives here is the duplicate HELLO_ACK of the
                 // Firefox-shaped double first flight (the connect loop already
@@ -736,6 +892,8 @@ mod tests {
             fingerprint: Fingerprint::Chrome112,
             stealth: StealthLevel::Off,
             handshake_timeout: Duration::from_secs(10),
+            shape: crate::shape::ShapeConfig::default(),
+            transport: crate::TransportKind::Udp,
         }
     }
 }

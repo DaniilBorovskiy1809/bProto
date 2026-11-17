@@ -74,6 +74,9 @@ pub struct HelloAck {
 }
 
 impl Hello {
+    /// Serialized frame length (`encode` output size).
+    pub const ENCODED_LEN: usize = 1 + TAG_LEN + 32 + 32 + 8 + MAC_LEN;
+
     /// Serialize to a control frame payload.
     #[must_use]
     pub fn encode(&self) -> Vec<u8> {
@@ -119,6 +122,9 @@ impl Hello {
 }
 
 impl HelloAck {
+    /// Serialized frame length (`encode` output size).
+    pub const ENCODED_LEN: usize = 1 + 32 + 32 + 32 + 4 + MAC_LEN;
+
     /// Serialize to a control frame payload.
     #[must_use]
     pub fn encode(&self) -> Vec<u8> {

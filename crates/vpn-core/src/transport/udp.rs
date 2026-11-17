@@ -14,11 +14,11 @@ use crate::error::{Error, Result};
 /// Bind a socket appropriate for talking to `peer`: any local port, matching
 /// address family.
 ///
-/// IP options are pinned to the shape a real HTTP/3 client's socket has (the
-/// Firefox capture shows `tos 0x0, ttl 64, flags [DF]` on every datagram):
-/// DF is enabled via `IP_MTU_DISCOVER` on Linux, TTL is set to 64. Both steps
-/// are best-effort — failing option sets never break the tunnel itself.
-pub async fn bind_for(peer: SocketAddr) -> Result<UdpSocket> {
+/// IP options follow the shape profile (browser QUIC sockets show
+/// `tos 0x0, ttl 64, flags [DF]`): DF is enabled via `IP_MTU_DISCOVER` on
+/// Linux, TTL is pinned to `ttl`. Both steps are best-effort — failing option
+/// sets never break the tunnel itself.
+pub async fn bind_for(peer: SocketAddr, ttl: u8, df: bool) -> Result<UdpSocket> {
     let local: SocketAddr = if peer.is_ipv4() {
         "0.0.0.0:0".parse().expect("valid literal")
     } else {
@@ -27,11 +27,13 @@ pub async fn bind_for(peer: SocketAddr) -> Result<UdpSocket> {
     let bound = std::net::UdpSocket::bind(local)
         .map_err(|e| Error::Transport(format!("bind {local}: {e}")))?;
     if peer.is_ipv4() {
-        // Browser-socket IP shape. FF keeps whole datagrams; TTL 64 is the
+        // Browser-socket IP shape, driven by the shape profile: TTL is the
         // Linux default, pinned so exotic boxes that ship another default
         // still produce the familiar header.
-        let _ = bound.set_ttl(64);
-        let _ = ipopts::set_df_v4(&bound);
+        let _ = bound.set_ttl(u32::from(ttl));
+        if df {
+            let _ = ipopts::set_df_v4(&bound);
+        }
     }
     bound
         .set_nonblocking(true)
@@ -81,7 +83,9 @@ mod tests {
 
     #[tokio::test]
     async fn bind_for_matches_family() {
-        let s4 = bind_for("127.0.0.1:443".parse().unwrap()).await.unwrap();
+        let s4 = bind_for("127.0.0.1:443".parse().unwrap(), 64, true)
+            .await
+            .unwrap();
         assert!(s4.local_addr().unwrap().is_ipv4());
     }
 }

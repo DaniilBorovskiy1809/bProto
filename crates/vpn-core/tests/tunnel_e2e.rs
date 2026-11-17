@@ -29,6 +29,8 @@ fn config(server: SocketAddr, psk: [u8; 32], timeout: Duration) -> TunnelConfig 
         fingerprint: Fingerprint::Chrome112,
         stealth: StealthLevel::Off,
         handshake_timeout: timeout,
+        shape: vpn_core::shape::ShapeConfig::default(),
+        transport: vpn_core::TransportKind::Udp,
     }
 }
 
@@ -64,7 +66,7 @@ async fn start_server() -> Harness {
                 let Ok((n, from)) = sock.recv_from(&mut buf).await else {
                     break;
                 };
-                if let Ok(Some(pkt)) = node.handle(&buf[..n], from, 0).await {
+                if let Ok(Some(pkt)) = node.handle(&buf[..n], from, 0, None).await {
                     let _ = to_tun_tx.send(pkt).await;
                 }
             }
@@ -171,7 +173,7 @@ async fn two_users_get_distinct_addresses() {
         tokio::spawn(async move {
             let mut buf = vec![0u8; MAX_DATAGRAM + 32];
             while let Ok((n, from)) = sock.recv_from(&mut buf).await {
-                let _ = node.handle(&buf[..n], from, 0).await;
+                let _ = node.handle(&buf[..n], from, 0, None).await;
             }
         });
     }
@@ -208,4 +210,128 @@ async fn a_quiet_link_stays_established() {
     tokio::time::sleep(Duration::from_millis(300)).await;
     assert_eq!(h.node.stats().await.sessions, 1);
     assert!(tunnel.stats().tx_bytes > 0);
+}
+
+// ---------------------------------------------------------------------------
+// TCP transport
+// ---------------------------------------------------------------------------
+
+/// A TCP-transport server: framed datagrams on one stream per client.
+async fn start_tcp_server() -> Harness {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let mut table = TagTable::new();
+    table.insert(&TAG_KEY, USER, PSK);
+    let tags = Arc::new(RwLock::new(table));
+    let pool = IpPool::new("10.66.0.0".parse().unwrap(), 24);
+    let sock = Arc::new(tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap());
+    let node = Arc::new(ServerNode::new(sock, tags, pool, ServerParams::default()));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let (to_tun_tx, to_tun) = mpsc::channel::<Vec<u8>>(1024);
+    let node_for_harness = Arc::clone(&node);
+    tokio::spawn(async move {
+        loop {
+            let Ok((stream, peer)) = listener.accept().await else {
+                break;
+            };
+            let node = Arc::clone(&node);
+            let to_tun_tx = to_tun_tx.clone();
+            tokio::spawn(async move {
+                stream.set_nodelay(true).ok();
+                let (mut read_half, mut write_half) = stream.into_split();
+                let (tx, mut rx) = mpsc::channel::<Vec<u8>>(256);
+                tokio::spawn(async move {
+                    while let Some(datagram) = rx.recv().await {
+                        let mut frame = Vec::with_capacity(2 + datagram.len());
+                        frame.extend_from_slice(&(datagram.len() as u16).to_be_bytes());
+                        frame.extend_from_slice(&datagram);
+                        if write_half.write_all(&frame).await.is_err() {
+                            break;
+                        }
+                    }
+                });
+                let mut len_buf = [0u8; 2];
+                loop {
+                    if read_half.read_exact(&mut len_buf).await.is_err() {
+                        break;
+                    }
+                    let len = u16::from_be_bytes(len_buf) as usize;
+                    if len == 0 || len > MAX_DATAGRAM + 32 {
+                        break;
+                    }
+                    let mut datagram = vec![0u8; len];
+                    if read_half.read_exact(&mut datagram).await.is_err() {
+                        break;
+                    }
+                    if let Ok(Some(pkt)) = node.handle(&datagram, peer, 0, Some(&tx)).await {
+                        let _ = to_tun_tx.send(pkt).await;
+                    }
+                }
+            });
+        }
+    });
+
+    Harness {
+        node: node_for_harness,
+        addr,
+        to_tun,
+    }
+}
+
+/// The full tunnel runs over the TCP transport: handshake, then IP packets in
+/// both directions, framed on the stream.
+#[tokio::test]
+async fn tcp_transport_establishes_and_carries_ip_traffic() {
+    let mut h = start_tcp_server().await;
+
+    let mut cfg = config(h.addr, PSK, Duration::from_secs(2));
+    cfg.transport = vpn_core::TransportKind::Tcp;
+    let tunnel = Tunnel::connect(cfg).await.expect("tcp handshake");
+
+    assert_eq!(tunnel.assigned_ip().to_string(), "10.66.0.2");
+    assert_eq!(h.node.stats().await.sessions, 1);
+
+    for i in 0..20u8 {
+        let mut pkt = vec![0u8; 48];
+        pkt[0] = 0x45;
+        pkt[9] = 17;
+        pkt[16..20].copy_from_slice(&[10, 66, 0, 1]);
+        pkt[20..24].copy_from_slice(&[10, 66, 0, 2]);
+        pkt[47] = i;
+        tunnel.send_ip_packet(&pkt).await.unwrap();
+    }
+    let mut seen = 0u8;
+    while seen < 20 {
+        let pkt = tokio::time::timeout(Duration::from_secs(2), h.to_tun.recv())
+            .await
+            .expect("server must deliver within 2s")
+            .expect("channel open");
+        assert_eq!(pkt[47], seen);
+        seen += 1;
+    }
+
+    // Downstream: server seals to the client, the client receives it.
+    let client_ip = tunnel.assigned_ip();
+    let mut down = vec![0u8; 40];
+    down[0] = 0x45;
+    down[12..16].copy_from_slice(&[1, 1, 1, 1]);
+    down[16..20].copy_from_slice(&client_ip.octets());
+    assert!(h.node.seal_outbound(client_ip, &down, 0).await.unwrap());
+    let got = tokio::time::timeout(Duration::from_secs(2), tunnel.recv_ip_packet())
+        .await
+        .expect("client must receive within 2s")
+        .unwrap();
+    assert_eq!(got, down);
+}
+
+/// `transport = "auto"` falls back from UDP to TCP when the UDP handshake
+/// finds no listener.
+#[tokio::test]
+async fn auto_transport_falls_back_to_tcp() {
+    let h = start_tcp_server().await;
+    let mut cfg = config(h.addr, PSK, Duration::from_millis(400));
+    cfg.transport = vpn_core::TransportKind::Auto;
+    let _tunnel = Tunnel::connect(cfg).await.expect("auto falls back to tcp");
+    assert_eq!(h.node.stats().await.sessions, 1);
 }
