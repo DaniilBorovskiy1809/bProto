@@ -78,7 +78,8 @@ jobs:
           export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
           ./build_app.sh --android --no-panel
           gradle -p apps/android testDebugUnitTest
-          test -s dist/apk/bproto-1.0.0-debug.apk
+          version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
+          test -s "dist/apk/bproto-$version-debug.apk"
           unzip -l dist/apk/*.apk | grep lib/arm64-v8a/libbproto.so
           unzip -l dist/apk/*.apk | grep lib/armeabi-v7a/libbproto.so
           unzip -l dist/apk/*.apk | grep lib/x86_64/libbproto.so
@@ -115,10 +116,11 @@ jobs:
           git archive --format=tar.gz --prefix=bproto-${GITHUB_REF_NAME}/ HEAD > release-assets/bproto-${GITHUB_REF_NAME}-source.tar.gz
           cd release-assets
           rm -f *.sha256 android/SHA256SUMS
-          sha256sum *.tar.gz android/*.apk > SHA256SUMS
+          mv android/*.apk .
+          sha256sum *.tar.gz *.apk > SHA256SUMS
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "$GITHUB_REF_NAME" release-assets/*.tar.gz release-assets/android/*.apk release-assets/SHA256SUMS --verify-tag --title "bProto ${GITHUB_REF_NAME}" --notes-file docs/releases/1.0.0.md
+          gh release create "$GITHUB_REF_NAME" release-assets/*.tar.gz release-assets/*.apk release-assets/SHA256SUMS --verify-tag --title "bProto ${GITHUB_REF_NAME}" --notes-file "docs/releases/${GITHUB_REF_NAME#v}.md"
