@@ -17,6 +17,12 @@ jobs:
       - run: python3 -m unittest discover -s tests -p test_installers.py -v
       - run: python3 -m unittest discover -s tests -p 'test_connection_*.py' -v
       - run: python3 -m unittest discover -s tests -p test_tls_bridge.py -v
+      - name: QUIC integration and coverage
+        run: |
+          python3 -m venv /tmp/quic-tests
+          /tmp/quic-tests/bin/pip install -r tools/quic-bridge/requirements.txt coverage==7.13.1
+          /tmp/quic-tests/bin/python -m coverage run --data-file=/tmp/quic-coverage --source=tools/quic-bridge -m unittest discover -s tests -p test_quic_bridge.py -v
+          /tmp/quic-tests/bin/python -m coverage report --data-file=/tmp/quic-coverage --fail-under=70
   linux-panel:
     runs-on: ubuntu-24.04
     timeout-minutes: 40

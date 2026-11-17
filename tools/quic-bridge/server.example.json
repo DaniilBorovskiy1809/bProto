@@ -1,0 +1,11 @@
+{
+  "listen_host": "127.0.0.1",
+  "listen_port": 8443,
+  "hostname": "vpn.example.com",
+  "cert": "/etc/bproto/tls/fullchain.pem",
+  "key": "/etc/bproto/tls/privkey.pem",
+  "upstream_host": "127.0.0.1",
+  "upstream_port": 4443,
+  "fallback_file": "/var/www/bproto/index.html",
+  "token_env": "BPROTO_BRIDGE_TOKEN"
+}
