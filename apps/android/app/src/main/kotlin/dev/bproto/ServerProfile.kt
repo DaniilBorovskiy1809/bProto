@@ -18,6 +18,7 @@ data class ServerProfile(val name: String, val uri: String, val routing: Routing
             val endpoint = java.net.URI("udp://${config.getString("server")}")
             require(endpoint.host != null && endpoint.port in 1..65535 && endpoint.userInfo == null && endpoint.rawPath.isNullOrEmpty() && endpoint.rawQuery == null && endpoint.rawFragment == null) { "Invalid server endpoint" }
             require(config.getString("sni").isNotBlank()) { "Missing donor SNI" }
+            WssProfile.parse(config)
             TlsProfile.parse(config)
             return ServerProfile(name.take(120), uri, routing)
         }

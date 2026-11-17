@@ -22,7 +22,7 @@ Start with `python bridge.py server /etc/bproto/wss-server.json` and
 Bind the native server to the configured upstream. Point the native client at
 127.0.0.1:14443, retaining native PSK/tag/user credentials. Protect or pin the outer
 WSS endpoint route before enabling full-tunnel routing. The native client only
-sees loopback. This Python sidecar is not integrated into Android.
+sees loopback. Android 10+ has an in-process OkHttp WSS carrier; the Python sidecar is for desktop/CLI.
 
 For a reverse proxy/CDN, explicitly enable WebSocket forwarding to your HTTPS
 origin, preserve the /bproto path and Authorization header, and validate the origin
@@ -43,8 +43,25 @@ BPROTO_TEST_BIN_DIR selects the binary directory (default target/debug).
 Tests run real native handshakes through TLS, QUIC/HTTP3 and WSS, including wrong
 native PSKs, wrong WSS tokens, hostname rejection and malformed messages.
 
-No live CDN, Android WSS, browser fingerprint, ECH or real allowlist/DPI test has
+No live CDN, Android device runtime, browser fingerprint, ECH or real allowlist/DPI test has
 been performed. The suite does not test kernel TUN or Internet forwarding.
 A whitelisted hostname does not make an unreachable origin IP reachable; the
 authorized proxy itself must be reachable. No 100% RKN bypass guarantee.
 WSS uses TCP: head-of-line blocking and provider timeouts affect performance.
+
+
+## Android
+
+Select WSS in panel Settings, enter your owned hostname/port and an existing
+bProto import key, then export the Android key. Import that text in the app.
+The optional `wss` object contains `url` and `token`; it cannot coexist with
+`tls`. System certificate trust and TLS 1.3 are required. Android 8/9 reject WSS.
+The socket factory calls VpnService.protect before TCP connect; redirects and
+system HTTP proxies are disabled. The outbound application queue is capped.
+Transport failures stop the native tunnel without silently downgrading to UDP.
+
+JVM tests use a real local TLS 1.3 WebSocket server to verify UDP round-trip,
+pre-connect socket protection, bearer authentication, HTTP fallback rejection
+and profile validation. They do not execute Android VpnService on a device.
+The panel Apply button still targets the configured raw-TLS agent; WSS setup is
+exported separately to avoid applying a different schema to that service.

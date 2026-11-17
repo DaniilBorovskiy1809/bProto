@@ -76,7 +76,7 @@ class BprotoVpnService : VpnService() {
     // Touched from the main thread (start) and the tunnel thread (finally).
     @Volatile
     private var worker: Thread? = null
-    @Volatile private var carrier: TlsCarrier? = null
+    @Volatile private var carrier: java.io.Closeable? = null
     private var routing = RoutingPolicy()
     private var candidates: List<String> = emptyList()
     @Volatile private var cancelled = false
@@ -149,10 +149,10 @@ class BprotoVpnService : VpnService() {
                 carrier?.close()
                 carrier = null
                 val prepared = runCatching {
-                    TlsCarrier.prepare(candidate, { socket -> protect(socket) }, { Bproto.stop() })
+                    WssCarrier.prepare(candidate, { socket -> protect(socket) }, { Bproto.stop() })
                 }
                 if (prepared.isFailure) {
-                    publish("TLS carrier failed for server ${index + 1}")
+                    publish("Carrier failed for server ${index + 1}")
                     continue
                 }
                 val (nativeConfig, activeCarrier) = prepared.getOrThrow()

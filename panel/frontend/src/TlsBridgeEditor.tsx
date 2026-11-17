@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button, Card, Field, Input, Notice } from "./ui";
 
 export default function TlsBridgeEditor() {
+  const [transport, setTransport] = useState<"tls" | "wss">("tls");
   const [hostname, setHostname] = useState("");
   const [address, setAddress] = useState("");
   const [port, setPort] = useState("443");
@@ -27,14 +28,19 @@ export default function TlsBridgeEditor() {
   }
   function download(mode: "server" | "client") {
     const shared = { hostname, token };
-    const config = mode === "server"
+    const tlsConfig = mode === "server"
       ? { ...shared, listen_host: "0.0.0.0", listen_port: Number(port), cert, key,
           fallback_file: fallback, upstream_host: "127.0.0.1", upstream_port: 4443 }
       : { ...shared, server_host: address || hostname, server_port: Number(port),
           local_port: 14443, ...(ca ? { ca } : {}) };
+    const config = transport === "tls" ? tlsConfig : mode === "server"
+      ? {listen_host: "0.0.0.0", listen_port: Number(port), cert, key, path: "/bproto",
+          fallback_file: fallback, upstream_host: "127.0.0.1", upstream_port: 4443, token_env: "BPROTO_BRIDGE_TOKEN"}
+      : {url: `wss://${hostname}:${port}/bproto`, local_port: 14443,
+          token_env: "BPROTO_BRIDGE_TOKEN", ...(ca ? {ca} : {})};
     const url = URL.createObjectURL(new Blob([JSON.stringify(config, null, 2)], { type: "application/json" }));
     const link = document.createElement("a");
-    link.href = url; link.download = "tls-" + mode + ".json"; link.click();
+    link.href = url; link.download = transport + "-" + mode + ".json"; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   function androidExport() {
@@ -43,12 +49,15 @@ export default function TlsBridgeEditor() {
       const encoded = nativeUri.slice("bproto://import/".length).replace(/-/g, "+").replace(/_/g, "/");
       const config = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(encoded), c => c.charCodeAt(0))));
       if (config.v !== 1 || !/^[a-fA-F0-9]{64}$/.test(config.psk) || !/^[a-fA-F0-9]{64}$/.test(config.tag_key)) throw new Error("Invalid native profile");
-      config.tls = { hostname, server_host: address || hostname, server_port: Number(port), token };
+      delete config.tls;
+      delete config.wss;
+      if (transport === "tls") config.tls = { hostname, server_host: address || hostname, server_port: Number(port), token };
+      else config.wss = {url: `wss://${hostname}:${port}/bproto`, token};
       const bytes = new TextEncoder().encode(JSON.stringify(config));
       const uri = "bproto://import/" + btoa(Array.from(bytes, x => String.fromCharCode(x)).join("")).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
       const url = URL.createObjectURL(new Blob([uri], { type: "text/plain" }));
       const link = document.createElement("a");
-      link.href = url; link.download = "bproto-android-tls.txt"; link.click();
+      link.href = url; link.download = "bproto-android-" + transport + ".txt"; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       setExportError("");
     } catch { setExportError("Invalid bProto import key / Некорректный ключ"); }
@@ -59,10 +68,13 @@ export default function TlsBridgeEditor() {
   return <Card title="TLS 1.3 · экспериментальный транспорт / Experimental transport">
     <div className="space-y-3">
       <Notice>Конструктор конфигурации: экспорт не применяет настройки на сервере.
-        Android TLS требует Android 10+. QUIC, CDN fronting и обход белых списков пока не поддерживаются.
-        Используйте собственный домен и сертификат. / Export only; no automatic deployment.</Notice>
+        TLS/WSS проверяют сертификат. Android QUIC и ECH пока отсутствуют. Обход белых списков не гарантируется.
+        Используйте собственный домен и сертификат. / Use an owned domain and certificate.</Notice>
+      <Field label="Transport"><select value={transport} onChange={e => setTransport(e.target.value as "tls" | "wss")}>
+        <option value="tls">TLS 1.3</option><option value="wss">WebSocket over TLS</option>
+      </select></Field>
       <Field label="Домен сертификата / Certificate hostname"><Input value={hostname} onChange={e => setHostname(e.target.value)} placeholder="vpn.example.com" /></Field>
-      <Field label="Адрес сервера / Server address"><Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Default: hostname" /></Field>
+      <Field label="Адрес сервера / Server address"><Input disabled={transport === "wss"} value={address} onChange={e => setAddress(e.target.value)} placeholder="Default: hostname" /></Field>
       <Field label="TCP port"><Input type="number" min={1} max={65535} value={port} onChange={e => setPort(e.target.value)} /></Field>
       <Field label="Certificate chain path"><Input value={cert} onChange={e => setCert(e.target.value)} /></Field>
       <Field label="Private key path"><Input value={key} onChange={e => setKey(e.target.value)} /></Field>
@@ -70,13 +82,13 @@ export default function TlsBridgeEditor() {
       <Field label="Client CA path (optional; empty = system trust)"><Input value={ca} onChange={e => setCa(e.target.value)} /></Field>
       <Field label="Bridge token (64 hex characters)"><Input type="password" autoComplete="off" value={token} onChange={e => setToken(e.target.value)} /></Field>
       <Button onClick={() => setToken(Array.from(crypto.getRandomValues(new Uint8Array(32)), x => x.toString(16).padStart(2, "0")).join(""))}>Создать токен / Generate token</Button>
-      <p className="text-sm">Токен попадёт в оба файла. Храните их с правами 600. Форма не сохраняет секрет в браузере.</p>
+      <p className="text-sm">Android-ключ и TLS JSON содержат токен. Для WSS JSON задайте этот токен в BPROTO_BRIDGE_TOKEN на клиенте и сервере. Храните секреты с правами 600.</p>
       <Field label="Existing bProto import key / Ключ bProto для Android"><Input type="password" autoComplete="off" value={nativeUri} onChange={e => setNativeUri(e.target.value)} /></Field>
-      <Button disabled={!valid || !nativeUri || !!ca} onClick={androidExport}>Android TLS import key</Button>
+      <Button disabled={!valid || !nativeUri || !!ca} onClick={androidExport}>Android {transport.toUpperCase()} import key</Button>
       <p className="text-sm">Android использует системные CA; нестандартный CA здесь не поддерживается. / Android uses system trust.</p>
       {exportError && <p role="alert">{exportError}</p>}
-      <p className="text-sm">Применение перезапускает настроенный TLS-сервис и прерывает его подключения. Агент и mTLS настраиваются оператором заранее.</p>
-      <Button disabled={!valid || agentBusy} onClick={() => void agent("apply")}>Применить на сервере / Apply</Button>{" "}
+      <p className="text-sm">Применение перезапускает настроенный TLS-сервис и прерывает его подключения. Агент и mTLS настраиваются оператором заранее. Эта кнопка применяет только TLS-конфигурацию; WSS экспортируется отдельно.</p>
+      <Button disabled={!valid || agentBusy || transport !== "tls"} onClick={() => void agent("apply")}>Применить на сервере / Apply</Button>{" "}
       <Button disabled={agentBusy} onClick={() => void agent("health")}>Health</Button>{" "}
       <Button disabled={agentBusy} onClick={() => void agent("rollback")}>Rollback</Button>
       <p role="status">{agentStatus}</p>
