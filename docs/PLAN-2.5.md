@@ -29,9 +29,9 @@ TLS, HTTP/3 и WSS как внешние транспорты, управлен�
 |---|---|---|---|
 | Native bProto | UDP, crypto, replay, TUN/NAT | Native тесты и отдельный Docker TUN-стенд | Повторить TUN через новые транспорты |
 | TLS | Python-мост, Android-мост | Сертификат, native handshake, неверный PSK | Нагрузка, shutdown, device e2e |
-| HTTP/3 | Python aioquic, QUIC v1, Retry | 7 тестов, 80% покрытия; native handshake | Native/Android реализация, независимый клиент, TUN e2e |
+| HTTP/3 | Python aioquic, QUIC v1, Retry | 7 тестов, 80% покрытия; native handshake | Native/Android добавлены после базы документа; TUN/device e2e остаются |
 | WSS | Python и Android OkHttp | Native handshake; локальный JVM TLS/WSS UDP-обмен | Device e2e и реальный reverse-proxy |
-| Android | TLS/WSS, импорт, защита сокета | 24 JVM-теста, сборка APK | QUIC, instrumentation, Wi-Fi/mobile transitions |
+| Android | TLS/WSS, импорт, защита сокета | 24 JVM-теста, сборка APK | QUIC реализован после базы; instrumentation и Wi-Fi/mobile transitions остаются |
 | Панель/агент | Экспорт; TLS apply, health, rollback; mTLS | Тесты доступа, mTLS и транзакций; 75% покрытия агента | Полный deploy e2e, схемы всех транспортов, crash recovery |
 | ClientHello-профили | Только старые enum-настройки | Browser matching не подтверждён | Библиотека, профили, эталоны, тесты |
 | ECH | Нет | Нет | Backend, DNS HTTPS RR, ключи, политика fallback |
@@ -207,3 +207,10 @@ Android-устройство или emulator, signing key для release APK.
 публиковаться как «весь исходный план готов», пока перечисленные gate не закрыты.
 Сокращение объёма релиза требует явного изменения требований, а не переименования
 незавершённого этапа в готовую функцию.
+
+
+### Обновление этапа A
+
+Добавлены native HTTP3 на h3/quinn, JNI bind/protect/start, Kotlin lifecycle,
+экспорт QUIC профилей и Rust↔aioquic integration tests. Этап A не закрыт целиком:
+нужны Android VpnService instrumentation, смена сети и TUN/Internet через HTTP3.

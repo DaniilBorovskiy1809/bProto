@@ -55,6 +55,9 @@ jobs:
           /tmp/native-carriers/bin/pip install -r tools/quic-bridge/requirements.txt -r tools/fronting/requirements.txt coverage==7.13.1
           BPROTO_TEST_BIN_DIR=target/release /tmp/native-carriers/bin/python -m coverage run --data-file=/tmp/wss-coverage --source=tools/fronting -m unittest discover -s tests -p test_native_carriers.py -v
           /tmp/native-carriers/bin/python -m coverage report --data-file=/tmp/wss-coverage --fail-under=70
+          cargo test --locked -p vpn-core --features quic
+          cargo build --locked -p vpn-core --features quic --example h3_bridge
+          BPROTO_TEST_BIN_DIR=target/release /tmp/native-carriers/bin/python -m unittest discover -s tests -p test_rust_quic.py -v
       - run: cargo test --locked --manifest-path panel/backend/Cargo.toml
       - name: Package Linux and panel with installation resources
         run: |
@@ -101,7 +104,7 @@ jobs:
           unzip -l dist/apk/*.apk | grep lib/armeabi-v7a/libbproto.so
           unzip -l dist/apk/*.apk | grep lib/x86_64/libbproto.so
           for abi in arm64-v8a armeabi-v7a x86_64; do
-            for symbol in connect assignedIp socketFd pump stop close lastError version; do
+            for symbol in connect assignedIp socketFd pump stop close lastError version quicBind quicSocketFd quicStart quicAlive quicClose; do
               "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm" -D --defined-only "dist/android/jniLibs/$abi/libbproto.so" | grep "Java_dev_bproto_Bproto_$symbol$" > /dev/null
             done
           done

@@ -3,8 +3,8 @@
 //! Production tunnels use bProto's own wire format, not standard QUIC or
 //! HTTP/3. Padding and header sizing do not establish DPI indistinguishability.
 //! Reliability and congestion control are implemented by the session layer.
-//! The optional `quic` module is an unfinished scaffold; enabling the feature
-//! does not switch the client or server transport.
+//! The optional `quic` module provides an HTTP/3 carrier; applications select
+//! and protect its outer socket explicitly. Native UDP remains the default.
 
 use std::net::SocketAddr;
 

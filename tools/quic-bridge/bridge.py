@@ -165,6 +165,12 @@ class Carrier(QuicConnectionProtocol):
         self.http.send_data(self.active, encode(data), end_stream=False)
         self.transmit()
 
+    def close(self, error_code=0, reason_phrase=""):
+        # Server shutdown calls close directly; it need not deliver a later
+        # ConnectionTerminated event before the event loop exits.
+        self.cleanup()
+        super().close(error_code=error_code, reason_phrase=reason_phrase)
+
     def cleanup(self):
         if self.opening is not None:
             self.opening.cancel()

@@ -149,7 +149,7 @@ class BprotoVpnService : VpnService() {
                 carrier?.close()
                 carrier = null
                 val prepared = runCatching {
-                    WssCarrier.prepare(candidate, { socket -> protect(socket) }, { Bproto.stop() })
+                    QuicCarrier.prepare(candidate, { fd -> protect(fd) }, { socket -> protect(socket) }, { Bproto.stop() })
                 }
                 if (prepared.isFailure) {
                     publish("Carrier failed for server ${index + 1}")

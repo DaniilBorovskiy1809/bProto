@@ -80,3 +80,18 @@ Android QUIC, ECH, browser profiles and live network validation remain open.
 The audit was accidentally replaced by the Russian WSS README in 2f7296d.
 This version restores the preceding audit and appends the Android WSS result.
 See [the current release plan](PLAN-2.5.md) for remaining acceptance gates.
+
+## Native/Android HTTP3 implementation
+
+Replaced the native QUIC placeholder with an h3/quinn client carrier and added
+two-phase JNI bind/protect/start plus synchronized Kotlin lifecycle handling.
+Panel exports QUIC profiles. Independent Rust↔aioquic tests cover datagrams,
+certificate name/token rejection and real native bProto connection/address lease.
+Fixed Python server shutdown to close upstream UDP without relying on a later
+ConnectionTerminated event. Android device/VpnService testing remains open.
+
+Validation for this update: vpn-core with quic: 117 passed, 1 previously ignored
+donor test; Rust/aioquic suite: 10 passed; Python QUIC suite: 8 passed, 80% coverage;
+Android: 27 JVM tests passed, APK assembled with three rebuilt ABIs and all five
+new QUIC JNI symbols verified. Frontend TypeScript/Vite build passed.
+No Android device run, ECH, browser profile or target-network evidence is claimed.

@@ -3,7 +3,7 @@
 The existing bProto protocol is carried unchanged as length-prefixed datagrams
 inside the DATA frames of one authenticated HTTP/3 POST stream. aioquic provides
 QUIC v1, TLS 1.3, QPACK and HTTP/3 framing. ALPN is h3; server Retry is enabled.
-This is a standalone Python client/server bridge, not Android QUIC integration.
+The Python server interoperates with the native Rust/Android HTTP3 carrier added below.
 
 ## Deployment
 
@@ -54,3 +54,39 @@ need production load testing before public deployment. One carrier stream per
 connection, one native client per local process. The native protocol and TLS
 remain authenticated; a matching JA3 alone would not prove DPI indistinguishability.
 100% RKN bypass is not guaranteed. A reachable authorized endpoint is required.
+
+
+## Native Rust and Android HTTP/3
+
+The former vpn-core QUIC placeholder is now a working h3/quinn client carrier.
+Android binds the external UDP socket, protects its descriptor using VpnService,
+and only then starts QUIC. The HTTP/3 POST /bproto carries framed native datagrams;
+the inner bProto wire format is unchanged. JNI owns the runtime and cancels
+connection tasks on close. Native buffers and QUIC flow-control windows are bounded.
+
+Select QUIC / HTTP3 in panel Settings and export an Android key using existing
+bProto credentials. The optional quic JSON object contains hostname, server_host,
+server_port and token. It cannot coexist with tls or wss. The server still runs
+tools/quic-bridge with BPROTO_BRIDGE_TOKEN. The panel's Apply button continues to
+target the configured raw-TLS service; QUIC JSON must be deployed separately.
+
+Android QUIC uses the bundled Mozilla/WebPKI roots, not the Android user CA store.
+Hostname verification stays enabled. The native Rust API also supports an explicit
+DER private CA for desktop/test deployments; Android import doesn't expose it.
+No ECH or browser impersonation is implemented.
+
+Build/test:
+- cargo test --locked -p vpn-core --features quic
+- cargo build --locked -p vpn-core --features quic --example h3_bridge
+- python -m unittest discover -s tests -p test_rust_quic.py -v
+  (install QUIC and WSS test requirements and build native bproto/vpn-server first).
+- Android build uses --features jni, which enables the native QUIC dependencies.
+
+The native helper reads BPROTO_BRIDGE_TOKEN and accepts endpoint, hostname and
+optional DER CA arguments. It prints a loopback port for local bProto, not a public
+server URL. Outer routing must still be protected on desktop full-tunnel use.
+
+Validation includes Rust-to-aioquic datagrams, wrong token, hostname rejection,
+real native bProto handshake/address lease through Rust HTTP3, and server socket
+cleanup. Android cross-compilation/JVM tests are separate from phone/VpnService
+runtime tests, which remain outstanding.

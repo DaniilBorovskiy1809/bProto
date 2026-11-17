@@ -19,7 +19,7 @@ class QuicTests(unittest.IsolatedAsyncioTestCase):
         root = pathlib.Path(self.tmp.name)
         subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
             "-keyout", str(root / "key.pem"), "-out", str(root / "cert.pem"),
-            "-days", "1", "-subj", "/CN=localhost", "-addext", "subjectAltName=DNS:localhost"],
+            "-days", "1", "-subj", "/CN=localhost", "-addext", "subjectAltName=DNS:localhost", "-addext", "basicConstraints=critical,CA:FALSE"],
             check=True, capture_output=True)
         self.cfg = dict(cert=str(root / "cert.pem"), key=str(root / "key.pem"),
             ca=str(root / "cert.pem"), hostname="localhost", token="a"*64,
@@ -81,6 +81,15 @@ class QuicTests(unittest.IsolatedAsyncioTestCase):
             sock.close()
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
+
+    async def test_server_shutdown_closes_upstream(self):
+        async with self.connection() as client:
+            await client.authenticate(self.cfg)
+            protocols = list(set(self.server._protocols.values()))
+            upstreams = [p.udp for p in protocols if p.udp is not None]
+            self.assertTrue(upstreams)
+            self.server.close()
+            self.assertTrue(all(udp.is_closing() for udp in upstreams))
 
     async def test_wrong_token_rejected(self):
         async with self.connection() as client:

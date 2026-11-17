@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button, Card, Field, Input, Notice } from "./ui";
 
 export default function TlsBridgeEditor() {
-  const [transport, setTransport] = useState<"tls" | "wss">("tls");
+  const [transport, setTransport] = useState<"tls" | "wss" | "quic">("tls");
   const [hostname, setHostname] = useState("");
   const [address, setAddress] = useState("");
   const [port, setPort] = useState("443");
@@ -38,7 +38,12 @@ export default function TlsBridgeEditor() {
           fallback_file: fallback, upstream_host: "127.0.0.1", upstream_port: 4443, token_env: "BPROTO_BRIDGE_TOKEN"}
       : {url: `wss://${hostname}:${port}/bproto`, local_port: 14443,
           token_env: "BPROTO_BRIDGE_TOKEN", ...(ca ? {ca} : {})};
-    const url = URL.createObjectURL(new Blob([JSON.stringify(config, null, 2)], { type: "application/json" }));
+    const output = transport !== "quic" ? config : mode === "server"
+      ? {listen_host: "0.0.0.0", listen_port: Number(port), hostname, cert, key,
+          fallback_file: fallback, upstream_host: "127.0.0.1", upstream_port: 4443, token_env: "BPROTO_BRIDGE_TOKEN"}
+      : {server_host: address || hostname, server_port: Number(port), hostname,
+          local_port: 14443, token_env: "BPROTO_BRIDGE_TOKEN", ...(ca ? {ca} : {})};
+    const url = URL.createObjectURL(new Blob([JSON.stringify(output, null, 2)], { type: "application/json" }));
     const link = document.createElement("a");
     link.href = url; link.download = transport + "-" + mode + ".json"; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -51,7 +56,9 @@ export default function TlsBridgeEditor() {
       if (config.v !== 1 || !/^[a-fA-F0-9]{64}$/.test(config.psk) || !/^[a-fA-F0-9]{64}$/.test(config.tag_key)) throw new Error("Invalid native profile");
       delete config.tls;
       delete config.wss;
+      delete config.quic;
       if (transport === "tls") config.tls = { hostname, server_host: address || hostname, server_port: Number(port), token };
+      else if (transport === "quic") config.quic = {hostname, server_host: address || hostname, server_port: Number(port), token};
       else config.wss = {url: `wss://${hostname}:${port}/bproto`, token};
       const bytes = new TextEncoder().encode(JSON.stringify(config));
       const uri = "bproto://import/" + btoa(Array.from(bytes, x => String.fromCharCode(x)).join("")).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -68,26 +75,26 @@ export default function TlsBridgeEditor() {
   return <Card title="TLS 1.3 · экспериментальный транспорт / Experimental transport">
     <div className="space-y-3">
       <Notice>Конструктор конфигурации: экспорт не применяет настройки на сервере.
-        TLS/WSS проверяют сертификат. Android QUIC и ECH пока отсутствуют. Обход белых списков не гарантируется.
+        TLS/WSS проверяют сертификат. Android QUIC экспериментальный; ECH пока отсутствует. Обход белых списков не гарантируется.
         Используйте собственный домен и сертификат. / Use an owned domain and certificate.</Notice>
-      <Field label="Transport"><select value={transport} onChange={e => setTransport(e.target.value as "tls" | "wss")}>
-        <option value="tls">TLS 1.3</option><option value="wss">WebSocket over TLS</option>
+      <Field label="Transport"><select value={transport} onChange={e => setTransport(e.target.value as "tls" | "wss" | "quic")}>
+        <option value="tls">TLS 1.3</option><option value="wss">WebSocket over TLS</option><option value="quic">QUIC / HTTP3</option>
       </select></Field>
       <Field label="Домен сертификата / Certificate hostname"><Input value={hostname} onChange={e => setHostname(e.target.value)} placeholder="vpn.example.com" /></Field>
       <Field label="Адрес сервера / Server address"><Input disabled={transport === "wss"} value={address} onChange={e => setAddress(e.target.value)} placeholder="Default: hostname" /></Field>
-      <Field label="TCP port"><Input type="number" min={1} max={65535} value={port} onChange={e => setPort(e.target.value)} /></Field>
+      <Field label={transport === "quic" ? "UDP port" : "TCP port"}><Input type="number" min={1} max={65535} value={port} onChange={e => setPort(e.target.value)} /></Field>
       <Field label="Certificate chain path"><Input value={cert} onChange={e => setCert(e.target.value)} /></Field>
       <Field label="Private key path"><Input value={key} onChange={e => setKey(e.target.value)} /></Field>
       <Field label="Fallback HTML path"><Input value={fallback} onChange={e => setFallback(e.target.value)} /></Field>
       <Field label="Client CA path (optional; empty = system trust)"><Input value={ca} onChange={e => setCa(e.target.value)} /></Field>
       <Field label="Bridge token (64 hex characters)"><Input type="password" autoComplete="off" value={token} onChange={e => setToken(e.target.value)} /></Field>
       <Button onClick={() => setToken(Array.from(crypto.getRandomValues(new Uint8Array(32)), x => x.toString(16).padStart(2, "0")).join(""))}>Создать токен / Generate token</Button>
-      <p className="text-sm">Android-ключ и TLS JSON содержат токен. Для WSS JSON задайте этот токен в BPROTO_BRIDGE_TOKEN на клиенте и сервере. Храните секреты с правами 600.</p>
+      <p className="text-sm">Android-ключ и TLS JSON содержат токен. Для WSS/QUIC JSON задайте этот токен в BPROTO_BRIDGE_TOKEN на клиенте и сервере. Храните секреты с правами 600.</p>
       <Field label="Existing bProto import key / Ключ bProto для Android"><Input type="password" autoComplete="off" value={nativeUri} onChange={e => setNativeUri(e.target.value)} /></Field>
       <Button disabled={!valid || !nativeUri || !!ca} onClick={androidExport}>Android {transport.toUpperCase()} import key</Button>
-      <p className="text-sm">Android использует системные CA; нестандартный CA здесь не поддерживается. / Android uses system trust.</p>
+      <p className="text-sm">Android TLS/WSS используют системные CA; QUIC — встроенные Mozilla roots. Импорт частного CA для Android здесь не поддерживается.</p>
       {exportError && <p role="alert">{exportError}</p>}
-      <p className="text-sm">Применение перезапускает настроенный TLS-сервис и прерывает его подключения. Агент и mTLS настраиваются оператором заранее. Эта кнопка применяет только TLS-конфигурацию; WSS экспортируется отдельно.</p>
+      <p className="text-sm">Применение перезапускает настроенный TLS-сервис и прерывает его подключения. Агент и mTLS настраиваются оператором заранее. Эта кнопка применяет только TLS-конфигурацию; WSS/QUIC экспортируются отдельно.</p>
       <Button disabled={!valid || agentBusy || transport !== "tls"} onClick={() => void agent("apply")}>Применить на сервере / Apply</Button>{" "}
       <Button disabled={agentBusy} onClick={() => void agent("health")}>Health</Button>{" "}
       <Button disabled={agentBusy} onClick={() => void agent("rollback")}>Rollback</Button>
