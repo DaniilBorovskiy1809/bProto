@@ -47,3 +47,12 @@ Retry, certificate validation, framed native datagrams and local HTML fallback.
 Seven real-UDP integration/framing tests pass, with 80% statement coverage.
 CI runs these tests with a 70% gate. Android QUIC and independent HTTP/3/DPI
 interoperability evidence remain open; this does not satisfy the full 2.5 DoD.
+
+## Config-agent implementation update
+
+Added a version-1 JSON transaction agent, atomic replacement, validation/restart/
+health commands, automatic recovery, explicit rollback and mandatory client
+certificates. Panel API and TLS editor now expose Apply/Health/Rollback against
+one fixed operator-configured mTLS destination. Seven agent tests pass, including
+real mTLS rejection/acceptance, with 75% statement coverage. Actual systemd and
+full panel-to-service e2e remain unverified; this is experimental.

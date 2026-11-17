@@ -22,6 +22,7 @@ mod auth;
 mod inbounds;
 mod keys;
 mod routing;
+mod config_agent;
 mod stats;
 mod subs;
 
@@ -189,6 +190,7 @@ fn router(app: App) -> Router {
         .route("/internal/v1/sessions/report", post(stats::report_sessions));
 
     let protected = Router::new()
+        .route("/api/config-agent", post(config_agent::apply))
         // --- account ---
         .route("/api/me", get(auth::me))
         .route("/api/auth/logout", post(auth::logout))

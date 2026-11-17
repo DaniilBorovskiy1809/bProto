@@ -1,3 +1,4 @@
+import { api } from "./api";
 import { useState } from "react";
 import { Button, Card, Field, Input, Notice } from "./ui";
 
@@ -12,6 +13,18 @@ export default function TlsBridgeEditor() {
   const [ca, setCa] = useState("");
   const [nativeUri, setNativeUri] = useState("");
   const [exportError, setExportError] = useState("");
+  const [agentStatus, setAgentStatus] = useState("");
+  const [agentBusy, setAgentBusy] = useState(false);
+  async function agent(action: "apply" | "health" | "rollback") {
+    setAgentBusy(true);
+    try {
+      const config = {hostname, token, listen_host: "0.0.0.0", listen_port: Number(port),
+        cert, key, fallback_file: fallback, upstream_host: "127.0.0.1", upstream_port: 4443};
+      const result = await api.configAgent(action, action === "apply" ? config : undefined);
+      setAgentStatus(result.status);
+    } catch (error) { setAgentStatus(error instanceof Error ? error.message : "Agent failed"); }
+    finally { setAgentBusy(false); }
+  }
   function download(mode: "server" | "client") {
     const shared = { hostname, token };
     const config = mode === "server"
@@ -62,6 +75,11 @@ export default function TlsBridgeEditor() {
       <Button disabled={!valid || !nativeUri || !!ca} onClick={androidExport}>Android TLS import key</Button>
       <p className="text-sm">Android использует системные CA; нестандартный CA здесь не поддерживается. / Android uses system trust.</p>
       {exportError && <p role="alert">{exportError}</p>}
+      <p className="text-sm">Применение перезапускает настроенный TLS-сервис и прерывает его подключения. Агент и mTLS настраиваются оператором заранее.</p>
+      <Button disabled={!valid || agentBusy} onClick={() => void agent("apply")}>Применить на сервере / Apply</Button>{" "}
+      <Button disabled={agentBusy} onClick={() => void agent("health")}>Health</Button>{" "}
+      <Button disabled={agentBusy} onClick={() => void agent("rollback")}>Rollback</Button>
+      <p role="status">{agentStatus}</p>
       <Button disabled={!valid} onClick={() => download("server")}>Server JSON</Button>{" "}
       <Button disabled={!valid} onClick={() => download("client")}>Client JSON</Button>
     </div>
