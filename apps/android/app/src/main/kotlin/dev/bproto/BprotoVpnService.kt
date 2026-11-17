@@ -76,6 +76,7 @@ class BprotoVpnService : VpnService() {
     // Touched from the main thread (start) and the tunnel thread (finally).
     @Volatile
     private var worker: Thread? = null
+    @Volatile private var carrier: TlsCarrier? = null
     private var routing = RoutingPolicy()
     private var candidates: List<String> = emptyList()
     @Volatile private var cancelled = false
@@ -121,6 +122,7 @@ class BprotoVpnService : VpnService() {
 
     fun stopTunnel() {
         cancelled = true
+        carrier?.close()
         Bproto.stop()
     }
 
@@ -144,7 +146,19 @@ class BprotoVpnService : VpnService() {
             for ((index, candidate) in choices.withIndex()) {
                 if (cancelled) return
                 publish("Connecting to server ${index + 1}/${choices.size}")
-                handle = Bproto.connect(candidate)
+                carrier?.close()
+                carrier = null
+                val prepared = runCatching {
+                    TlsCarrier.prepare(candidate, { socket -> protect(socket) }, { Bproto.stop() })
+                }
+                if (prepared.isFailure) {
+                    publish("TLS carrier failed for server ${index + 1}")
+                    continue
+                }
+                val (nativeConfig, activeCarrier) = prepared.getOrThrow()
+                carrier = activeCarrier
+                if (cancelled) return
+                handle = Bproto.connect(nativeConfig)
                 if (handle != 0L) break
             }
             if (handle == 0L) {
@@ -203,6 +217,8 @@ class BprotoVpnService : VpnService() {
             if (handle != 0L) {
                 Bproto.close(handle)
             }
+            carrier?.close()
+            carrier = null
             runCatching { tun?.close() }
             worker = null
             stopForeground(STOP_FOREGROUND_REMOVE)

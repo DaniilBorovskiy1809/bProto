@@ -29,3 +29,13 @@ does not prove indistinguishability. Synthetic tests cannot certify RKN evasion.
 Разрешённый SNI не делает заблокированный IP доступным. Для реальной проверки
 нужны контролируемый разрешённый узел и доступ к целевой сети; сейчас их нет.
 100% гарантии обхода РКН нет.
+
+## Implementation update
+
+- Android TLS carrier added in TlsCarrier.kt: protected TCP socket, TLS 1.3,
+  hostname verification, framed datagrams and shutdown cleanup.
+- TlsProfile.kt validates optional transport configuration; six JVM tests added.
+- Panel exports Android TLS import keys from existing native credentials.
+- Existing four TLS tests are included in build.yml.
+- Android runtime e2e, QUIC, fingerprints, ECH/CDN, agent and coverage gate remain
+  open. The full 2.5.0 acceptance criteria are not yet met.

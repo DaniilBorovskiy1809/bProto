@@ -19,7 +19,7 @@ connection gets one upstream UDP socket. TLS authentication validates the hostna
 and certificate chain; there is no insecure verification switch.
 
 bProto сохраняет собственный протокол. Мост переносит его UDP-пакеты через
-настоящий TLS 1.3. Это отдельный экспериментальный процесс, не интеграция с Android.
+настоящий TLS 1.3. Для CLI это отдельный экспериментальный процесс; Android 10+ использует встроенный мост.
 Не используйте его для полного туннеля без отдельного маршрута к реальному TCP
 адресу сервера: клиент bProto видит только loopback и не закрепит внешний адрес.
 
@@ -70,7 +70,8 @@ A matching JA3/JA4 alone cannot prove indistinguishability from a browser.
 - [x] Existing protocol bytes carried inside encrypted TLS records.
 - [x] Local owned HTML response to unauthenticated HTTP requests.
 - [x] Panel configuration export; restart without rebuilding.
-- [ ] Native Android integration and route protection for carrier socket.
+- [x] Experimental Android TLS carrier and protection of its TCP socket.
+- [ ] Android device/runtime validation.
 - [ ] QUIC v1 / HTTP3 carrier, Retry, HTTP3 fallback.
 - [ ] Browser ClientHello profiles, JA3/JA4 and timing verification.
 - [ ] Supported CDN reverse proxy / WebSocket / HTTP2 CONNECT integration.
@@ -91,3 +92,17 @@ SNI does not bypass an IP allowlist. ECH does not make a blocked IP reachable.
 Domain fronting requires provider support and operator-controlled infrastructure;
 no third-party domains are automatically used. TCP introduces head-of-line blocking.
 The carrier is an experimental lab component, not a finished censorship bypass.
+
+## Android integration update
+
+Android 10+ now includes an experimental in-process carrier. In panel Settings,
+provide an existing native bProto import key and export an Android TLS key.
+Import its text into the app. The TCP socket is protected through VpnService
+before connecting; TLS hostname validation and system CA trust are mandatory.
+A carrier failure stops the native tunnel. No silent downgrade to UDP occurs.
+Android 8/9 retain native UDP support but reject TLS carrier profiles.
+
+This supersedes the earlier statement that Android integration is absent.
+Android build/unit verification is separate from device runtime validation:
+instrumentation and device end-to-end tests remain outstanding.
+See [Russian instructions](README.ru.md).

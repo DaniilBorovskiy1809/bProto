@@ -16,6 +16,7 @@ jobs:
       - run: bash -n bootstrap.sh install.sh build_app.sh run.sh
       - run: python3 -m unittest discover -s tests -p test_installers.py -v
       - run: python3 -m unittest discover -s tests -p 'test_connection_*.py' -v
+      - run: python3 -m unittest discover -s tests -p test_tls_bridge.py -v
   linux-panel:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
