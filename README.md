@@ -13,7 +13,7 @@ Linux CLI, an Android globe client and the bUI web panel. This README is for VPS
 operators, client users and developers. It covers one-command installation,
 network configuration, maintenance and the limits of the current implementation.
 
-**Текущий релиз / Current release:** [v1.5.0](https://github.com/dr-lexus-dr/bProto/releases/tag/v1.5.0).
+**Текущий релиз / Current release:** [v2.0.0](https://github.com/dr-lexus-dr/bProto/releases/tag/v2.0.0).
 [Загрузки / Downloads](https://github.com/dr-lexus-dr/bProto/releases) ·
 [Сборки / Builds](https://github.com/dr-lexus-dr/bProto/actions) ·
 [Задачи / Issues](https://github.com/dr-lexus-dr/bProto/issues)
@@ -67,13 +67,13 @@ Debian 13+, with systemd and TUN available. Enter a root shell using `sudo -i`, 
 bash <(curl -fsSL https://raw.githubusercontent.com/dr-lexus-dr/bProto/main/bootstrap.sh)
 ```
 
-**RU.** Команда скачивает бинарники **v1.5.0**, проверяет контрольную сумму,
+**RU.** Команда скачивает бинарники **v2.0.0**, проверяет контрольную сумму,
 размещает текущие скрипты проекта в `/opt/bproto`, устанавливает сервер и CLI,
 создаёт ключи и службу. Rust не нужен. Порты firewall скрипт не открывает:
 после завершения проверьте UDP 443, `nat_interface` и публичный адрес клиента.
 Служба должна перейти в `active`; ошибка запуска возвращает ненулевой код.
 
-**EN.** The command downloads **v1.5.0** binaries, verifies their checksum,
+**EN.** The command downloads **v2.0.0** binaries, verifies their checksum,
 places current project scripts in `/opt/bproto`, installs the server and CLI,
 and creates keys and a service. Rust is not required. The script does not open
 firewall ports: check UDP 443, `nat_interface` and the client’s public endpoint
@@ -152,7 +152,7 @@ test -c /dev/net/tun && echo 'TUN available'
 
 | Флаг / Flag | Значение по умолчанию / Default | Назначение / Purpose |
 | --- | --- | --- |
-| `--release TAG` | `v1.5.0` | Версия бинарников / Binary release tag |
+| `--release TAG` | `v2.0.0` | Версия бинарников / Binary release tag |
 | `--directory PATH` | `/opt/bproto` | Постоянный checkout / Persistent checkout |
 | `--target TARGET` | `all` | `server`, `client`, `all` |
 | `--port PORT` | `443` | UDP-порт **нового** конфига / UDP port for a **new** config |
