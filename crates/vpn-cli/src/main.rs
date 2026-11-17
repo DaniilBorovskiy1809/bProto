@@ -3,12 +3,15 @@
 //! * `check`   – validate the configuration file,
 //! * `connect` – handshake and report, without touching the host network,
 //! * `up`      – full tunnel: TUN device, address, default route (opt-out),
+//! * `socks5`  – local SOCKS5 proxy instead of a TUN device (no root needed),
+//! * `import`  – write a `client.toml` from a panel key URI,
 //! * `genkey`  – print a fresh PSK for the panel / `server.toml`.
 //!
 //! The desktop product builds on the same `vpn-core` API; this binary exists so
 //! the protocol can be driven end to end without the GUI.
 
 use std::io::Read;
+use std::net::{Ipv4Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -19,6 +22,8 @@ use tokio::sync::mpsc;
 use tracing_subscriber::EnvFilter;
 use vpn_core::{Tunnel, TunnelConfig};
 use vpn_tun::{dev, route};
+
+mod socks5;
 
 #[derive(Debug, Parser)]
 #[command(name = "bproto", version, about = "bProto client")]
@@ -58,6 +63,17 @@ enum Command {
         no_default_route: bool,
     },
 
+    /// Local SOCKS5 proxy instead of a TUN device (works without root).
+    Socks5 {
+        /// Listen address, overriding `[socks5].listen` in the config.
+        #[arg(long)]
+        listen: Option<SocketAddr>,
+
+        /// DNS resolver queried through the tunnel, overriding `[socks5].dns`.
+        #[arg(long)]
+        dns: Option<Ipv4Addr>,
+    },
+
     /// Import a key URI (from the panel's QR code) and write a `client.toml`.
     Import {
         /// The `bproto://import/...` URI.
@@ -78,12 +94,7 @@ fn init_tracing() {
 }
 
 fn load(path: &Path) -> anyhow::Result<TunnelConfig> {
-    let text =
-        std::fs::read_to_string(path).with_context(|| format!("cannot read {}", path.display()))?;
-    let cfg: TunnelConfig =
-        toml::from_str(&text).with_context(|| format!("parse {}", path.display()))?;
-    cfg.validate()?;
-    Ok(cfg)
+    Ok(load_file(path)?.0)
 }
 
 /// The configuration for this run: `--uri` wins over `--config`.
@@ -92,6 +103,29 @@ fn resolve(uri: Option<&str>, config: &Path) -> anyhow::Result<TunnelConfig> {
         Some(uri) => vpn_core::config::from_import_uri(uri).map_err(|e| anyhow::anyhow!("{e}")),
         None => load(config),
     }
+}
+
+/// Load `client.toml` with its optional `[socks5]` section.
+///
+/// `TunnelConfig` would ignore an unknown table, so the file is parsed as raw
+/// TOML first, the `[socks5]` section is split off, and the rest deserializes
+/// as the plain tunnel config.
+fn load_file(path: &Path) -> anyhow::Result<(TunnelConfig, socks5::Socks5Config)> {
+    let text =
+        std::fs::read_to_string(path).with_context(|| format!("cannot read {}", path.display()))?;
+    let mut value: toml::Value =
+        toml::from_str(&text).with_context(|| format!("parse {}", path.display()))?;
+    let socks = match value.as_table_mut().and_then(|t| t.remove("socks5")) {
+        Some(v) => v
+            .try_into()
+            .with_context(|| format!("invalid [socks5] section in {}", path.display()))?,
+        None => socks5::Socks5Config::default(),
+    };
+    let cfg: TunnelConfig = value
+        .try_into()
+        .with_context(|| format!("parse {}", path.display()))?;
+    cfg.validate()?;
+    Ok((cfg, socks))
 }
 
 #[tokio::main]
@@ -130,6 +164,13 @@ async fn main() -> anyhow::Result<()> {
                 cfg.effective_mtu(),
                 cfg.user_id
             );
+            if cli.uri.is_none() {
+                let (_, socks) = load_file(&cli.config)?;
+                println!(
+                    "socks5: listen={} dns={} (mode: `bproto socks5`)",
+                    socks.listen, socks.dns
+                );
+            }
             Ok(())
         }
         Command::Connect { seconds } => {
@@ -154,6 +195,25 @@ async fn main() -> anyhow::Result<()> {
         } => {
             let cfg = resolve(cli.uri.as_deref(), &cli.config)?;
             up(cfg, iface, no_default_route).await
+        }
+        Command::Socks5 { listen, dns } => {
+            // `--uri` carries no [socks5] section; defaults + flags apply.
+            let (cfg, mut socks) = match cli.uri.as_deref() {
+                Some(uri) => (
+                    vpn_core::config::from_import_uri(uri).map_err(|e| anyhow::anyhow!("{e}"))?,
+                    socks5::Socks5Config::default(),
+                ),
+                None => load_file(&cli.config)?,
+            };
+            if let Some(l) = listen {
+                socks.listen = l;
+            }
+            if let Some(d) = dns {
+                socks.dns = d;
+            }
+            let tunnel = Arc::new(Tunnel::connect(cfg).await?);
+            report(&tunnel);
+            socks5::run(tunnel, socks).await
         }
     }
 }

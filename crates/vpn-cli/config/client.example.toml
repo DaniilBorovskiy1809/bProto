@@ -32,6 +32,16 @@ stealth = "off"
 # How long to keep retrying the handshake before giving up.
 handshake_timeout = "10s"
 
+# Local SOCKS5 proxy (`bproto socks5`): serves TCP CONNECT on `listen` and
+# carries it through the tunnel. No TUN device and no root required.
+# DNS names from CONNECT are resolved through the tunnel via `dns`.
+[socks5]
+listen = "127.0.0.1:1080"
+dns = "1.1.1.1"
+# Optional RFC 1929 auth; when set, clients must supply user/password.
+# username = "user"
+# password = "secret"
+
 [donor]
 # The site whose identity is borrowed in mode B. Must serve HTTP/3.
 sni = "www.cloudflare.com"

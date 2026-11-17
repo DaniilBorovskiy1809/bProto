@@ -1351,6 +1351,7 @@ version = "2.0.0"
 dependencies = [
  "anyhow",
  "clap",
+ "serde",
  "tokio",
  "toml",
  "tracing",
