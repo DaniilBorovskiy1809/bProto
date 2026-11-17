@@ -59,7 +59,7 @@ fn start_server(rt: &tokio::runtime::Runtime) -> Harness {
             let Ok((n, from)) = reader.socket().recv_from(&mut buf).await else {
                 break;
             };
-            if let Ok(Some(pkt)) = reader.handle(&buf[..n], from, 0).await {
+            if let Ok(Some(pkt)) = reader.handle(&buf[..n], from, 0, None).await {
                 let _ = to_tun_tx.send(pkt).await;
             }
         }
