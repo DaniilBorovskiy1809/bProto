@@ -1,0 +1,39 @@
+# Uses separate network namespaces. Never use network_mode: host here.
+services:
+  server:
+    build:
+      context: ../..
+      dockerfile: tools/connection-lab/Dockerfile
+      secrets: [lab_ca]
+    command: [server]
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN, DAC_READ_SEARCH]
+    devices: [/dev/net/tun:/dev/net/tun]
+    sysctls:
+      net.ipv4.ip_forward: '1'
+    ports:
+      - '${BPROTO_LAB_BIND:-127.0.0.1}:${BPROTO_LAB_PORT:-4443}:4443/udp'
+    volumes:
+      - '${BPROTO_LAB_STATE:-../../.connection-lab}:/lab:ro'
+    environment:
+      RUST_LOG: info
+    networks: [lab]
+  probe:
+    build:
+      context: ../..
+      dockerfile: tools/connection-lab/Dockerfile
+      secrets: [lab_ca]
+    command: [probe]
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN, NET_RAW, DAC_READ_SEARCH]
+    devices: [/dev/net/tun:/dev/net/tun]
+    volumes:
+      - '${BPROTO_LAB_STATE:-../../.connection-lab}:/lab:ro'
+    depends_on: [server]
+    networks: [lab]
+networks:
+  lab: {}
+
+secrets:
+  lab_ca:
+    file: ${BPROTO_LAB_CA_FILE:-/etc/ssl/certs/ca-certificates.crt}

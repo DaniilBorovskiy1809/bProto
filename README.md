@@ -1,5 +1,10 @@
 # bProto — VPN, сервер, Android и панель / VPN, server, Android and panel
 
+> **Тестовая ветка / Test branch:** [Connection lab](tools/connection-lab/README.md) —
+> локальный UDP-стенд, Android-ключи и изолированная проверка TUN.
+> Local UDP lab, Android import keys and an isolated kernel-TUN probe.
+
+
 [![Build and test](https://github.com/dr-lexus-dr/bProto/actions/workflows/build.yml/badge.svg)](https://github.com/dr-lexus-dr/bProto/actions/workflows/build.yml)
 [![Release](https://img.shields.io/github/v/release/dr-lexus-dr/bProto)](https://github.com/dr-lexus-dr/bProto/releases)
 
